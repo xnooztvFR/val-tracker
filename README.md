@@ -60,24 +60,78 @@ npm run tauri dev
 fenêtre Tauri. Les changements côté React sont pris en compte à chaud ; les changements côté
 Rust déclenchent une recompilation + redémarrage de l'app.
 
-### Build
+### Build local (installation manuelle)
 
 ```bash
 npm run tauri build
 ```
 
-Génère les installeurs `.msi` (WiX) et `.exe` (NSIS) dans `src-tauri/target/release/bundle/`.
+Génère les installeurs `.msi` (WiX) et `.exe` (NSIS) dans `src-tauri/target/release/bundle/`,
+signés avec le certificat Authenticode local (voir plus bas) et avec les artefacts de mise à
+jour (`.sig`) si `TAURI_SIGNING_PRIVATE_KEY`/`TAURI_SIGNING_PRIVATE_KEY_PASSWORD` sont définis
+dans l'environnement.
 
-Notes avant un vrai build de distribution :
-- Les icônes dans `src-tauri/icons/` sont des placeholders générés (couleur unie violette) —
-  à remplacer par de vraies icônes avant publication.
-- La signature de code n'est pas configurée (pas bloquant pour le dev, à prévoir en dernière
-  étape avant distribution publique).
-- `tauri-plugin-updater` est présent en dépendance Rust mais **pas encore câblé** (pas
-  d'endpoint de manifest hébergé) — voir `src-tauri/Cargo.toml` et la section
-  `plugins` (vide) de `src-tauri/tauri.conf.json`. À activer quand l'infra de mise à jour
-  existera : enregistrer le plugin dans `main.rs`, remplir `plugins.updater.endpoints` et
-  `pubkey` (généré via `tauri signer generate`).
+### Icône
+
+Générée depuis une image source carrée via `npx tauri icon <fichier>` (regénère
+`src-tauri/icons/`). Pour changer l'icône, relancer la commande avec un nouveau fichier
+source puis supprimer les variantes iOS/Android/Store générées en trop (l'app ne cible que
+Windows — seuls `32x32.png`, `64x64.png`, `128x128.png`, `128x128@2x.png` et `icon.ico` sont
+référencés dans `bundle.icon` de `tauri.conf.json`).
+
+### Signature
+
+Deux mécanismes de signature distincts, à ne pas confondre :
+
+1. **Signature de l'updater** (obligatoire pour l'auto-update, indépendante de la signature
+   Windows) — une paire de clés Ed25519 générée via `tauri signer generate`. La clé publique
+   est dans `plugins.updater.pubkey` de `tauri.conf.json` ; la clé privée + son mot de passe
+   ne sont **jamais commités**, uniquement en secrets GitHub Actions
+   (`TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`) et en local dans
+   `~/.tauri/`.
+2. **Signature Authenticode Windows** (SmartScreen) — actuellement un certificat
+   **auto-signé** (généré via `New-SelfSignedCertificate`, référencé par son thumbprint dans
+   `bundle.windows.certificateThumbprint`). Un certificat auto-signé signe bien le binaire
+   mais **ne supprime pas** l'avertissement SmartScreen pour les utilisateurs — seul un vrai
+   certificat payé auprès d'une autorité (SSL.com, DigiCert, EV sur token...) le fait. À
+   remplacer le jour où un vrai certificat est acheté : régénérer le thumbprint dans
+   `tauri.conf.json` et le secret `WINDOWS_CERTIFICATE` (PFX en base64) +
+   `WINDOWS_CERTIFICATE_PASSWORD` côté CI.
+
+### Auto-update
+
+`tauri-plugin-updater` est câblé (voir `src-tauri/src/main.rs`, `src/hooks/useUpdater.ts`,
+`src/components/UpdateBanner.tsx`, section **Mises à jour** des Paramètres). L'app vérifie
+`https://github.com/xnooztvFR/val-tracker/releases/latest/download/latest.json` — le manifest
+`latest.json` est généré et publié automatiquement par le workflow de release (voir
+ci-dessous), il n'y a rien à héberger manuellement.
+
+Pour publier une nouvelle version :
+
+```bash
+# 1. Monter la version dans package.json ET src-tauri/tauri.conf.json (doivent matcher)
+# 2. Committer, puis taguer avec le même numéro, préfixé "v"
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+Le tag déclenche `.github/workflows/release.yml` : build Windows, import du certificat de
+signature, build+signature via `tauri-apps/tauri-action`, publication d'un **brouillon** de
+release GitHub avec les installeurs + `latest.json`. Vérifier le brouillon (notes de version,
+artefacts présents) puis le publier manuellement sur GitHub — c'est cette publication qui
+rend la mise à jour visible par l'updater des clients déjà installés (les brouillons ne sont
+pas lus par `releases/latest/...`).
+
+**Secrets GitHub Actions requis** (Settings → Secrets and variables → Actions du repo) :
+
+| Secret | Contenu |
+| --- | --- |
+| `TAURI_SIGNING_PRIVATE_KEY` | Contenu du fichier `~/.tauri/val-tracker.key` |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Mot de passe de cette clé |
+| `WINDOWS_CERTIFICATE` | PFX du certificat Authenticode encodé en base64 |
+| `WINDOWS_CERTIFICATE_PASSWORD` | Mot de passe du PFX |
+
+`GITHUB_TOKEN` est fourni automatiquement par GitHub Actions, pas besoin de le créer.
 
 ## Architecture
 
