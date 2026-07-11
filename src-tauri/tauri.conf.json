@@ -42,7 +42,11 @@
     "windows": {
       "certificateThumbprint": "EB04564FD14749DCF7D1CEAD1854CD4552E25727",
       "digestAlgorithm": "sha256",
-      "timestampUrl": "http://timestamp.digicert.com"
+      "timestampUrl": "http://timestamp.digicert.com",
+      "signCommand": {
+        "cmd": "C:\\Program Files (x86)\\Windows Kits\\10\\bin\\10.0.26100.0\\x64\\signtool.exe",
+        "args": ["sign", "/sha1", "EB04564FD14749DCF7D1CEAD1854CD4552E25727", "/tr", "http://timestamp.digicert.com", "/td", "sha256", "/fd", "sha256", "%1"]
+      }
     }
   },
   "plugins": {
