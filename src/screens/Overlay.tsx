@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
-import { useQueries } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { listen } from "@tauri-apps/api/event";
 
 import { tauriApi } from "../lib/tauriApi";
 import { useLiveDetectionState } from "../hooks/useLiveState";
+import { useSettingsStore } from "../store/settingsStore";
 import { rankInfo } from "../lib/format";
+import { computeAgentWinrates } from "../lib/stats";
+
+const OWN_MATCHES_SAMPLE_SIZE = 20;
 
 /** Fenêtre overlay V2 (always-on-top, transparente, click-through par défaut) : état de
  * la partie détectée via l'API locale Riot + rank Henrik des joueurs du lobby. Les mises
@@ -13,6 +17,15 @@ import { rankInfo } from "../lib/format";
 export default function Overlay() {
   const snapshot = useLiveDetectionState();
   const [interactive, setInteractive] = useState(false);
+  // Backlog #31 : l'overlay est une fenêtre Tauri séparée (même bundle React, autre
+  // label) — App.tsx ne rafraîchit jamais le settingsStore ici puisqu'il retourne avant cet
+  // effet pour la fenêtre "overlay" (voir App.tsx), donc on le fait nous-mêmes.
+  const { settings, refresh: refreshSettings } = useSettingsStore();
+  const density = settings?.overlay_density ?? "detailed";
+
+  useEffect(() => {
+    refreshSettings();
+  }, [refreshSettings]);
 
   // Le body garde le fond opaque du design system pour la fenêtre principale ; ici la
   // fenêtre est transparente, seuls les panneaux dessinent un fond.
@@ -42,6 +55,27 @@ export default function Overlay() {
     })),
   });
 
+  // Backlog #22 : recommandation d'agent perso pendant la sélection — juste "quels sont mes
+  // agents les plus performants", pas une analyse de la comp adverse/alliée (non fiable
+  // avec les données actuellement disponibles, voir TODO.md #22). `fetchMatches` passe par
+  // le même cache/rate-limiter que le reste : entrer plusieurs fois en pregame dans la
+  // fenêtre de TTL ne redéclenche pas d'appel réseau.
+  const selfAccounts = useQuery({
+    queryKey: ["overlay-self-accounts"],
+    queryFn: () => tauriApi.listSelfAccounts(),
+    staleTime: 5 * 60_000,
+  });
+  const self = selfAccounts.data?.[0];
+  const isPregame = snapshot?.state === "pregame";
+  const ownMatches = useQuery({
+    queryKey: ["overlay-own-matches", self?.puuid],
+    queryFn: () => tauriApi.fetchMatches(self!.region, self!.name, self!.tag, OWN_MATCHES_SAMPLE_SIZE),
+    enabled: Boolean(self) && isPregame,
+    staleTime: 10 * 60_000,
+  });
+  const recommendedAgents =
+    self && ownMatches.data ? computeAgentWinrates(ownMatches.data.data, self.puuid, 2).slice(0, 3) : [];
+
   const stateLabel =
     snapshot?.state === "pregame"
       ? "Sélection des agents"
@@ -58,7 +92,7 @@ export default function Overlay() {
       <div
         data-tauri-drag-region={interactive || undefined}
         className={`panel-clip flex flex-col overflow-hidden bg-surface/90 ${
-          interactive ? "cursor-move [box-shadow:inset_0_0_0_1px_#7CE8D3]" : ""
+          interactive ? "cursor-move [box-shadow:inset_0_0_0_1px_rgb(var(--color-accent))]" : ""
         }`}
       >
         <div data-tauri-drag-region={interactive || undefined} className="flex items-center justify-between border-b border-line px-3 py-2">
@@ -103,20 +137,39 @@ export default function Overlay() {
                         <span className="text-lo">Joueur inconnu</span>
                       )}
                     </span>
-                    <span className={`font-display text-[10px] font-semibold uppercase tracking-hud ${info.colorClass}`}>
-                      {info.name}
-                    </span>
-                    <span className="stat-value w-12 text-right text-[10px] text-lo">
-                      {data?.current_data?.ranking_in_tier != null
-                        ? `${data.current_data.ranking_in_tier} RR`
-                        : "—"}
-                    </span>
+                    {density === "detailed" && (
+                      <span className={`font-display text-[10px] font-semibold uppercase tracking-hud ${info.colorClass}`}>
+                        {info.name}
+                      </span>
+                    )}
+                    {density === "detailed" && (
+                      <span className="stat-value w-12 text-right text-[10px] text-lo">
+                        {data?.current_data?.ranking_in_tier != null
+                          ? `${data.current_data.ranking_in_tier} RR`
+                          : "—"}
+                      </span>
+                    )}
                   </li>
                 );
               })}
             </ul>
           )}
         </div>
+
+        {isPregame && recommendedAgents.length > 0 && (
+          <div className="border-t border-line px-2 py-1.5">
+            <p className="hud-label pointer-events-none mb-1 text-[9px] text-lo">
+              Tes agents les plus performants
+            </p>
+            <ul className="flex gap-2">
+              {recommendedAgents.map((agent) => (
+                <li key={agent.name} className="pointer-events-none text-[10px] text-hi">
+                  {agent.name} <span className="text-accent">{Math.round(agent.winPercent)}%</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <div className="border-t border-line px-3 py-1.5">
           <p className="pointer-events-none text-[10px] text-lo">

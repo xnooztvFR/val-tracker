@@ -1,4 +1,5 @@
 import { Link, useParams } from "react-router-dom";
+import { SkeletonScreen } from "../components/Skeleton";
 
 import { usePremierTeam, usePremierTeamHistory } from "../hooks/usePremier";
 import ErrorState from "../components/ErrorState";
@@ -11,7 +12,7 @@ export default function PremierTeamDetail() {
   const history = usePremierTeamHistory({ teamId });
 
   if (team.isError) return <ErrorState error={team.error} />;
-  if (team.isLoading) return <p className="text-sm text-lo">Chargement…</p>;
+  if (team.isLoading) return <SkeletonScreen className="p-6" />;
 
   const data = team.data?.data;
   if (!data) return <p className="text-sm text-lo">Équipe introuvable.</p>;

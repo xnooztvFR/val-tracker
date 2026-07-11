@@ -19,7 +19,7 @@ export default function StatCard({
   value,
   hint,
   gaugePercent,
-  gaugeColor = "#7CE8D3",
+  gaugeColor = "rgb(var(--color-accent))",
   icon,
   emphasis = false,
 }: StatCardProps) {

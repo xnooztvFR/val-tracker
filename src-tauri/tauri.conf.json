@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Valorant Tracker",
-  "version": "0.1.0",
-  "identifier": "com.mri-bot.val-tracker",
+  "version": "0.3.0",
+  "identifier": "com.xnooztv.val-tracker",
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
@@ -26,7 +26,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; img-src 'self' https://media.valorant-api.com data:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'; connect-src 'self' ipc: http://ipc.localhost ws://localhost:1420"
     }
   },
   "bundle": {

@@ -1,4 +1,5 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { SkeletonScreen } from "../components/Skeleton";
 
 import { useVlrMatch } from "../hooks/useVlr";
 import ErrorState from "../components/ErrorState";
@@ -11,7 +12,7 @@ export default function VlrMatchDetail() {
   const match = useVlrMatch(matchId ? Number(matchId) : undefined);
 
   if (match.isError) return <ErrorState error={match.error} />;
-  if (match.isLoading) return <p className="text-sm text-lo">Chargement…</p>;
+  if (match.isLoading) return <SkeletonScreen className="p-6" />;
 
   const data = match.data?.data;
   if (!data) return <p className="text-sm text-lo">Match introuvable.</p>;

@@ -4,7 +4,7 @@
 use rusqlite::Connection;
 use tokio::sync::Mutex;
 
-use super::client::HenrikClient;
+use super::client::{HenrikAuth, HenrikClient};
 use super::endpoints::{encode, fetch_with_cache, Fetched};
 use super::types_premier::{PremierTeamDetail, PremierTeamHistory, PremierTeamLite};
 use super::{HenrikError, TTL_PREMIER};
@@ -14,7 +14,7 @@ use super::{HenrikError, TTL_PREMIER};
 pub async fn search_premier_teams(
     db: &Mutex<Connection>,
     client: &HenrikClient,
-    api_key: Option<&str>,
+    api_key: Option<&HenrikAuth>,
     name: Option<&str>,
     tag: Option<&str>,
 ) -> Result<Fetched<Vec<PremierTeamLite>>, HenrikError> {
@@ -38,7 +38,7 @@ pub async fn search_premier_teams(
 pub async fn get_premier_leaderboard(
     db: &Mutex<Connection>,
     client: &HenrikClient,
-    api_key: Option<&str>,
+    api_key: Option<&HenrikAuth>,
     region: &str,
 ) -> Result<Fetched<Vec<PremierTeamLite>>, HenrikError> {
     let api_key = api_key.ok_or(HenrikError::MissingApiKey)?;
@@ -50,7 +50,7 @@ pub async fn get_premier_leaderboard(
 pub async fn get_premier_team_by_name(
     db: &Mutex<Connection>,
     client: &HenrikClient,
-    api_key: Option<&str>,
+    api_key: Option<&HenrikAuth>,
     name: &str,
     tag: &str,
 ) -> Result<Fetched<PremierTeamDetail>, HenrikError> {
@@ -63,7 +63,7 @@ pub async fn get_premier_team_by_name(
 pub async fn get_premier_team_by_id(
     db: &Mutex<Connection>,
     client: &HenrikClient,
-    api_key: Option<&str>,
+    api_key: Option<&HenrikAuth>,
     team_id: &str,
 ) -> Result<Fetched<PremierTeamDetail>, HenrikError> {
     let api_key = api_key.ok_or(HenrikError::MissingApiKey)?;
@@ -75,7 +75,7 @@ pub async fn get_premier_team_by_id(
 pub async fn get_premier_team_history_by_name(
     db: &Mutex<Connection>,
     client: &HenrikClient,
-    api_key: Option<&str>,
+    api_key: Option<&HenrikAuth>,
     name: &str,
     tag: &str,
 ) -> Result<Fetched<PremierTeamHistory>, HenrikError> {
@@ -92,7 +92,7 @@ pub async fn get_premier_team_history_by_name(
 pub async fn get_premier_team_history_by_id(
     db: &Mutex<Connection>,
     client: &HenrikClient,
-    api_key: Option<&str>,
+    api_key: Option<&HenrikAuth>,
     team_id: &str,
 ) -> Result<Fetched<PremierTeamHistory>, HenrikError> {
     let api_key = api_key.ok_or(HenrikError::MissingApiKey)?;

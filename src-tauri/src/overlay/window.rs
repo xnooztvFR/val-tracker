@@ -75,7 +75,7 @@ fn create_overlay_window(app_handle: &AppHandle, position: Option<(f64, f64)>) -
                 if let Some(state) = handle.try_state::<AppState>() {
                     let conn = state.db.lock().await;
                     if let Err(err) = crate::settings::set_overlay_position(&conn, x, y) {
-                        eprintln!("[overlay] échec de sauvegarde de la position: {err}");
+                        crate::applog!("[overlay] échec de sauvegarde de la position: {err}");
                     }
                 }
             });
@@ -95,7 +95,7 @@ pub async fn show_overlay(app_handle: &AppHandle) {
             None => None,
         };
         if let Err(err) = create_overlay_window(app_handle, position) {
-            eprintln!("[overlay] création de la fenêtre overlay impossible: {err}");
+            crate::applog!("[overlay] création de la fenêtre overlay impossible: {err}");
             return;
         }
     }

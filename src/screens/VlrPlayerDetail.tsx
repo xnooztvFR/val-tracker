@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { SkeletonScreen } from "../components/Skeleton";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { useVlrPlayer, useVlrPlayerMatches } from "../hooks/useVlr";
@@ -22,7 +23,7 @@ export default function VlrPlayerDetail() {
   const matches = useVlrPlayerMatches(id);
 
   if (player.isError) return <ErrorState error={player.error} />;
-  if (player.isLoading) return <p className="text-sm text-lo">Chargement…</p>;
+  if (player.isLoading) return <SkeletonScreen className="p-6" />;
 
   const data = player.data?.data;
   if (!data) return <p className="text-sm text-lo">Joueur introuvable.</p>;

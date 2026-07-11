@@ -5,7 +5,7 @@
 use rusqlite::Connection;
 use tokio::sync::Mutex;
 
-use super::client::HenrikClient;
+use super::client::{HenrikAuth, HenrikClient};
 use super::endpoints::{fetch_with_cache, Fetched};
 use super::types_esports::{
     VlrEvent, VlrEventMatch, VlrMatchDetail, VlrPlayer, VlrPlayerMatch, VlrTeam, VlrTeamMatch,
@@ -15,7 +15,7 @@ use super::{HenrikError, TTL_ESPORTS_V2};
 pub async fn get_vlr_events(
     db: &Mutex<Connection>,
     client: &HenrikClient,
-    api_key: Option<&str>,
+    api_key: Option<&HenrikAuth>,
     region: Option<&str>,
     event_type: Option<&str>,
     page: u32,
@@ -35,7 +35,7 @@ pub async fn get_vlr_events(
 pub async fn get_vlr_event_matches(
     db: &Mutex<Connection>,
     client: &HenrikClient,
-    api_key: Option<&str>,
+    api_key: Option<&HenrikAuth>,
     event_id: u32,
 ) -> Result<Fetched<Vec<VlrEventMatch>>, HenrikError> {
     let api_key = api_key.ok_or(HenrikError::MissingApiKey)?;
@@ -46,7 +46,7 @@ pub async fn get_vlr_event_matches(
 pub async fn get_vlr_match(
     db: &Mutex<Connection>,
     client: &HenrikClient,
-    api_key: Option<&str>,
+    api_key: Option<&HenrikAuth>,
     match_id: u32,
 ) -> Result<Fetched<VlrMatchDetail>, HenrikError> {
     let api_key = api_key.ok_or(HenrikError::MissingApiKey)?;
@@ -57,7 +57,7 @@ pub async fn get_vlr_match(
 pub async fn get_vlr_team(
     db: &Mutex<Connection>,
     client: &HenrikClient,
-    api_key: Option<&str>,
+    api_key: Option<&HenrikAuth>,
     team_id: u32,
 ) -> Result<Fetched<VlrTeam>, HenrikError> {
     let api_key = api_key.ok_or(HenrikError::MissingApiKey)?;
@@ -68,7 +68,7 @@ pub async fn get_vlr_team(
 pub async fn get_vlr_team_matches(
     db: &Mutex<Connection>,
     client: &HenrikClient,
-    api_key: Option<&str>,
+    api_key: Option<&HenrikAuth>,
     team_id: u32,
     page: u32,
 ) -> Result<Fetched<Vec<VlrTeamMatch>>, HenrikError> {
@@ -80,7 +80,7 @@ pub async fn get_vlr_team_matches(
 pub async fn get_vlr_player(
     db: &Mutex<Connection>,
     client: &HenrikClient,
-    api_key: Option<&str>,
+    api_key: Option<&HenrikAuth>,
     player_id: u32,
     timespan: Option<&str>,
 ) -> Result<Fetched<VlrPlayer>, HenrikError> {
@@ -95,7 +95,7 @@ pub async fn get_vlr_player(
 pub async fn get_vlr_player_matches(
     db: &Mutex<Connection>,
     client: &HenrikClient,
-    api_key: Option<&str>,
+    api_key: Option<&HenrikAuth>,
     player_id: u32,
     page: u32,
 ) -> Result<Fetched<Vec<VlrPlayerMatch>>, HenrikError> {

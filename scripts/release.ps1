@@ -44,10 +44,13 @@ npm run tauri build
 if ($LASTEXITCODE -ne 0) { throw "Le build a échoué." }
 
 $bundleDir = "$root\src-tauri\target\release\bundle"
-$nsisExe = Get-ChildItem "$bundleDir\nsis\*.exe" | Select-Object -First 1
-$nsisSig = Get-ChildItem "$bundleDir\nsis\*.exe.sig" | Select-Object -First 1
-$msi = Get-ChildItem "$bundleDir\msi\*.msi" | Select-Object -First 1
-$msiSig = Get-ChildItem "$bundleDir\msi\*.msi.sig" | Select-Object -First 1
+# Le dossier bundle/ accumule les artefacts des builds précédents (Tauri ne les nettoie pas) —
+# filtrer par version exacte, sinon `Select-Object -First 1` sur un tri alphabétique par défaut
+# peut renvoyer un ancien binaire (ex. 0.1.0 trié avant 0.1.1) alors que tauri.conf.json est à jour.
+$nsisExe = Get-ChildItem "$bundleDir\nsis\*_${version}_*.exe" | Select-Object -First 1
+$nsisSig = Get-ChildItem "$bundleDir\nsis\*_${version}_*.exe.sig" | Select-Object -First 1
+$msi = Get-ChildItem "$bundleDir\msi\*_${version}_*.msi" | Select-Object -First 1
+$msiSig = Get-ChildItem "$bundleDir\msi\*_${version}_*.msi.sig" | Select-Object -First 1
 
 if (-not $nsisExe -or -not $nsisSig) {
     throw "Artefact NSIS (.exe/.sig) introuvable dans $bundleDir\nsis — vérifie bundle.targets et createUpdaterArtifacts dans tauri.conf.json."

@@ -1,18 +1,48 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useRecentSearchesStore } from "../store/recentSearchesStore";
 import { useSettingsStore } from "../store/settingsStore";
-import { REGIONS, splitRiotId } from "../lib/format";
+import { tauriApi, type TrackedPlayer } from "../lib/tauriApi";
+import { REGIONS, rankInfo, splitRiotId } from "../lib/format";
+import OnboardingWizard from "../components/OnboardingWizard";
 
 export default function Search() {
   const navigate = useNavigate();
   const { settings } = useSettingsStore();
   const { players, refresh, toggleFavorite } = useRecentSearchesStore();
+  const queryClient = useQueryClient();
 
   const [riotId, setRiotId] = useState("");
   const [region, setRegion] = useState(settings?.default_region ?? "eu");
   const [formError, setFormError] = useState<string | null>(null);
+  const [hoveredPuuid, setHoveredPuuid] = useState<string | null>(null);
+  const [draggedPuuid, setDraggedPuuid] = useState<string | null>(null);
+
+  const favorites = useQuery({
+    queryKey: ["favorite_players"],
+    queryFn: () => tauriApi.listFavoritePlayers(),
+  });
+  const [orderedFavorites, setOrderedFavorites] = useState<TrackedPlayer[]>([]);
+
+  useEffect(() => {
+    if (favorites.data) setOrderedFavorites(favorites.data);
+  }, [favorites.data]);
+
+  function handleDrop(targetPuuid: string) {
+    if (!draggedPuuid || draggedPuuid === targetPuuid) return;
+    const next = [...orderedFavorites];
+    const fromIndex = next.findIndex((p) => p.puuid === draggedPuuid);
+    const toIndex = next.findIndex((p) => p.puuid === targetPuuid);
+    if (fromIndex === -1 || toIndex === -1) return;
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    setOrderedFavorites(next);
+    tauriApi.reorderFavoritePlayers(next.map((p) => p.puuid)).then(() => {
+      queryClient.invalidateQueries({ queryKey: ["favorite_players"] });
+    });
+  }
 
   useEffect(() => {
     refresh();
@@ -23,6 +53,15 @@ export default function Search() {
   }, [settings?.default_region]);
 
   const apiKeyMissing = settings ? !settings.henrik_api_key_set : false;
+  const [showWizard, setShowWizard] = useState(false);
+  const [wizardDismissed, setWizardDismissed] = useState(false);
+
+  // Backlog #28 : une fois lancé, le wizard reste affiché jusqu'à "Terminé" même si
+  // `apiKeyMissing` devient false dès l'étape 1 (clé validée) — sinon les étapes 2/3
+  // (région, détection) seraient sautées silencieusement.
+  useEffect(() => {
+    if (apiKeyMissing && !wizardDismissed) setShowWizard(true);
+  }, [apiKeyMissing, wizardDismissed]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -39,6 +78,11 @@ export default function Search() {
     navigate(`/joueur/${p.region}/${encodeURIComponent(p.name)}/${encodeURIComponent(p.tag)}`);
   }
 
+  async function handleToggleFavorite(puuid: string) {
+    await toggleFavorite(puuid);
+    await queryClient.invalidateQueries({ queryKey: ["favorite_players"] });
+  }
+
   return (
     <div className="mx-auto flex h-full w-full max-w-2xl flex-col items-center justify-center overflow-y-auto px-6 py-10">
       <div className="btn-clip flex h-14 w-14 items-center justify-center bg-accent font-display text-2xl font-bold text-base">
@@ -52,45 +96,73 @@ export default function Search() {
         Entre un Riot ID complet pour consulter son rank et ses parties récentes.
       </p>
 
-      <form onSubmit={handleSubmit} className="mt-8 w-full">
-        <div className="panel-clip flex items-stretch gap-2 p-1.5 transition-shadow focus-within:[box-shadow:inset_0_0_0_1px_#7CE8D3]">
-          <div className="flex flex-1 items-center gap-2 pl-3">
-            <SearchIcon />
-            <input
-              value={riotId}
-              onChange={(e) => setRiotId(e.target.value)}
-              placeholder="pseudo#tag"
-              disabled={apiKeyMissing}
-              className="w-full bg-transparent py-3 font-mono text-base text-hi placeholder:text-lo/60 focus:outline-none disabled:opacity-50"
-            />
+      {showWizard ? (
+        <OnboardingWizard
+          onFinish={() => {
+            setShowWizard(false);
+            setWizardDismissed(true);
+          }}
+        />
+      ) : (
+        <form onSubmit={handleSubmit} className="mt-8 w-full">
+          <div className="panel-clip flex items-stretch gap-2 p-1.5 transition-shadow focus-within:[box-shadow:inset_0_0_0_1px_rgb(var(--color-accent))]">
+            <div className="flex flex-1 items-center gap-2 pl-3">
+              <SearchIcon />
+              <input
+                value={riotId}
+                onChange={(e) => setRiotId(e.target.value)}
+                placeholder="pseudo#tag"
+                className="w-full bg-transparent py-3 font-mono text-base text-hi placeholder:text-lo/60 focus:outline-none disabled:opacity-50"
+              />
+            </div>
+            <select
+              value={region}
+              onChange={(e) => setRegion(e.target.value)}
+              className="shrink-0 border border-line bg-base px-3 text-sm font-medium text-hi focus:outline-none disabled:opacity-50"
+            >
+              {REGIONS.map((r) => (
+                <option key={r.value} value={r.value}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              className="btn-clip shrink-0 bg-accent px-6 font-display text-sm font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#FF5969] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Chercher
+            </button>
           </div>
-          <select
-            value={region}
-            onChange={(e) => setRegion(e.target.value)}
-            disabled={apiKeyMissing}
-            className="shrink-0 border border-line bg-base px-3 text-sm font-medium text-hi focus:outline-none disabled:opacity-50"
-          >
-            {REGIONS.map((r) => (
-              <option key={r.value} value={r.value}>
-                {r.label}
-              </option>
-            ))}
-          </select>
-          <button
-            type="submit"
-            disabled={apiKeyMissing}
-            className="btn-clip shrink-0 bg-accent px-6 font-display text-sm font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#96F0DF] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Chercher
-          </button>
-        </div>
-      </form>
+        </form>
+      )}
 
       {formError && <p className="mt-2 text-sm text-crit">{formError}</p>}
-      {apiKeyMissing && (
-        <p className="mt-2 text-sm text-crit">
-          Configure ta clé API Henrik dans Paramètres avant de faire une recherche.
-        </p>
+
+      {orderedFavorites.length > 0 && (
+        <div className="mt-10 w-full">
+          <h2 className="hud-label mb-3">Favoris</h2>
+          <p className="mb-2 text-xs text-lo">Glisse-dépose pour réordonner.</p>
+          <div className="flex flex-wrap gap-2">
+            {orderedFavorites.map((p) => (
+              <div
+                key={p.puuid}
+                draggable
+                onDragStart={() => setDraggedPuuid(p.puuid)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => handleDrop(p.puuid)}
+                onDragEnd={() => setDraggedPuuid(null)}
+                className={`panel-clip-sm flex cursor-grab items-center gap-1.5 py-1.5 pl-3 pr-3 text-sm text-hi transition-colors hover:bg-raised active:cursor-grabbing ${
+                  draggedPuuid === p.puuid ? "opacity-40" : ""
+                }`}
+              >
+                <button type="button" onClick={() => goToPlayer(p)} className="flex items-center gap-1.5">
+                  <span className="font-medium">{p.name}</span>
+                  <span className="text-lo">#{p.tag}</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {players.length > 0 && (
@@ -100,33 +172,69 @@ export default function Search() {
             {players.map((p) => (
               <div
                 key={p.puuid}
-                className="group panel-clip-sm flex items-center gap-2 py-1.5 pl-3 pr-1.5 transition-colors hover:bg-raised"
+                className="relative"
+                onMouseEnter={() => setHoveredPuuid(p.puuid)}
+                onMouseLeave={() => setHoveredPuuid((current) => (current === p.puuid ? null : current))}
               >
-                <button
-                  type="button"
-                  onClick={() => goToPlayer(p)}
-                  className="flex items-center gap-1.5 text-sm text-hi"
-                >
-                  <span className="font-medium">{p.name}</span>
-                  <span className="text-lo">#{p.tag}</span>
-                  <span className="hud-label border border-line px-1.5 py-0.5 text-[9px]">
-                    {p.region}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => toggleFavorite(p.puuid)}
-                  aria-label="Basculer favori"
-                  className={`flex h-6 w-6 items-center justify-center transition-colors ${
-                    p.is_favorite ? "text-accent" : "text-lo/60 hover:text-lo"
-                  }`}
-                >
-                  <StarIcon filled={p.is_favorite} />
-                </button>
+                <div className="group panel-clip-sm flex items-center gap-2 py-1.5 pl-3 pr-1.5 transition-colors hover:bg-raised">
+                  <button
+                    type="button"
+                    onClick={() => goToPlayer(p)}
+                    className="flex items-center gap-1.5 text-sm text-hi"
+                  >
+                    <span className="font-medium">{p.name}</span>
+                    <span className="text-lo">#{p.tag}</span>
+                    <span className="hud-label border border-line px-1.5 py-0.5 text-[9px]">
+                      {p.region}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleFavorite(p.puuid)}
+                    aria-label="Basculer favori"
+                    className={`flex h-6 w-6 items-center justify-center transition-colors ${
+                      p.is_favorite ? "text-accent" : "text-lo/60 hover:text-lo"
+                    }`}
+                  >
+                    <StarIcon filled={p.is_favorite} />
+                  </button>
+                </div>
+                {hoveredPuuid === p.puuid && <RankHoverPreview puuid={p.puuid} region={p.region} />}
               </div>
             ))}
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+/** Backlog #26 : mini-carte de rang au survol d'une recherche récente, sans navigation
+ * complète — passe par le même cache/rate-limiter Henrik que le reste (fetchMmrByPuuid,
+ * déjà utilisé par l'overlay), `enabled` seulement pendant le survol. */
+function RankHoverPreview({ puuid, region }: { puuid: string; region: string }) {
+  const mmr = useQuery({
+    queryKey: ["search-hover-mmr", puuid, region],
+    queryFn: () => tauriApi.fetchMmrByPuuid(puuid, region),
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
+
+  const info = rankInfo(mmr.data?.data.current_data?.currenttier);
+  const rr = mmr.data?.data.current_data?.ranking_in_tier;
+
+  return (
+    <div className="panel-clip-sm absolute left-0 top-full z-10 mt-1 flex items-center gap-2 bg-surface px-3 py-2 shadow-lg">
+      {mmr.isLoading ? (
+        <span className="text-xs text-lo">Chargement…</span>
+      ) : (
+        <>
+          <img src={info.iconUrl} alt="" className="h-6 w-6 object-contain" />
+          <span className={`font-display text-xs font-semibold uppercase tracking-hud ${info.colorClass}`}>
+            {info.name}
+          </span>
+          {rr != null && <span className="stat-value text-xs text-lo">{rr} RR</span>}
+        </>
       )}
     </div>
   );

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Skeleton } from "../components/Skeleton";
 import { useNavigate } from "react-router-dom";
 
 import { useLeaderboard } from "../hooks/useMeta";
@@ -86,7 +87,7 @@ export default function Leaderboard() {
 
       {leaderboard.isError && <ErrorState error={leaderboard.error} />}
       {leaderboard.data?.stale && <StaleDataBanner cachedAt={leaderboard.data.cached_at} />}
-      {leaderboard.isLoading && <p className="text-sm text-lo">Chargement…</p>}
+      {leaderboard.isLoading && <Skeleton className="h-32 w-full" />}
 
       {leaderboard.data?.data.updated_at && (
         <p className="text-xs text-lo">

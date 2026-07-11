@@ -14,7 +14,9 @@ const LABELS: Record<string, { label: string; dotClass: string }> = {
 /** Rend visible en permanence, dans la barre de nav principale, si la détection auto de
  * partie (API locale Riot) tourne, est en pause (hors-jeu/menu), a repéré une partie, ou
  * est désactivée dans Paramètres — pour que la bascule vers le mode recherche manuelle
- * (quand l'API locale devient indisponible) ne soit jamais une surprise silencieuse. */
+ * (quand l'API locale devient indisponible) ne soit jamais une surprise silencieuse.
+ * Juste un point de couleur (tooltip pour le détail) plutôt qu'un label texte : la barre
+ * de nav a une largeur fixe et un label toujours affiché la faisait déborder. */
 export default function DetectionStatusBadge() {
   const navigate = useNavigate();
   const snapshot = useLiveDetectionState();
@@ -26,11 +28,11 @@ export default function DetectionStatusBadge() {
     <button
       type="button"
       onClick={() => navigate("/parametres?section=overlay")}
-      title="Overlay en jeu — voir les paramètres"
-      className="flex shrink-0 items-center gap-1.5 self-center px-2 text-lo transition-colors hover:text-hi"
+      title={`${info.label} — voir les paramètres`}
+      aria-label={info.label}
+      className="flex h-8 w-8 shrink-0 items-center justify-center self-center text-lo transition-colors hover:text-hi"
     >
-      <span className={`h-1.5 w-1.5 ${info.dotClass}`} />
-      <span className="hud-label text-[10px]">{info.label}</span>
+      <span className={`h-2 w-2 rounded-full ${info.dotClass}`} />
     </button>
   );
 }

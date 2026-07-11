@@ -14,7 +14,7 @@ use crate::api::henrik::types_esports::{
 };
 use crate::api::henrik::types_premier::{PremierTeamDetail, PremierTeamHistory, PremierTeamLite};
 use crate::api::henrik::HenrikError;
-use crate::db::{DuoStat, RankSnapshot, TrackedPlayer};
+use crate::db::{DuoStat, ProgressionGoal, RankSnapshot, SquadStat, TrackedPlayer};
 use crate::settings::AppSettings;
 use crate::AppState;
 
@@ -50,7 +50,7 @@ impl From<HenrikError> for CommandError {
                 message: e.to_string(),
             },
             HenrikError::Serde(e) => {
-                eprintln!("[henrik] échec de désérialisation: {e}");
+                crate::applog!("[henrik] échec de désérialisation: {e}");
                 CommandError::Unknown {
                     message: format!("réponse Henrik inattendue: {e}"),
                 }
@@ -164,6 +164,93 @@ pub async fn save_status_watcher_enabled(
     Ok(())
 }
 
+/// Backlog #50 : active/désactive l'accumulation locale de métriques d'usage (cache hit
+/// rate, erreurs API) — opt-in, 100% local, voir `api::henrik::endpoints::
+/// record_usage_if_enabled`.
+#[tauri::command]
+pub async fn save_usage_metrics_enabled(
+    state: State<'_, AppState>,
+    enabled: bool,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::set_usage_metrics_enabled(&conn, enabled)?;
+    Ok(())
+}
+
+/// Backlog #33 : `"dark"` | `"light"`.
+#[tauri::command]
+pub async fn save_ui_theme(state: State<'_, AppState>, theme: String) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::set_ui_theme(&conn, &theme)?;
+    Ok(())
+}
+
+/// Backlog #38 : `"red"` | `"cyan"` | `"violet"` | `"amber"`.
+#[tauri::command]
+pub async fn save_ui_accent(
+    state: State<'_, AppState>,
+    accent: String,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::set_ui_accent(&conn, &accent)?;
+    Ok(())
+}
+
+/// Backlog #31 : `"compact"` | `"detailed"`.
+#[tauri::command]
+pub async fn save_overlay_density(
+    state: State<'_, AppState>,
+    density: String,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::set_overlay_density(&conn, &density)?;
+    Ok(())
+}
+
+/// Backlog #24 : toggle + seuil de l'alerte "N défaites d'affilée" (comptes "à soi"
+/// uniquement — voir `fetch_matches` pour le check déclenché après chaque refetch).
+#[tauri::command]
+pub async fn save_loss_streak_alert_enabled(
+    state: State<'_, AppState>,
+    enabled: bool,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::set_loss_streak_alert_enabled(&conn, enabled)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn save_loss_streak_alert_count(
+    state: State<'_, AppState>,
+    count: i64,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::set_loss_streak_alert_count(&conn, count)?;
+    Ok(())
+}
+
+/// Backlog #32 : toggle + seuil (en jours) du rappel d'inactivité — voir
+/// `inactivity_reminder.rs`.
+#[tauri::command]
+pub async fn save_inactivity_reminder_enabled(
+    state: State<'_, AppState>,
+    enabled: bool,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::set_inactivity_reminder_enabled(&conn, enabled)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn save_inactivity_reminder_days(
+    state: State<'_, AppState>,
+    days: i64,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::set_inactivity_reminder_days(&conn, days)?;
+    Ok(())
+}
+
 /// Teste une clé API Henrik candidate (pas forcément encore enregistrée) contre un
 /// endpoint authentifié. Un 404 (joueur introuvable) compte comme "clé valide" : ça
 /// prouve juste que l'authentification est passée.
@@ -177,7 +264,8 @@ pub async fn verify_henrik_api_key(
         return Ok(false);
     }
 
-    match state.henrik.get_raw("/valorant/v2/account/Henrik/DEV", api_key).await {
+    let auth = crate::api::henrik::HenrikAuth::Direct(api_key.to_string());
+    match state.henrik.get_raw("/valorant/v2/account/Henrik/DEV", &auth).await {
         Ok(_) => Ok(true),
         Err(HenrikError::NotFound) => Ok(true),
         Err(HenrikError::Api { status: 401, .. }) | Err(HenrikError::Api { status: 403, .. }) => {
@@ -204,7 +292,7 @@ pub async fn fetch_account(
     let result = crate::api::henrik::endpoints::get_account(
         &state.db,
         &state.henrik,
-        api_key.as_deref(),
+        api_key.as_ref(),
         &name,
         &tag,
         force,
@@ -241,7 +329,7 @@ pub async fn fetch_mmr(
     let result = crate::api::henrik::endpoints::get_mmr(
         &state.db,
         &state.henrik,
-        api_key.as_deref(),
+        api_key.as_ref(),
         &region,
         &name,
         &tag,
@@ -298,6 +386,7 @@ fn notify_rank_change(app: &tauri::AppHandle, from: &str, to: &str, promoted: bo
 
 #[tauri::command]
 pub async fn fetch_matches(
+    app: tauri::AppHandle,
     state: State<'_, AppState>,
     region: String,
     name: String,
@@ -313,7 +402,7 @@ pub async fn fetch_matches(
     let result = crate::api::henrik::endpoints::get_matches(
         &state.db,
         &state.henrik,
-        api_key.as_deref(),
+        api_key.as_ref(),
         &region,
         &name,
         &tag,
@@ -322,7 +411,106 @@ pub async fn fetch_matches(
     )
     .await?;
 
+    {
+        let conn = state.db.lock().await;
+        if let Ok(settings) = crate::settings::load_settings(&conn) {
+            if settings.loss_streak_alert_enabled {
+                maybe_notify_loss_streak(
+                    &app,
+                    &conn,
+                    &name,
+                    &tag,
+                    &result.data,
+                    settings.loss_streak_alert_count,
+                );
+            }
+        }
+    }
+
     Ok(result)
+}
+
+/// Backlog #24 : notifie si le compte "à soi" (`tracked_players.is_self`) correspondant à
+/// `name#tag` enchaîne `threshold` défaites d'affilée sur ses matchs les plus récents
+/// (`matches[0]` en tête, comme renvoyé par Henrik). Ne notifie jamais deux fois pour la
+/// même série (dédup via `tracked_players.last_loss_streak_notified_match_id`). Best-effort
+/// et silencieux : aucune erreur ne doit remonter jusqu'à `fetch_matches`.
+fn maybe_notify_loss_streak(
+    app: &tauri::AppHandle,
+    conn: &rusqlite::Connection,
+    name: &str,
+    tag: &str,
+    matches: &[MatchEntry],
+    threshold: i64,
+) {
+    if threshold < 1 {
+        return;
+    }
+    let Some(puuid) = matches.iter().find_map(|entry| {
+        entry.players.iter().find_map(|p| {
+            let matches_riot_id = p.name.as_deref().is_some_and(|n| n.eq_ignore_ascii_case(name))
+                && p.tag.as_deref().is_some_and(|t| t.eq_ignore_ascii_case(tag));
+            matches_riot_id.then(|| p.puuid.clone()).flatten()
+        })
+    }) else {
+        return;
+    };
+
+    let is_self = crate::db::list_self_accounts(conn)
+        .map(|accounts| accounts.iter().any(|a| a.puuid == puuid))
+        .unwrap_or(false);
+    if !is_self {
+        return;
+    }
+
+    let mut streak = 0i64;
+    let mut latest_match_id: Option<String> = None;
+    for entry in matches {
+        let Some(player) = entry.players.iter().find(|p| p.puuid.as_deref() == Some(puuid.as_str())) else {
+            break;
+        };
+        let Some(team_id) = &player.team_id else { break };
+        let Some(won) = entry
+            .teams
+            .iter()
+            .find(|t| t.team_id.as_deref() == Some(team_id.as_str()))
+            .and_then(|t| t.won)
+        else {
+            break;
+        };
+        if latest_match_id.is_none() {
+            latest_match_id = entry.metadata.match_id.clone();
+        }
+        if won {
+            break;
+        }
+        streak += 1;
+        if streak >= threshold {
+            break;
+        }
+    }
+
+    if streak < threshold {
+        return;
+    }
+    let Some(latest_match_id) = latest_match_id else { return };
+    let already_notified = crate::db::last_loss_streak_notified_match_id(conn, &puuid)
+        .ok()
+        .flatten()
+        .as_deref()
+        == Some(latest_match_id.as_str());
+    if already_notified {
+        return;
+    }
+    let _ = crate::db::set_last_loss_streak_notified_match_id(conn, &puuid, &latest_match_id);
+
+    use tauri_plugin_notification::NotificationExt;
+    let _ = app
+        .notification()
+        .builder()
+        .title("Série de défaites")
+        .body(format!("{threshold} défaites d'affilée — une petite pause ?"))
+        .show();
 }
 
 #[tauri::command]
@@ -341,7 +529,7 @@ pub async fn fetch_mmr_history(
     Ok(crate::api::henrik::endpoints::get_mmr_history(
         &state.db,
         &state.henrik,
-        api_key.as_deref(),
+        api_key.as_ref(),
         &region,
         &name,
         &tag,
@@ -364,7 +552,7 @@ pub async fn fetch_match_detail(
     Ok(crate::api::henrik::endpoints::get_match_detail(
         &state.db,
         &state.henrik,
-        api_key.as_deref(),
+        api_key.as_ref(),
         &match_id,
         force,
     )
@@ -389,7 +577,7 @@ pub async fn fetch_leaderboard(
     Ok(crate::api::henrik::endpoints::get_leaderboard(
         &state.db,
         &state.henrik,
-        api_key.as_deref(),
+        api_key.as_ref(),
         &region,
         size,
         start_index,
@@ -413,7 +601,7 @@ pub async fn fetch_status(
     Ok(crate::api::henrik::endpoints::get_status(
         &state.db,
         &state.henrik,
-        api_key.as_deref(),
+        api_key.as_ref(),
         &region,
         false,
     )
@@ -433,7 +621,7 @@ pub async fn fetch_queue_status(
     Ok(crate::api::henrik::endpoints::get_queue_status(
         &state.db,
         &state.henrik,
-        api_key.as_deref(),
+        api_key.as_ref(),
         &region,
         false,
     )
@@ -454,7 +642,7 @@ pub async fn fetch_esports_schedule(
     Ok(crate::api::henrik::endpoints::get_esports_schedule(
         &state.db,
         &state.henrik,
-        api_key.as_deref(),
+        api_key.as_ref(),
         region.as_deref(),
         league.as_deref(),
         false,
@@ -477,7 +665,7 @@ pub async fn fetch_crosshair_preview(
     Ok(crate::api::henrik::endpoints::get_crosshair_preview(
         &state.db,
         &state.henrik,
-        api_key.as_deref(),
+        api_key.as_ref(),
         &code,
         false,
     )
@@ -499,7 +687,7 @@ pub async fn search_premier_teams(
     Ok(crate::api::henrik::endpoints_premier::search_premier_teams(
         &state.db,
         &state.henrik,
-        api_key.as_deref(),
+        api_key.as_ref(),
         name.as_deref(),
         tag.as_deref(),
     )
@@ -519,7 +707,7 @@ pub async fn fetch_premier_leaderboard(
         crate::api::henrik::endpoints_premier::get_premier_leaderboard(
             &state.db,
             &state.henrik,
-            api_key.as_deref(),
+            api_key.as_ref(),
             &region,
         )
         .await?,
@@ -541,7 +729,7 @@ pub async fn fetch_premier_team(
         return Ok(crate::api::henrik::endpoints_premier::get_premier_team_by_name(
             &state.db,
             &state.henrik,
-            api_key.as_deref(),
+            api_key.as_ref(),
             name,
             tag,
         )
@@ -551,7 +739,7 @@ pub async fn fetch_premier_team(
         return Ok(crate::api::henrik::endpoints_premier::get_premier_team_by_id(
             &state.db,
             &state.henrik,
-            api_key.as_deref(),
+            api_key.as_ref(),
             team_id,
         )
         .await?);
@@ -577,7 +765,7 @@ pub async fn fetch_premier_team_history(
             crate::api::henrik::endpoints_premier::get_premier_team_history_by_name(
                 &state.db,
                 &state.henrik,
-                api_key.as_deref(),
+                api_key.as_ref(),
                 name,
                 tag,
             )
@@ -589,7 +777,7 @@ pub async fn fetch_premier_team_history(
             crate::api::henrik::endpoints_premier::get_premier_team_history_by_id(
                 &state.db,
                 &state.henrik,
-                api_key.as_deref(),
+                api_key.as_ref(),
                 team_id,
             )
             .await?,
@@ -616,7 +804,7 @@ pub async fn fetch_vlr_events(
     Ok(crate::api::henrik::endpoints_esports::get_vlr_events(
         &state.db,
         &state.henrik,
-        api_key.as_deref(),
+        api_key.as_ref(),
         region.as_deref(),
         event_type.as_deref(),
         page,
@@ -637,7 +825,7 @@ pub async fn fetch_vlr_event_matches(
         crate::api::henrik::endpoints_esports::get_vlr_event_matches(
             &state.db,
             &state.henrik,
-            api_key.as_deref(),
+            api_key.as_ref(),
             event_id,
         )
         .await?,
@@ -656,7 +844,7 @@ pub async fn fetch_vlr_match(
     Ok(crate::api::henrik::endpoints_esports::get_vlr_match(
         &state.db,
         &state.henrik,
-        api_key.as_deref(),
+        api_key.as_ref(),
         match_id,
     )
     .await?)
@@ -674,7 +862,7 @@ pub async fn fetch_vlr_team(
     Ok(crate::api::henrik::endpoints_esports::get_vlr_team(
         &state.db,
         &state.henrik,
-        api_key.as_deref(),
+        api_key.as_ref(),
         team_id,
     )
     .await?)
@@ -694,7 +882,7 @@ pub async fn fetch_vlr_team_matches(
         crate::api::henrik::endpoints_esports::get_vlr_team_matches(
             &state.db,
             &state.henrik,
-            api_key.as_deref(),
+            api_key.as_ref(),
             team_id,
             page,
         )
@@ -715,7 +903,7 @@ pub async fn fetch_vlr_player(
     Ok(crate::api::henrik::endpoints_esports::get_vlr_player(
         &state.db,
         &state.henrik,
-        api_key.as_deref(),
+        api_key.as_ref(),
         player_id,
         timespan.as_deref(),
     )
@@ -736,7 +924,7 @@ pub async fn fetch_vlr_player_matches(
         crate::api::henrik::endpoints_esports::get_vlr_player_matches(
             &state.db,
             &state.henrik,
-            api_key.as_deref(),
+            api_key.as_ref(),
             player_id,
             page,
         )
@@ -760,7 +948,7 @@ pub async fn fetch_mmr_by_puuid(
     Ok(crate::api::henrik::endpoints::get_mmr_by_puuid(
         &state.db,
         &state.henrik,
-        api_key.as_deref(),
+        api_key.as_ref(),
         &region,
         &puuid,
         false,
@@ -880,6 +1068,17 @@ pub async fn list_duo_stats(
     Ok(crate::db::list_duo_stats(&conn, &puuid, min_matches.max(1))?)
 }
 
+/// Backlog #23 : extension "squad" (trios) de `list_duo_stats`.
+#[tauri::command]
+pub async fn list_squad_stats(
+    state: State<'_, AppState>,
+    puuid: String,
+    min_matches: i64,
+) -> Result<Vec<SquadStat>, CommandError> {
+    let conn = state.db.lock().await;
+    Ok(crate::db::list_squad_stats(&conn, &puuid, min_matches.max(1))?)
+}
+
 // ---- Données locales (historique de recherche, favoris, snapshots de rank) ----
 
 #[tauri::command]
@@ -900,6 +1099,25 @@ pub async fn toggle_favorite_player(
     Ok(crate::db::toggle_favorite(&conn, &puuid)?)
 }
 
+/// Backlog #27 : favoris dans leur ordre explicite (drag & drop), distinct de
+/// `list_tracked_players` qui trie par date de consultation.
+#[tauri::command]
+pub async fn list_favorite_players(
+    state: State<'_, AppState>,
+) -> Result<Vec<TrackedPlayer>, CommandError> {
+    let conn = state.db.lock().await;
+    Ok(crate::db::list_favorite_players(&conn)?)
+}
+
+#[tauri::command]
+pub async fn reorder_favorite_players(
+    state: State<'_, AppState>,
+    ordered_puuids: Vec<String>,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    Ok(crate::db::reorder_favorites(&conn, &ordered_puuids)?)
+}
+
 #[tauri::command]
 pub async fn list_rank_snapshots(
     state: State<'_, AppState>,
@@ -915,4 +1133,182 @@ pub async fn list_rank_snapshots(
 pub async fn reset_local_stats(state: State<'_, AppState>) -> Result<(), CommandError> {
     let conn = state.db.lock().await;
     Ok(crate::db::reset_local_stats(&conn)?)
+}
+
+/// Backlog #12 : note libre sur un joueur suivi (Home.tsx).
+#[tauri::command]
+pub async fn save_player_notes(
+    state: State<'_, AppState>,
+    puuid: String,
+    notes: String,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    Ok(crate::db::set_player_notes(&conn, &puuid, &notes)?)
+}
+
+/// Backlog #13 : objectif de progression ("atteindre Diamant 2") pour un joueur suivi.
+#[tauri::command]
+pub async fn get_progression_goal(
+    state: State<'_, AppState>,
+    puuid: String,
+) -> Result<Option<ProgressionGoal>, CommandError> {
+    let conn = state.db.lock().await;
+    Ok(crate::db::get_progression_goal(&conn, &puuid)?)
+}
+
+#[tauri::command]
+pub async fn save_progression_goal(
+    state: State<'_, AppState>,
+    puuid: String,
+    target_tier: i64,
+    target_tier_patched: String,
+    target_rr: Option<i64>,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    Ok(crate::db::set_progression_goal(
+        &conn,
+        &puuid,
+        target_tier,
+        &target_tier_patched,
+        target_rr,
+    )?)
+}
+
+#[tauri::command]
+pub async fn clear_progression_goal(
+    state: State<'_, AppState>,
+    puuid: String,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    Ok(crate::db::clear_progression_goal(&conn, &puuid)?)
+}
+
+// ---- V4 : "Mon compte" — lier son propre compte Valorant sans RSO ----
+//
+// Pas d'OAuth Riot officiel possible pour une petite app tierce (RSO est réservé aux
+// partenaires approuvés par Riot) : on se contente donc de marquer un Riot ID déjà
+// consulté comme "à soi" (favori spécial, `tracked_players.is_self`), avec une détection
+// best-effort du Riot ID local via le lockfile pour éviter à l'utilisateur de le retaper.
+
+/// Marque/démarque un Riot ID déjà suivi (déjà présent dans `tracked_players` — donc déjà
+/// consulté au moins une fois via `fetch_account`) comme l'un des comptes "à soi" de
+/// l'utilisateur. Plusieurs comptes peuvent être marqués (multi-comptes/smurfs).
+#[tauri::command]
+pub async fn set_self_account(
+    state: State<'_, AppState>,
+    puuid: String,
+    is_self: bool,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    Ok(crate::db::set_self_account(&conn, &puuid, is_self)?)
+}
+
+#[tauri::command]
+pub async fn list_self_accounts(state: State<'_, AppState>) -> Result<Vec<TrackedPlayer>, CommandError> {
+    let conn = state.db.lock().await;
+    Ok(crate::db::list_self_accounts(&conn)?)
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct DetectedAccount {
+    pub puuid: String,
+    pub name: String,
+    pub tag: String,
+    pub region: String,
+}
+
+/// Détecte le Riot ID actuellement connecté dans le client Riot local (même lockfile que
+/// `riot_local`), pour proposer "C'est vous ?" au premier lancement plutôt que de faire
+/// retaper un Riot ID que l'app peut déjà déduire. Best-effort à tous les étages : renvoie
+/// `Ok(None)` (jamais d'erreur bloquante) si le client Riot n'est pas lancé, si l'API
+/// locale ne répond pas comme attendu, ou si aucune clé Henrik n'est configurée pour
+/// résoudre nom/tag/région à partir du PUUID trouvé.
+#[tauri::command]
+pub async fn detect_local_account(
+    state: State<'_, AppState>,
+) -> Result<Option<DetectedAccount>, CommandError> {
+    let Ok(Some(lockfile)) = crate::riot_local::lockfile::read_lockfile() else {
+        return Ok(None);
+    };
+    let Ok(client) = crate::riot_local::client::build_local_client() else {
+        return Ok(None);
+    };
+    let Ok(local_puuid) = crate::riot_local::client::fetch_local_puuid(&client, &lockfile).await
+    else {
+        return Ok(None);
+    };
+
+    let api_key = {
+        let conn = state.db.lock().await;
+        crate::settings::get_henrik_api_key(&conn)?
+    };
+    let Some(api_key) = api_key else {
+        return Ok(None);
+    };
+
+    let account = crate::api::henrik::endpoints::get_account_by_puuid(
+        &state.db,
+        &state.henrik,
+        Some(&api_key),
+        &local_puuid,
+        false,
+    )
+    .await;
+
+    let Ok(account) = account else {
+        return Ok(None);
+    };
+
+    let region = match account.data.region {
+        Some(region) => region,
+        None => {
+            let conn = state.db.lock().await;
+            crate::settings::load_settings(&conn)?.default_region
+        }
+    };
+
+    Ok(Some(DetectedAccount {
+        puuid: account.data.puuid,
+        name: account.data.name,
+        tag: account.data.tag,
+        region,
+    }))
+}
+
+// ---- Logs consultables (backlog #49) ----
+
+/// Nombre maximal d'octets relus depuis la fin du fichier de log — un utilisateur qui
+/// ouvre Paramètres → Logs veut voir ce qui vient de se passer, pas tout l'historique.
+const LOG_TAIL_BYTES: usize = 200_000;
+
+#[derive(Serialize)]
+pub struct LogSnapshot {
+    pub path: Option<String>,
+    pub content: String,
+}
+
+/// Lit la fin du fichier de log local pour l'écran Paramètres → Logs — aucun appel
+/// réseau, best-effort (chaîne vide si le fichier n'existe pas encore ou est illisible).
+#[tauri::command]
+pub fn get_recent_logs() -> LogSnapshot {
+    LogSnapshot {
+        path: crate::applog::path(),
+        content: crate::applog::tail(LOG_TAIL_BYTES),
+    }
+}
+
+// ---- Métriques d'usage local (backlog #50) ----
+
+const USAGE_METRICS_WINDOW_SECS: i64 = 7 * 24 * 3600;
+
+/// Résumé des métriques d'usage sur les 7 derniers jours pour le dashboard Paramètres →
+/// Santé — vide (tout à zéro) si `usage_metrics_enabled` n'a jamais été activé, aucun
+/// appel réseau ici, juste une lecture SQLite locale.
+#[tauri::command]
+pub async fn get_usage_metrics_summary(
+    state: State<'_, AppState>,
+) -> Result<crate::db::UsageMetricsSummary, CommandError> {
+    let conn = state.db.lock().await;
+    let since = chrono::Utc::now().timestamp() - USAGE_METRICS_WINDOW_SECS;
+    Ok(crate::db::usage_metrics_summary(&conn, since)?)
 }

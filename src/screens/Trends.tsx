@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Skeleton } from "../components/Skeleton";
 import { useParams } from "react-router-dom";
 import {
   CartesianGrid,
@@ -11,25 +12,27 @@ import {
   YAxis,
 } from "recharts";
 
-import { useAccount } from "../hooks/usePlayer";
+import { useAccount, useMmrHistory } from "../hooks/usePlayer";
 import { useMatches } from "../hooks/useMatches";
 import StatCard from "../components/StatCard";
 import Panel from "../components/Panel";
 import SampleSizeSwitch, { type SampleSize } from "../components/SampleSizeSwitch";
 import ErrorState from "../components/ErrorState";
 import StaleDataBanner from "../components/StaleDataBanner";
+import PerformanceHeatmap from "../components/PerformanceHeatmap";
 import type { MatchEntry } from "../lib/tauriApi";
 import { formatKdRatio, formatRelativeTime } from "../lib/format";
+import { computeHeatmap, computeSeasonComparison } from "../lib/stats";
 
 const MONO = '"JetBrains Mono", Consolas, monospace';
 
 // Séries cyan/rouge/gris selon la métrique : positif = cyan, négatif = rouge,
 // contexte = nuances de gris.
 const SERIES = [
-  { key: "kd", label: "K/D", color: "#7CE8D3" },
-  { key: "kills", label: "Kills", color: "#4DA695" },
-  { key: "deaths", label: "Deaths", color: "#FF5F5F" },
-  { key: "assists", label: "Assists", color: "#7A8590" },
+  { key: "kd", label: "K/D", color: "rgb(var(--color-accent))" },
+  { key: "kills", label: "Kills", color: "#A3333E" },
+  { key: "deaths", label: "Deaths", color: "#C4646E" },
+  { key: "assists", label: "Assists", color: "rgb(var(--color-lo))" },
   { key: "headshots", label: "Headshots", color: "#C8D0D6" },
 ] as const;
 
@@ -89,10 +92,19 @@ export default function Trends() {
   const account = useAccount(name, tag);
   const puuid = account.data?.data.puuid;
   const matches = useMatches({ region, name, tag, size: sampleSize });
+  const mmrHistory = useMmrHistory({ region, name, tag });
 
   const trends = useMemo(
     () => (matches.data && puuid ? computeTrends(matches.data.data, puuid) : null),
     [matches.data, puuid],
+  );
+  const heatmapCells = useMemo(
+    () => (matches.data && puuid ? computeHeatmap(matches.data.data, puuid) : null),
+    [matches.data, puuid],
+  );
+  const seasonComparison = useMemo(
+    () => (mmrHistory.data ? computeSeasonComparison(mmrHistory.data.data.history) : []),
+    [mmrHistory.data],
   );
 
   function toggleSeries(key: SeriesKey) {
@@ -113,7 +125,7 @@ export default function Trends() {
 
       {matches.isError && <ErrorState error={matches.error} />}
       {matches.data?.stale && <StaleDataBanner cachedAt={matches.data.cached_at} />}
-      {matches.isLoading && <p className="text-sm text-lo">Chargement…</p>}
+      {matches.isLoading && <Skeleton className="h-32 w-full" />}
 
       {trends && (
         <>
@@ -138,23 +150,23 @@ export default function Trends() {
           <Panel className="h-72 p-4">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={trends.perMatch} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
-                <CartesianGrid stroke="rgba(255,255,255,0.05)" vertical={false} />
+                <CartesianGrid stroke="rgb(var(--color-lo) / 0.15)" vertical={false} />
                 <XAxis
                   dataKey="date"
-                  tick={{ fontSize: 10, fill: "#7A8590", fontFamily: MONO }}
+                  tick={{ fontSize: 10, fill: "rgb(var(--color-lo))", fontFamily: MONO }}
                   minTickGap={20}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 10, fill: "#7A8590", fontFamily: MONO }}
+                  tick={{ fontSize: 10, fill: "rgb(var(--color-lo))", fontFamily: MONO }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <Tooltip
                   contentStyle={{
-                    background: "#171C22",
-                    border: "1px solid #22282F",
+                    background: "rgb(var(--color-raised))",
+                    border: "1px solid rgb(var(--color-line))",
                     borderRadius: 0,
                     fontSize: 12,
                     fontFamily: MONO,
@@ -168,7 +180,7 @@ export default function Trends() {
                       style={{
                         color: hidden.has((entry as { dataKey?: SeriesKey }).dataKey ?? "kd")
                           ? "#3A424B"
-                          : "#E8ECEF",
+                          : "rgb(var(--color-hi))",
                         textDecoration: hidden.has((entry as { dataKey?: SeriesKey }).dataKey ?? "kd")
                           ? "line-through"
                           : "none",
@@ -194,7 +206,51 @@ export default function Trends() {
               </ComposedChart>
             </ResponsiveContainer>
           </Panel>
+
+          {heatmapCells && (
+            <div>
+              <h2 className="hud-label mb-2">Performance par créneau (heure locale)</h2>
+              <Panel className="p-4">
+                <PerformanceHeatmap cells={heatmapCells} />
+              </Panel>
+            </div>
+          )}
         </>
+      )}
+
+      {seasonComparison.length > 0 && (
+        <div>
+          <h2 className="hud-label mb-2">Comparaison par saison</h2>
+          <p className="mb-2 text-xs text-lo">
+            Approximation par saison (Henrik n'expose pas le patch exact par match sans
+            appel réseau supplémentaire par match) — basé sur l'historique RR déjà en cache.
+          </p>
+          <Panel className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-line text-left">
+                <tr>
+                  <th className="hud-label px-4 py-3 font-semibold">Saison</th>
+                  <th className="hud-label px-4 py-3 font-semibold">Parties classées</th>
+                  <th className="hud-label px-4 py-3 font-semibold">RR net</th>
+                  <th className="hud-label px-4 py-3 font-semibold">Meilleur tier</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line/60">
+                {seasonComparison.map((row) => (
+                  <tr key={row.season} className="text-hi/90">
+                    <td className="px-4 py-2.5 font-medium">{row.season}</td>
+                    <td className="stat-value px-4 py-2.5">{row.games}</td>
+                    <td className={`stat-value px-4 py-2.5 ${row.netRr >= 0 ? "text-accent" : "text-crit"}`}>
+                      {row.netRr >= 0 ? "+" : ""}
+                      {row.netRr}
+                    </td>
+                    <td className="stat-value px-4 py-2.5">{row.highestTier}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Panel>
+        </div>
       )}
     </div>
   );

@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
+import { Skeleton } from "../components/Skeleton";
 import { useNavigate } from "react-router-dom";
 
 import { usePremierLeaderboard, usePremierSearch } from "../hooks/usePremier";
 import ErrorState from "../components/ErrorState";
 import StaleDataBanner from "../components/StaleDataBanner";
 import Panel from "../components/Panel";
+import EmptyState from "../components/EmptyState";
 import { REGIONS } from "../lib/format";
 import type { PremierTeamLite } from "../lib/tauriApi";
 
@@ -93,9 +95,9 @@ export default function Premier() {
 
       {active.isError && <ErrorState error={active.error} />}
       {active.data?.stale && <StaleDataBanner cachedAt={active.data.cached_at} />}
-      {active.isLoading && <p className="text-sm text-lo">Chargement…</p>}
+      {active.isLoading && <Skeleton className="h-32 w-full" />}
       {active.data && allTeams.length === 0 && (
-        <p className="text-sm text-lo">Aucune équipe trouvée.</p>
+        <EmptyState icon="team" title="Aucune équipe trouvée" detail="Essaie une autre recherche ou région." />
       )}
       {allTeams.length > 0 && (
         <p className="text-xs text-lo">

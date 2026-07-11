@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
+import { Skeleton } from "../components/Skeleton";
 import { Link } from "react-router-dom";
 
 import { useEsportsSchedule } from "../hooks/useMeta";
 import ErrorState from "../components/ErrorState";
 import Panel from "../components/Panel";
+import EmptyState from "../components/EmptyState";
 import type { EsportsMatchTeam, EsportsScheduleEntry } from "../lib/tauriApi";
 
 const STATE_LABELS: Record<string, string> = {
@@ -67,9 +69,9 @@ export default function Esports() {
       </div>
 
       {schedule.isError && <ErrorState error={schedule.error} />}
-      {schedule.isLoading && <p className="text-sm text-lo">Chargement…</p>}
+      {schedule.isLoading && <Skeleton className="h-32 w-full" />}
       {schedule.data && entries.length === 0 && (
-        <p className="text-sm text-lo">Aucun match programmé pour le moment.</p>
+        <EmptyState icon="match" title="Aucun match programmé" detail="Rien à afficher pour le moment." />
       )}
 
       {grouped.map(([day, dayEntries]) => (

@@ -1,194 +1,156 @@
+🇫🇷 Français&nbsp;|&nbsp;[🇬🇧 English](README.en.md)
+
 # Valorant Tracker
 
-App desktop Windows type tracker.gg (rank + stats Valorant), en Tauri 2.x — backend Rust,
-frontend React/TypeScript/Tailwind. Réutilise (en Rust) le même niveau de robustesse que le
-bot Discord côté API Henrik Dev : cache SQLite avec TTL différenciés, rate limiting avec
-espacement, circuit breaker, retry respectant `Retry-After`.
+Une app desktop Windows pour suivre ton rank et tes stats Valorant, dans le genre de
+tracker.gg mais installée chez toi : recherche de joueur, historique de progression,
+détail de match, stats par carte/agent, comparaison entre joueurs, et une détection
+automatique de partie avec un petit overlay affichant le rank de ton lobby.
 
-## Statut
+> Ce projet n'est ni développé ni affilié à Riot Games. Les données de rank et de matchs
+> viennent de l'API tierce non officielle [Henrik Dev](https://docs.henrikdev.xyz/).
 
-- **V1** : recherche de joueur, profil (rank + historique de progression), historique de
-  matchs, détail de match, stats par carte, réglages. Fonctionnelle et robuste aux pannes
-  réseau/API.
-- **V2 (cette livraison)** : détection automatique de partie via l'API locale du Riot Client
-  (`src-tauri/src/riot_local/` : lockfile → presence → endpoints GLZ pour le roster) +
-  fenêtre overlay always-on-top (`src-tauri/src/overlay/`, écran `src/screens/Overlay.tsx`)
-  affichant l'état de partie et le rank Henrik des joueurs détectés. Best-effort : API locale
-  non officielle, repli silencieux en mode lookup manuel si elle ne répond pas ; overlay
-  click-through par défaut, `Ctrl+Shift+V` pour le déplacer ; notification de fin de partie ;
-  désactivable dans Paramètres → Overlay en jeu. Limite connue : le plein écran exclusif peut
-  masquer l'overlay (utiliser « plein écran sans bordure »).
-- **Refonte design** : identité « HUD tactique » (fond graphite `#0B0E11`, accent cyan
-  `#7CE8D3`, rouge réservé aux signaux négatifs, Chakra Petch / Inter / JetBrains Mono
-  self-hostées via @fontsource, panneaux à coin coupé `clip-path` sans border-radius) — voir
-  `tailwind.config.js` et `src/index.css` (`.panel-clip`, `.hud-label`, `.target-lock`).
+## Fonctionnalités
 
-## Setup
+**Profil & progression**
+- Recherche d'un joueur par Riot ID, profil complet (rank actuel, historique de RR, plus
+  haut rank atteint)
+- Historique de matchs, détail de match (économie, kills, précision par round)
+- Stats par carte, par agent et par rôle d'agent (Duelliste/Initiateur/Contrôleur/Sentinelle)
+- Objectifs de progression ("atteindre Diamant 2") avec barre de progression
+- Regroupement automatique des matchs par session de jeu
+- Heatmap de performance par jour de la semaine / heure
+- Comparaison de progression entre saisons
+- Comparaison côte à côte de deux joueurs (VS)
+- Winrate en duo et en squad (3 joueurs) basé sur les parties jouées ensemble
+- Notes personnelles sur un joueur suivi
+- Export CSV/JSON de l'historique de matchs
+
+**En jeu**
+- Détection automatique de partie via le client Riot local, sans rien lancer manuellement
+- Overlay always-on-top affichant le rank des joueurs détectés (mode compact ou détaillé)
+- Suggestion de tes agents perso les plus performants pendant la sélection d'agents
+- Rich Presence Discord (montre ce que tu fais dans l'app comme statut Discord)
+
+**Confort**
+- Favoris et historique de recherche, réorganisables par glisser-déposer
+- Palette de commande (Ctrl+K) pour naviguer rapidement
+- Alertes configurables (série de défaites, rappel d'inactivité, changement de rank)
+- Thème clair/sombre et couleur d'accent personnalisable
+- Mise à jour automatique signée, classement compétitif, mode Premier, actualités esport (VLR)
+
+## Installation
+
+1. Va sur la page [Releases](../../releases) et télécharge le dernier
+   `Valorant.Tracker_x.y.z_x64-setup.exe` (installeur silencieux, recommandé) ou le `.msi`
+   (installation manuelle classique).
+2. Lance l'installeur. **Windows SmartScreen va probablement afficher un avertissement** —
+   c'est normal : l'app est signée avec un certificat auto-signé, pas un certificat payé
+   par une autorité reconnue. Clique sur *Informations complémentaires* puis
+   *Exécuter quand même*. Le binaire est bien signé (intégrité vérifiable), ce n'est qu'un
+   avertissement de réputation, pas un antivirus qui bloque un malware.
+3. Au premier lancement, l'app te guide en 3 étapes : renseigner une clé API
+   [Henrik Dev](https://discord.com/invite/X3GaVkX2YN) (gratuite, à demander sur leur
+   Discord), choisir ta région, et vérifier la détection automatique du client Riot.
+4. Les mises à jour suivantes s'installent automatiquement (ou via *Paramètres → Mises à
+   jour → Vérifier maintenant*).
+
+### Confidentialité
+
+Tout reste en local sur ta machine : la clé API est stockée chiffrée
+(`%APPDATA%\com.xnooztv.val-tracker\`), aucune donnée n'est envoyée ailleurs qu'à l'API
+Henrik Dev pour les requêtes que tu déclenches toi-même. Aucune télémétrie, le dashboard
+"Santé" dans Paramètres est optionnel (désactivé par défaut) et reste 100&nbsp;% local.
+
+## Développer / compiler depuis les sources
 
 ### Prérequis
 
-- [Rust](https://www.rust-lang.org/tools/install) (stable, toolchain MSVC sous Windows)
+- [Rust](https://www.rust-lang.org/tools/install) (stable, toolchain MSVC)
 - [Node.js](https://nodejs.org/) 18+
-- Les [prérequis Tauri pour Windows](https://v2.tauri.app/start/prerequisites/) (WebView2 —
-  déjà présent sur la plupart des installs Windows 10/11 à jour ; Visual Studio Build Tools
-  avec la charge "Développement Desktop en C++")
-- Une clé API [Henrik Dev](https://discord.com/invite/X3GaVkX2YN) (rejoindre le Discord Henrik
-  Dev et suivre les instructions du salon dédié pour en obtenir une)
+- Les [prérequis Tauri pour Windows](https://v2.tauri.app/start/prerequisites/) (WebView2,
+  Visual Studio Build Tools avec la charge "Développement Desktop en C++")
+- Une clé API [Henrik Dev](https://api.henrikdev.xyz/dashboard/api-keys)
 
-### Installation
+### Setup
 
 ```bash
 npm install
-```
-
-### Où mettre la clé API
-
-**Pas dans le repo.** La clé se configure directement dans l'app, dans l'écran **Paramètres**
-(champ "Clé API Henrik", bouton "Vérifier" pour tester sa validité avant de l'enregistrer).
-Elle est stockée dans le dossier de données de l'app (`%APPDATA%\com.mri-bot.val-tracker\`),
-jamais committée, jamais affichée en clair dans les logs.
-
-Au premier lancement, sans clé configurée, l'app redirige automatiquement vers Paramètres.
-
-### Lancer en dev
-
-```bash
 npm run tauri dev
 ```
 
-Ça compile le backend Rust, lance le serveur Vite sur `http://localhost:1420`, et ouvre la
-fenêtre Tauri. Les changements côté React sont pris en compte à chaud ; les changements côté
-Rust déclenchent une recompilation + redémarrage de l'app.
+Configure ensuite ta clé API directement dans l'app (Paramètres → Clé API Henrik), jamais
+dans le repo.
 
-### Build local (installation manuelle)
+### Build local
 
 ```bash
 npm run tauri build
 ```
 
-Génère les installeurs `.msi` (WiX) et `.exe` (NSIS) dans `src-tauri/target/release/bundle/`,
-signés avec le certificat Authenticode local (voir plus bas) et avec les artefacts de mise à
-jour (`.sig`) si `TAURI_SIGNING_PRIVATE_KEY`/`TAURI_SIGNING_PRIVATE_KEY_PASSWORD` sont définis
-dans l'environnement.
+Génère les installeurs `.msi` et `.exe` (NSIS) dans `src-tauri/target/release/bundle/`.
+Sans certificat de signature configuré localement, le binaire ne sera pas signé (voir
+`src-tauri/tauri.conf.json` pour la config de signature Authenticode).
 
-### Icône
+### Tests
 
-Générée depuis une image source carrée via `npx tauri icon <fichier>` (regénère
-`src-tauri/icons/`). Pour changer l'icône, relancer la commande avec un nouveau fichier
-source puis supprimer les variantes iOS/Android/Store générées en trop (l'app ne cible que
-Windows — seuls `32x32.png`, `64x64.png`, `128x128.png`, `128x128@2x.png` et `icon.ico` sont
-référencés dans `bundle.icon` de `tauri.conf.json`).
-
-### Signature
-
-Deux mécanismes de signature distincts, à ne pas confondre :
-
-1. **Signature de l'updater** (obligatoire pour l'auto-update, indépendante de la signature
-   Windows) — une paire de clés Ed25519 générée via `tauri signer generate`. La clé publique
-   est dans `plugins.updater.pubkey` de `tauri.conf.json` ; la clé privée + son mot de passe
-   ne sont **jamais commités**, uniquement en secrets GitHub Actions
-   (`TAURI_SIGNING_PRIVATE_KEY`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`) et en local dans
-   `~/.tauri/`.
-2. **Signature Authenticode Windows** (SmartScreen) — actuellement un certificat
-   **auto-signé** (généré via `New-SelfSignedCertificate`, référencé par son thumbprint dans
-   `bundle.windows.certificateThumbprint`). Un certificat auto-signé signe bien le binaire
-   mais **ne supprime pas** l'avertissement SmartScreen pour les utilisateurs — seul un vrai
-   certificat payé auprès d'une autorité (SSL.com, DigiCert, EV sur token...) le fait. À
-   remplacer le jour où un vrai certificat est acheté : régénérer le thumbprint dans
-   `tauri.conf.json` et le secret `WINDOWS_CERTIFICATE` (PFX en base64) +
-   `WINDOWS_CERTIFICATE_PASSWORD` côté CI.
-
-### Auto-update
-
-`tauri-plugin-updater` est câblé (voir `src-tauri/src/main.rs`, `src/hooks/useUpdater.ts`,
-`src/components/UpdateBanner.tsx`, section **Mises à jour** des Paramètres). L'app vérifie
-`https://github.com/xnooztvFR/val-tracker/releases/latest/download/latest.json`.
-
-Le dépôt GitHub **xnooztvFR/val-tracker** ne sert que de point de distribution — le code
-source n'y est jamais poussé. Chaque release est buildée en local et publiée directement en
-tant qu'assets GitHub via `gh` (GitHub CLI).
-
-Pour publier une nouvelle version :
-
-```powershell
-# 1. Monter "version" dans src-tauri/tauri.conf.json (et package.json pour rester cohérent)
-# 2. gh auth login une seule fois si ce n'est pas déjà fait
-pwsh -File scripts/release.ps1
+```bash
+npm test              # frontend (vitest)
+cd src-tauri && cargo test   # backend (Rust)
 ```
 
-Le script (`scripts/release.ps1`) :
-- build (`npm run tauri build`, signé Authenticode + updater),
-- génère `latest.json` à partir du binaire NSIS produit (`windows-x86_64` → le `.exe` NSIS,
-  utilisé par l'auto-update ; le `.msi` est aussi publié en asset pour installation manuelle),
-- publie une **release brouillon** sur GitHub avec `gh release create` (installeurs + `.sig` +
-  `latest.json`).
+### Stack technique
 
-Vérifier le brouillon sur github.com (notes, assets présents) puis le publier manuellement —
-c'est cette publication qui rend la mise à jour visible par l'updater des clients déjà
-installés (`releases/latest/...` ignore les brouillons).
-
-Secrets/clés nécessaires, tous **locaux uniquement** (jamais commités, voir `.gitignore` /
-`~/.tauri/`) :
-
-| Fichier local | Rôle |
-| --- | --- |
-| `~/.tauri/val-tracker.key` + `.key.password.txt` | Signature updater (Ed25519) |
-| `~/.tauri/val-tracker-codesign.pfx` | Certificat Authenticode (déjà importé dans le magasin Windows local, utilisé via son thumbprint dans `tauri.conf.json`) |
-
-## Architecture
+- **Backend** : Rust, Tauri 2.x, `reqwest`, `rusqlite` (SQLite local), cache API avec TTL
+  différenciés, rate limiting, circuit breaker, retry respectant `Retry-After`.
+- **Frontend** : React + TypeScript, Vite, Tailwind CSS, Zustand, React Query.
 
 ```
 src-tauri/src/
-  main.rs                  # setup Tauri, état partagé (AppState), enregistrement des commands
-  commands.rs               # #[tauri::command] exposées au frontend — reste fin
-  db.rs                     # connexion SQLite + migrations + requêtes locales (historique,
-                             # favoris, snapshots de rank)
-  settings.rs                # lecture/écriture config locale (clé API, préférences)
-  api/henrik/
-    client.rs                # reqwest + retry/backoff + respect de Retry-After
-    cache.rs                 # cache SQLite (table api_cache) avec TTL différenciés
-    rate_limiter.rs           # espacement (~24 req/min) + circuit breaker simple
-    endpoints.rs              # une fonction par endpoint Henrik, orchestre cache + client
-    types.rs                  # structs serde pour les réponses Henrik
-  riot_local/                 # V2 — lockfile, client API locale Riot (presence/GLZ), poller
-  overlay/                    # V2 — fenêtre overlay (always-on-top, click-through, Ctrl+Shift+V)
+  main.rs            # setup Tauri, état partagé
+  commands.rs        # commandes exposées au frontend
+  db.rs              # SQLite local (historique, favoris, snapshots de rank...)
+  settings.rs        # préférences locales (clé API chiffrée, réglages)
+  api/henrik/        # client HTTP + cache + rate limiter + endpoints Henrik
+  riot_local/        # détection de partie via l'API locale du client Riot
+  overlay/           # fenêtre overlay in-game
+  proxy/             # relais Cloudflare Worker optionnel (voir son propre README)
 
-src/                          # frontend React
-  screens/                    # Search, Home, Trends, Agents, MatchHistory, MatchDetail,
-                               # MapStats, Settings, Overlay (rendue seule dans la fenêtre "overlay")
-  components/                 # RankBadge, StatCard, RankHistoryChart, MatchRow,
-                               # ErrorState, StaleDataBanner (bandeaux d'erreur/cache partagés)
-  hooks/                       # usePlayer (compte/mmr/snapshots), useMatches — React Query
-  lib/
-    tauriApi.ts                # wrapper typé autour de invoke(), miroir des DTO Rust
-    format.ts                  # formatage KDA/%/durées/dates, mapping tier → nom de rank
-  store/
-    settingsStore.ts            # état réactif des préférences (zustand)
-    recentSearchesStore.ts      # historique de recherche + favoris (zustand)
+src/
+  screens/           # écrans (Home, MatchHistory, Trends, Agents, Compare, Settings...)
+  components/        # composants réutilisables
+  hooks/             # React Query (compte, MMR, matchs...)
+  lib/               # wrapper d'invoke(), formatage, agrégations de stats
+  store/             # état global (Zustand)
 ```
 
-### Gestion des erreurs (V1)
+### CI
 
-Chaque commande Rust renvoie une `CommandError` typée (`{ kind, ... }`) que le frontend
-distingue via `lib/tauriApi.ts` (`CommandError`) et affiche via `components/ErrorState.tsx` :
-clé API manquante (redirige vers Paramètres), joueur introuvable (404), rate limit dépassé
-(avec délai si connu), circuit breaker ouvert, panne réseau. En cas de panne après un cache
-existant, l'API Henrik renvoie la dernière donnée connue (même expirée) avec un bandeau
-"Données en cache, dernière mise à jour le JJ/MM à HH:MM" (`components/StaleDataBanner.tsx`).
+Un workflow GitHub Actions (`.github/workflows/build.yml`) compile l'app sur chaque push/PR
+pour vérifier que le build Windows ne casse pas (`cargo check`, `cargo test`, `npm test`,
+`npm run build`, `cargo build --release`). Il ne signe rien et ne produit aucun installeur
+(la signature demande des secrets locaux qui ne vivent que sur la machine de build, voir
+plus haut) : c'est un garde-fou de compilation continu, pas un remplacement du flux de
+release. `scripts/release.ps1` reste le seul moyen de publier une vraie release signée.
 
-## Tests
+## Limitations connues
 
-Pas de config lint pour l'instant. Suite de tests basique (pas de couverture exhaustive,
-juste la logique pure/isolée la plus à risque) :
+- **SmartScreen** : le certificat de signature est auto-signé, pas payé auprès d'une
+  autorité reconnue, l'avertissement Windows persistera tant que ça reste le cas.
+- **Overlay en plein écran exclusif** : peut être masqué par le plein écran exclusif de
+  Valorant (pas le mode "sans bordure"), limitation de l'API Windows, utilise le mode
+  "plein écran sans bordure" dans les réglages vidéo du jeu.
+- **API locale Riot non officielle** : le lockfile et les endpoints utilisés pour la
+  détection de partie ne sont pas documentés par Riot et peuvent changer d'une mise à jour
+  du client à l'autre ; l'app repasse alors silencieusement en mode recherche manuelle.
 
-- **Rust** (`cd src-tauri && cargo test`) : parsing du lockfile, cache SQLite (frais/périmé/
-  écrasement), rate limiter + circuit breaker (seuil, reset), réglages (round-trip,
-  masquage de la clé API dans `Debug`), et les opérations locales de `db.rs` (favoris,
-  historique, snapshots de rank, `reset_local_stats`).
-- **Frontend** (`npm test`, vitest) : fonctions pures de `lib/format.ts` (mapping de rank,
-  formatage KDA/durées/dates, `splitRiotId`) et `isCommandError`. Config dédiée dans
-  `vitest.config.ts` (séparée de `vite.config.ts` pour éviter un conflit de types entre
-  `vite` et `vitest/config` sur `build.rollupOptions`).
+## Remerciements
 
-`npm run build` (via `tsc --noEmit`) sert de garde-fou de typage côté frontend ;
-`cargo check` / `cargo build` côté Rust.
+- [Henrik Dev API](https://docs.henrikdev.xyz/) pour les données de rank/matchs Valorant.
+- [Tauri](https://tauri.app/) pour le framework desktop.
+
+## Licence
+
+Distribué sous licence [GPLv3](LICENSE) — © xnooztvFR. Tu peux redistribuer et modifier ce
+projet, mais tout ce qui en dérive et que tu distribues doit rester open source sous la
+même licence.

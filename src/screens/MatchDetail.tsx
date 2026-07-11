@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { SkeletonScreen } from "../components/Skeleton";
 import { Link, useParams } from "react-router-dom";
 
 import { useAccount } from "../hooks/usePlayer";
@@ -41,7 +42,7 @@ export default function MatchDetail() {
   }, [matchId, puuid, detail.data]);
 
   if (detail.isError) return <ErrorState error={detail.error} />;
-  if (detail.isLoading) return <p className="text-sm text-lo">Chargement…</p>;
+  if (detail.isLoading) return <SkeletonScreen className="p-6" />;
 
   const data = detail.data?.data;
   if (!data) {
@@ -81,7 +82,7 @@ export default function MatchDetail() {
         {puuid && (
           <Link
             to={`/joueur/${region}/${name}/${tag}/matchs/${matchId}/rapport`}
-            className="btn-clip mt-1 shrink-0 bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#96F0DF]"
+            className="btn-clip mt-1 shrink-0 bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#FF5969]"
           >
             Rapport de match
           </Link>

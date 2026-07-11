@@ -295,3 +295,45 @@ pub async fn fetch_coregame_player_puuids(
     }
     Ok(puuids)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn game_state_as_str_matches_expected_wire_values() {
+        assert_eq!(GameState::HorsJeu.as_str(), "hors_jeu");
+        assert_eq!(GameState::Menu.as_str(), "menu");
+        assert_eq!(GameState::Pregame.as_str(), "pregame");
+        assert_eq!(GameState::InGame.as_str(), "in_game");
+        assert_eq!(GameState::PostGame.as_str(), "post_game");
+    }
+
+    #[test]
+    fn glz_base_routes_latam_and_br_to_na_shard() {
+        assert_eq!(glz_base("latam"), "https://glz-latam-1.na.a.pvp.net");
+        assert_eq!(glz_base("br"), "https://glz-br-1.na.a.pvp.net");
+    }
+
+    #[test]
+    fn glz_base_routes_other_regions_to_their_own_shard() {
+        assert_eq!(glz_base("eu"), "https://glz-eu-1.eu.a.pvp.net");
+        assert_eq!(glz_base("na"), "https://glz-na-1.na.a.pvp.net");
+        assert_eq!(glz_base("ap"), "https://glz-ap-1.ap.a.pvp.net");
+    }
+
+    #[test]
+    fn local_url_builds_https_localhost_with_port() {
+        let lockfile = LockfileInfo {
+            name: "Riot Client".to_string(),
+            pid: 1,
+            port: 54321,
+            password: "pw".to_string(),
+            protocol: "https".to_string(),
+        };
+        assert_eq!(
+            local_url(&lockfile, "/chat/v1/session"),
+            "https://127.0.0.1:54321/chat/v1/session"
+        );
+    }
+}

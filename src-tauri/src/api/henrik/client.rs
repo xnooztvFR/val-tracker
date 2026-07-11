@@ -15,6 +15,38 @@ use super::HenrikError;
 const BASE_URL: &str = "https://api.henrikdev.xyz";
 const MAX_ATTEMPTS: u32 = 3;
 
+/// Justificatif utilisé pour un appel à l'API Henrik.
+///
+/// - `Direct` : une vraie clé Henrik personnelle (saisie par l'utilisateur dans Paramètres)
+///   envoyée telle quelle à `api.henrikdev.xyz`.
+/// - `Proxy` : app donnée à un tiers sans clé perso — les requêtes passent par un relais
+///   serveur (Cloudflare Worker typiquement) qui, lui, détient la vraie clé Henrik en tant
+///   que secret serveur. Le jeton envoyé ici n'est PAS la clé Henrik : décompiler le binaire
+///   ne révèle que ce jeton (qui n'autorise qu'à passer par le relais), jamais la clé réelle.
+///   Voir `settings.rs::get_henrik_api_key` pour la résolution Direct vs Proxy, et
+///   `src-tauri/proxy/` pour le code du relais.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum HenrikAuth {
+    Direct(String),
+    Proxy { base_url: String, token: String },
+}
+
+impl HenrikAuth {
+    fn target_url(&self, path: &str) -> String {
+        match self {
+            HenrikAuth::Direct(_) => format!("{BASE_URL}{path}"),
+            HenrikAuth::Proxy { base_url, .. } => format!("{base_url}{path}"),
+        }
+    }
+
+    fn apply(&self, builder: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+        match self {
+            HenrikAuth::Direct(key) => builder.header("Authorization", key),
+            HenrikAuth::Proxy { token, .. } => builder.header("X-Proxy-Token", token),
+        }
+    }
+}
+
 pub struct HenrikClient {
     http: reqwest::Client,
     rate_limiter: Arc<RateLimiter>,
@@ -33,19 +65,13 @@ impl HenrikClient {
 
     /// Effectue un GET sur `path` (ex: "/valorant/v2/account/foo/bar") et renvoie le
     /// corps JSON brut en cas de succès. Gère retry/backoff et respecte `Retry-After`.
-    pub async fn get_raw(&self, path: &str, api_key: &str) -> Result<String, HenrikError> {
-        let url = format!("{BASE_URL}{path}");
+    pub async fn get_raw(&self, path: &str, auth: &HenrikAuth) -> Result<String, HenrikError> {
+        let url = auth.target_url(path);
 
         for attempt in 1..=MAX_ATTEMPTS {
             self.rate_limiter.acquire().await?;
 
-            let response = match self
-                .http
-                .get(&url)
-                .header("Authorization", api_key)
-                .send()
-                .await
-            {
+            let response = match auth.apply(self.http.get(&url)).send().await {
                 Ok(r) => r,
                 Err(err) => {
                     self.rate_limiter.record_failure().await;
@@ -126,19 +152,13 @@ impl HenrikClient {
 
     /// Variante binaire de `get_raw`, pour les endpoints qui renvoient une image (ex:
     /// `/valorant/v1/crosshair/generate`) plutôt qu'un JSON `{ status, data }`.
-    pub async fn get_raw_bytes(&self, path: &str, api_key: &str) -> Result<Vec<u8>, HenrikError> {
-        let url = format!("{BASE_URL}{path}");
+    pub async fn get_raw_bytes(&self, path: &str, auth: &HenrikAuth) -> Result<Vec<u8>, HenrikError> {
+        let url = auth.target_url(path);
 
         for attempt in 1..=MAX_ATTEMPTS {
             self.rate_limiter.acquire().await?;
 
-            let response = match self
-                .http
-                .get(&url)
-                .header("Authorization", api_key)
-                .send()
-                .await
-            {
+            let response = match auth.apply(self.http.get(&url)).send().await {
                 Ok(r) => r,
                 Err(err) => {
                     self.rate_limiter.record_failure().await;

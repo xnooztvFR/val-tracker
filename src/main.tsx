@@ -1,10 +1,11 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import App from "./App";
 import "./index.css";
+import { useApiHealthStore } from "./store/apiHealthStore";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -14,6 +15,12 @@ const queryClient = new QueryClient({
       staleTime: 30_000,
     },
   },
+  // Alimente le badge d'état de connexion API permanent dans TopNav (voir apiHealthStore) —
+  // point d'observation global unique plutôt que de dupliquer la logique dans chaque hook.
+  queryCache: new QueryCache({
+    onError: (error) => useApiHealthStore.getState().reportError(error),
+    onSuccess: () => useApiHealthStore.getState().reportSuccess(),
+  }),
 });
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

@@ -1,15 +1,19 @@
-import { NavLink, useNavigate } from "react-router-dom";
-
-const GLOBAL_TABS = [
-  { to: "/classement", label: "Classement" },
-  { to: "/premier", label: "Premier" },
-  { to: "/esport", label: "Esport" },
-] as const;
+import { useState } from "react";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 
 import { useActivePlayerStore } from "../store/activePlayerStore";
 import { useAccount, useMmr } from "../hooks/usePlayer";
 import { playerCardIconUrl, rankGlowColor, rankInfo } from "../lib/format";
 import DetectionStatusBadge from "./DetectionStatusBadge";
+import ApiStatusBadge from "./ApiStatusBadge";
+import AccountSwitcher from "./AccountSwitcher";
+
+const GLOBAL_TABS = [
+  { to: "/classement", label: "Classement" },
+  { to: "/premier", label: "Premier" },
+  { to: "/esport", label: "Esport" },
+  { to: "/vs", label: "VS" },
+] as const;
 
 const TABS = [
   { to: "", label: "Accueil", end: true },
@@ -21,7 +25,10 @@ const TABS = [
 ] as const;
 
 /** Barre de navigation globale unique : logo, onglets du joueur actif (masqués tant
- * qu'aucun joueur n'est suivi) et, à droite, un chip de profil connecté. */
+ * qu'aucun joueur n'est suivi), un menu "Plus" pour les sections hors-profil (backlog UI :
+ * la fenêtre a une largeur fixe — 10 onglets + les badges de droite débordaient et
+ * compressaient le chip de profil, d'où le regroupement des onglets globaux ici) et, à
+ * droite, un chip de profil connecté. */
 export default function TopNav() {
   const { player, clear } = useActivePlayerStore();
   const navigate = useNavigate();
@@ -64,25 +71,14 @@ export default function TopNav() {
         </div>
       )}
 
-      <div className="flex items-stretch">
-        {GLOBAL_TABS.map((tab) => (
-          <NavLink
-            key={tab.to}
-            to={tab.to}
-            className={({ isActive }) =>
-              `flex items-center border-b-2 px-3 font-display text-[13px] font-semibold uppercase tracking-hud transition-colors ${
-                isActive ? "border-accent text-hi" : "border-transparent text-lo hover:text-hi"
-              }`
-            }
-          >
-            {tab.label}
-          </NavLink>
-        ))}
-      </div>
+      <MoreMenu />
 
       <div className="flex-1" />
 
+      <ApiStatusBadge />
       <DetectionStatusBadge />
+
+      <AccountSwitcher current={player && puuid ? { puuid, region: player.region, name: player.name, tag: player.tag } : undefined} />
 
       {player && (
         <button
@@ -115,6 +111,57 @@ export default function TopNav() {
         </div>
       )}
     </nav>
+  );
+}
+
+/** Regroupe les sections hors-profil (Classement/Premier/Esport/VS) dans un menu déroulant
+ * plutôt que 4 onglets fixes en permanence — voir la doc de TopNav pour le contexte
+ * (débordement de la barre à largeur fixe). */
+function MoreMenu() {
+  const [open, setOpen] = useState(false);
+  const location = useLocation();
+  const isActive = GLOBAL_TABS.some((tab) => location.pathname.startsWith(tab.to));
+
+  return (
+    <div className="relative flex items-stretch">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`flex items-center gap-1.5 border-b-2 px-3 font-display text-[13px] font-semibold uppercase tracking-hud transition-colors ${
+          isActive ? "border-accent text-hi" : "border-transparent text-lo hover:text-hi"
+        }`}
+      >
+        <GridIcon />
+        Plus
+      </button>
+
+      {open && (
+        <>
+          <button
+            type="button"
+            aria-label="Fermer"
+            className="fixed inset-0 z-10 cursor-default"
+            onClick={() => setOpen(false)}
+          />
+          <div className="panel-clip-sm absolute left-0 top-full z-20 mt-1 w-44 border border-line bg-raised p-1 shadow-lg">
+            {GLOBAL_TABS.map((tab) => (
+              <NavLink
+                key={tab.to}
+                to={tab.to}
+                onClick={() => setOpen(false)}
+                className={({ isActive: linkActive }) =>
+                  `block px-3 py-2 font-display text-[12px] font-semibold uppercase tracking-hud transition-colors ${
+                    linkActive ? "bg-base text-hi" : "text-lo hover:bg-base hover:text-hi"
+                  }`
+                }
+              >
+                {tab.label}
+              </NavLink>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -173,13 +220,33 @@ function SearchIcon() {
   );
 }
 
+function GridIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+      <rect x="2" y="2" width="6" height="6" rx="1" />
+      <rect x="12" y="2" width="6" height="6" rx="1" />
+      <rect x="2" y="12" width="6" height="6" rx="1" />
+      <rect x="12" y="12" width="6" height="6" rx="1" />
+    </svg>
+  );
+}
+
+/** Icône engrenage (cog) standard — remplace l'ancienne version peu lisible à cette
+ * taille (dents trop fines/asymétriques). */
 function GearIcon() {
   return (
-    <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5">
       <path
-        fillRule="evenodd"
-        d="M10 1a1 1 0 01.993.883L11 2v.09a7.95 7.95 0 012.03.84l.06-.06a1 1 0 011.497 1.32l-.083.094-.064.063c.37.55.653 1.16.833 1.816h.09a1 1 0 01.117 1.994L15.36 8h-.09a7.95 7.95 0 01-.84 2.03l.06.06a1 1 0 01-1.32 1.497l-.094-.083-.063-.064a7.96 7.96 0 01-1.816.833v.09a1 1 0 01-1.994.117L9 12.36v-.09a7.95 7.95 0 01-2.03-.84l-.06.06a1 1 0 01-1.497-1.32l.083-.094.064-.063A7.96 7.96 0 014.667 8.2h-.09a1 1 0 01-.117-1.994L4.64 6.2h.09a7.95 7.95 0 01.84-2.03l-.06-.06A1 1 0 016.83 2.613l.094.083.063.064A7.96 7.96 0 018.803 1.93V1.84A1 1 0 0110 1zm0 5a3 3 0 100 6 3 3 0 000-6z"
-        clipRule="evenodd"
+        d="M12 15.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+      <path
+        d="M19.4 13.5a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V19.5a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1.08-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H2.5a2 2 0 110-4h.09a1.65 1.65 0 001.51-1.08 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H8.5a1.65 1.65 0 001-1.51V2.5a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v.09a1.65 1.65 0 001.51 1H21.5a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </svg>
   );

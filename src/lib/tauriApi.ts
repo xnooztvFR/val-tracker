@@ -701,6 +701,23 @@ export interface AppSettings {
   discord_rpc_enabled: boolean;
   discord_rpc_client_id: string | null;
   status_watcher_enabled: boolean;
+  usage_metrics_enabled: boolean;
+  ui_theme: string;
+  ui_accent: string;
+  /** Backlog #31 : `"compact"` | `"detailed"` (défaut). */
+  overlay_density: string;
+  /** Backlog #24 : alerte "N défaites d'affilée" (comptes "à soi" uniquement). */
+  loss_streak_alert_enabled: boolean;
+  loss_streak_alert_count: number;
+  /** Backlog #32 : rappel doux si aucun compte "à soi" consulté depuis X jours. */
+  inactivity_reminder_enabled: boolean;
+  inactivity_reminder_days: number;
+}
+
+export interface UsageMetricsSummary {
+  cache_hits: number;
+  network_fetches: number;
+  api_errors: number;
 }
 
 export interface TrackedPlayer {
@@ -710,6 +727,32 @@ export interface TrackedPlayer {
   region: string;
   is_favorite: boolean;
   last_viewed_at: number;
+  /** V4 : ce Riot ID est l'un des comptes Valorant "à soi" de l'utilisateur (multi-comptes). */
+  is_self: boolean;
+  /** Backlog #12 : note libre (tags "smurf"/"toxique"/"duo régulier"...), `null` si vide. */
+  notes: string | null;
+}
+
+/** Backlog #13 : objectif de progression ("atteindre Diamant 2") pour un joueur suivi. */
+export interface ProgressionGoal {
+  target_tier: number;
+  target_tier_patched: string;
+  target_rr: number | null;
+  created_at: number;
+}
+
+/** V4 : Riot ID détecté via le lockfile du Riot Client local, résolu via Henrik
+ * (nom/tag/région) — voir `detectLocalAccount`. */
+export interface DetectedAccount {
+  puuid: string;
+  name: string;
+  tag: string;
+  region: string;
+}
+
+export interface LogSnapshot {
+  path: string | null;
+  content: string;
 }
 
 export interface RankSnapshot {
@@ -723,6 +766,18 @@ export interface DuoStat {
   teammate_puuid: string;
   teammate_name: string;
   teammate_tag: string;
+  matches_played: number;
+  matches_won: number;
+}
+
+/** Backlog #23 : extension "squad" (trios) de DuoStat. */
+export interface SquadStat {
+  teammate_a_puuid: string;
+  teammate_a_name: string;
+  teammate_a_tag: string;
+  teammate_b_puuid: string;
+  teammate_b_name: string;
+  teammate_b_tag: string;
   matches_played: number;
   matches_won: number;
 }
@@ -757,6 +812,22 @@ export const tauriApi = {
     invoke<void>("save_discord_rpc_client_id", { clientId }),
   saveStatusWatcherEnabled: (enabled: boolean) =>
     invoke<void>("save_status_watcher_enabled", { enabled }),
+  saveUsageMetricsEnabled: (enabled: boolean) =>
+    invoke<void>("save_usage_metrics_enabled", { enabled }),
+  getUsageMetricsSummary: () =>
+    invoke<UsageMetricsSummary>("get_usage_metrics_summary"),
+  saveUiTheme: (theme: string) => invoke<void>("save_ui_theme", { theme }),
+  saveUiAccent: (accent: string) => invoke<void>("save_ui_accent", { accent }),
+  saveOverlayDensity: (density: string) =>
+    invoke<void>("save_overlay_density", { density }),
+  saveLossStreakAlertEnabled: (enabled: boolean) =>
+    invoke<void>("save_loss_streak_alert_enabled", { enabled }),
+  saveLossStreakAlertCount: (count: number) =>
+    invoke<void>("save_loss_streak_alert_count", { count }),
+  saveInactivityReminderEnabled: (enabled: boolean) =>
+    invoke<void>("save_inactivity_reminder_enabled", { enabled }),
+  saveInactivityReminderDays: (days: number) =>
+    invoke<void>("save_inactivity_reminder_days", { days }),
   verifyHenrikApiKey: (apiKey: string) =>
     invoke<boolean>("verify_henrik_api_key", { apiKey }),
 
@@ -845,12 +916,42 @@ export const tauriApi = {
     invoke<TrackedPlayer[]>("list_tracked_players", { limit }),
   toggleFavoritePlayer: (puuid: string) =>
     invoke<boolean>("toggle_favorite_player", { puuid }),
+  listFavoritePlayers: () => invoke<TrackedPlayer[]>("list_favorite_players"),
+  reorderFavoritePlayers: (orderedPuuids: string[]) =>
+    invoke<void>("reorder_favorite_players", { orderedPuuids }),
   listRankSnapshots: (puuid: string) =>
     invoke<RankSnapshot[]>("list_rank_snapshots", { puuid }),
   resetLocalStats: () => invoke<void>("reset_local_stats"),
+  savePlayerNotes: (puuid: string, notes: string) =>
+    invoke<void>("save_player_notes", { puuid, notes }),
+  getProgressionGoal: (puuid: string) =>
+    invoke<ProgressionGoal | null>("get_progression_goal", { puuid }),
+  saveProgressionGoal: (
+    puuid: string,
+    targetTier: number,
+    targetTierPatched: string,
+    targetRr: number | null,
+  ) =>
+    invoke<void>("save_progression_goal", {
+      puuid,
+      targetTier,
+      targetTierPatched,
+      targetRr,
+    }),
+  clearProgressionGoal: (puuid: string) =>
+    invoke<void>("clear_progression_goal", { puuid }),
 
   recordPartyFromMatch: (matchId: string, trackedPuuid: string) =>
     invoke<void>("record_party_from_match", { matchId, trackedPuuid }),
   listDuoStats: (puuid: string, minMatches = 2) =>
     invoke<DuoStat[]>("list_duo_stats", { puuid, minMatches }),
+  listSquadStats: (puuid: string, minMatches = 2) =>
+    invoke<SquadStat[]>("list_squad_stats", { puuid, minMatches }),
+
+  setSelfAccount: (puuid: string, isSelf: boolean) =>
+    invoke<void>("set_self_account", { puuid, isSelf }),
+  listSelfAccounts: () => invoke<TrackedPlayer[]>("list_self_accounts"),
+  detectLocalAccount: () => invoke<DetectedAccount | null>("detect_local_account"),
+
+  getRecentLogs: () => invoke<LogSnapshot>("get_recent_logs"),
 };

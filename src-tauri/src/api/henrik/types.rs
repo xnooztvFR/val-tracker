@@ -428,6 +428,59 @@ pub struct EsportsMatchTeam {
     pub record: Option<EsportsMatchTeamRecord>,
 }
 
+// ---- /valorant/v1/stored-matches/{affinity}/{name}/{tag} (fallback circuit-breaker) ----
+//
+// Shape très différente de `MatchEntry` (v4) : une seule ligne de stats, celle du joueur
+// demandé, pas le roster complet des 10 joueurs — la v1 "stored" n'expose que ce que Henrik
+// a persisté côté serveur pour CE joueur. Suffisant pour un repli en liste (endpoints.rs
+// les traduit vers un `MatchEntry` à un seul joueur), pas pour un détail de match complet.
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct StoredMatch {
+    pub meta: StoredMatchMeta,
+    pub stats: StoredMatchStats,
+    pub teams: StoredMatchTeamScore,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct StoredMatchMeta {
+    pub id: String,
+    pub map: NamedRef,
+    #[allow(dead_code)]
+    pub mode: String,
+    pub started_at: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct StoredMatchStats {
+    pub puuid: String,
+    pub team: String,
+    pub character: NamedRef,
+    pub score: i64,
+    pub kills: i64,
+    pub deaths: i64,
+    pub assists: i64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct StoredMatchTeamScore {
+    pub red: i64,
+    pub blue: i64,
+}
+
+// ---- /valorant/v1/stored-mmr-history/{affinity}/{name}/{tag} (fallback circuit-breaker) ----
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct StoredMmrEntry {
+    pub match_id: String,
+    pub tier: TierRef,
+    pub map: NamedRef,
+    pub ranking_in_tier: i64,
+    pub last_mmr_change: i64,
+    pub elo: i64,
+    pub date: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EsportsMatchTeamRecord {
     pub wins: Option<i64>,

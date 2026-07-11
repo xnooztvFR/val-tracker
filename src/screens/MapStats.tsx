@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Skeleton } from "../components/Skeleton";
 import { useParams } from "react-router-dom";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
@@ -7,6 +8,7 @@ import { useMatches } from "../hooks/useMatches";
 import ErrorState from "../components/ErrorState";
 import StaleDataBanner from "../components/StaleDataBanner";
 import Panel from "../components/Panel";
+import EmptyState from "../components/EmptyState";
 import SampleSizeSwitch, { type SampleSize } from "../components/SampleSizeSwitch";
 import { formatKdRatio, formatPercent } from "../lib/format";
 import type { MatchEntry } from "../lib/tauriApi";
@@ -69,39 +71,39 @@ export default function MapStats() {
 
       {matches.isError && <ErrorState error={matches.error} />}
       {matches.data?.stale && <StaleDataBanner cachedAt={matches.data.cached_at} />}
-      {matches.isLoading && <p className="text-sm text-lo">Chargement…</p>}
+      {matches.isLoading && <Skeleton className="h-32 w-full" />}
 
       {chartData.length > 0 && (
         <Panel className="h-56 p-4">
           <p className="hud-label mb-2">Winrate par carte</p>
           <ResponsiveContainer width="100%" height="90%">
             <BarChart data={chartData} margin={{ top: 4, right: 12, bottom: 0, left: 0 }} barCategoryGap="35%">
-              <CartesianGrid stroke="rgba(255,255,255,0.05)" vertical={false} />
+              <CartesianGrid stroke="rgb(var(--color-lo) / 0.15)" vertical={false} />
               <XAxis
                 dataKey="map"
-                tick={{ fontSize: 10, fill: "#7A8590", fontFamily: MONO }}
+                tick={{ fontSize: 10, fill: "rgb(var(--color-lo))", fontFamily: MONO }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
-                tick={{ fontSize: 10, fill: "#7A8590", fontFamily: MONO }}
+                tick={{ fontSize: 10, fill: "rgb(var(--color-lo))", fontFamily: MONO }}
                 domain={[0, 100]}
                 tickFormatter={(v) => `${v}%`}
                 axisLine={false}
                 tickLine={false}
               />
               <Tooltip
-                cursor={{ fill: "rgba(255,255,255,0.04)" }}
+                cursor={{ fill: "rgb(var(--color-lo) / 0.12)" }}
                 contentStyle={{
-                  background: "#171C22",
-                  border: "1px solid #22282F",
+                  background: "rgb(var(--color-raised))",
+                  border: "1px solid rgb(var(--color-line))",
                   borderRadius: 0,
                   fontSize: 12,
                   fontFamily: MONO,
                 }}
                 formatter={(value: number) => [`${value}%`, "Winrate"]}
               />
-              <Bar dataKey="winPercent" fill="#7CE8D3" fillOpacity={0.85} maxBarSize={22} />
+              <Bar dataKey="winPercent" fill="rgb(var(--color-accent))" fillOpacity={0.85} maxBarSize={22} />
             </BarChart>
           </ResponsiveContainer>
         </Panel>
@@ -133,7 +135,7 @@ export default function MapStats() {
       )}
 
       {matches.data && rows.length === 0 && (
-        <p className="text-sm text-lo">Aucune donnée de carte sur cet échantillon.</p>
+        <EmptyState icon="map" title="Aucune donnée de carte" detail="Aucun match sur cet échantillon." />
       )}
     </div>
   );

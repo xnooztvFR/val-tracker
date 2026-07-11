@@ -7,6 +7,14 @@ use std::fmt;
 use rusqlite::{Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 
+use crate::api::henrik::HenrikAuth;
+use crate::dpapi;
+
+/// Marqueur de préfixe distinguant une valeur chiffrée via DPAPI d'une valeur en clair
+/// héritée d'une version antérieure de l'app (avant l'ajout du chiffrement au repos) — sert
+/// à migrer silencieusement les installs existantes sans casser leur clé API enregistrée.
+const DPAPI_PREFIX: &str = "dpapi:";
+
 const KEY_HENRIK_API_KEY: &str = "henrik_api_key";
 const KEY_DEFAULT_REGION: &str = "default_region";
 const KEY_AUTO_UPDATE: &str = "auto_update_enabled";
@@ -15,8 +23,46 @@ const KEY_OVERLAY_POSITION: &str = "overlay_position";
 const KEY_DISCORD_RPC_ENABLED: &str = "discord_rpc_enabled";
 const KEY_DISCORD_RPC_CLIENT_ID: &str = "discord_rpc_client_id";
 const KEY_STATUS_WATCHER_ENABLED: &str = "status_watcher_enabled";
+const KEY_USAGE_METRICS_ENABLED: &str = "usage_metrics_enabled";
+const KEY_UI_THEME: &str = "ui_theme";
+const KEY_UI_ACCENT: &str = "ui_accent";
+const KEY_OVERLAY_DENSITY: &str = "overlay_density";
+const KEY_LOSS_STREAK_ALERT_ENABLED: &str = "loss_streak_alert_enabled";
+const KEY_LOSS_STREAK_ALERT_COUNT: &str = "loss_streak_alert_count";
+const KEY_INACTIVITY_REMINDER_ENABLED: &str = "inactivity_reminder_enabled";
+const KEY_INACTIVITY_REMINDER_DAYS: &str = "inactivity_reminder_days";
+
+const DEFAULT_UI_THEME: &str = "dark";
+const DEFAULT_UI_ACCENT: &str = "red";
+const DEFAULT_OVERLAY_DENSITY: &str = "detailed";
+const DEFAULT_LOSS_STREAK_ALERT_COUNT: i64 = 3;
+const DEFAULT_INACTIVITY_REMINDER_DAYS: i64 = 3;
 
 const DEFAULT_REGION: &str = "eu";
+
+/// Valeurs par défaut compilées dans le binaire depuis `src-tauri/.env` (voir `build.rs`) —
+/// pratique pour donner l'app à quelqu'un sans lui demander de configurer un ID Discord.
+/// Ce n'est PAS un mécanisme de secret : cette valeur est extractible du binaire compilé
+/// par quiconque le possède (`.env` n'est jamais committé, voir `.gitignore`). Une valeur
+/// enregistrée explicitement par l'utilisateur dans Paramètres prime toujours dessus.
+fn default_discord_client_id() -> Option<&'static str> {
+    option_env!("DISCORD_DEFAULT_CLIENT_ID").filter(|v| !v.is_empty())
+}
+
+/// URL + jeton du relais Cloudflare Worker (voir `src-tauri/proxy/`), compilés depuis
+/// `.env` — permet à l'app de fonctionner sans clé Henrik personnelle en passant par un
+/// serveur qui, lui, détient la vraie clé Henrik. Le jeton n'est PAS la clé Henrik : il
+/// n'autorise qu'à passer par le relais, contrairement à l'ancien mécanisme
+/// `HENRIK_DEFAULT_API_KEY` (abandonné) qui compilait la vraie clé dans le binaire — voir
+/// `client.rs::HenrikAuth` pour le détail des deux modes Direct/Proxy.
+fn default_proxy_access() -> Option<HenrikAuth> {
+    let base_url = option_env!("HENRIK_PROXY_URL").filter(|v| !v.is_empty())?;
+    let token = option_env!("HENRIK_PROXY_TOKEN").filter(|v| !v.is_empty())?;
+    Some(HenrikAuth::Proxy {
+        base_url: base_url.to_string(),
+        token: token.to_string(),
+    })
+}
 
 /// Préférences exposées au frontend. `henrik_api_key_set` indique juste si une clé est
 /// enregistrée ; `henrik_api_key` porte la valeur pour pré-remplir le champ de l'écran
@@ -39,6 +85,27 @@ pub struct AppSettings {
     /// `status_watcher.rs`) — désactivé par défaut, opt-in car c'est le seul appel réseau
     /// périodique qui tourne même quand l'utilisateur ne regarde pas l'app.
     pub status_watcher_enabled: bool,
+    /// Backlog #50 : dashboard santé 100% local (taux de cache hit, erreurs API des 7
+    /// derniers jours) — désactivé par défaut, opt-in car il ajoute une écriture SQLite à
+    /// chaque appel Henrik pour accumuler les métriques (voir `api::henrik::endpoints`).
+    /// Jamais transmis nulle part, aucune télémétrie externe.
+    pub usage_metrics_enabled: bool,
+    /// Backlog #33 : `"dark"` (défaut, identité HUD d'origine) ou `"light"`.
+    pub ui_theme: String,
+    /// Backlog #38 : `"red"` (défaut, identité HUD d'origine) | `"cyan"` | `"violet"` |
+    /// `"amber"` — voir les variables CSS `--color-accent*` dans `index.css`.
+    pub ui_accent: String,
+    /// Backlog #31 : densité d'info affichée dans l'overlay en jeu — `"compact"` (juste le
+    /// badge de rank) ou `"detailed"` (défaut, ajoute le nom du rank + le RR).
+    pub overlay_density: String,
+    /// Backlog #24 : notifie quand un joueur "à soi" (`tracked_players.is_self`) enchaîne
+    /// `loss_streak_alert_count` défaites d'affilée. Désactivé par défaut.
+    pub loss_streak_alert_enabled: bool,
+    pub loss_streak_alert_count: i64,
+    /// Backlog #32 : rappel doux "tu n'as pas joué depuis X jours" (opt-in, jamais agressif)
+    /// — voir `status_watcher.rs` pour le pattern de tâche de fond réutilisé.
+    pub inactivity_reminder_enabled: bool,
+    pub inactivity_reminder_days: i64,
 }
 
 impl fmt::Debug for AppSettings {
@@ -58,6 +125,17 @@ impl fmt::Debug for AppSettings {
                 &self.discord_rpc_client_id.as_ref().map(|_| "<masqué>"),
             )
             .field("status_watcher_enabled", &self.status_watcher_enabled)
+            .field("usage_metrics_enabled", &self.usage_metrics_enabled)
+            .field("ui_theme", &self.ui_theme)
+            .field("ui_accent", &self.ui_accent)
+            .field("overlay_density", &self.overlay_density)
+            .field("loss_streak_alert_enabled", &self.loss_streak_alert_enabled)
+            .field("loss_streak_alert_count", &self.loss_streak_alert_count)
+            .field(
+                "inactivity_reminder_enabled",
+                &self.inactivity_reminder_enabled,
+            )
+            .field("inactivity_reminder_days", &self.inactivity_reminder_days)
             .finish()
     }
 }
@@ -80,26 +158,102 @@ fn set_raw(conn: &Connection, key: &str, value: &str) -> rusqlite::Result<()> {
     Ok(())
 }
 
+/// Lit une valeur potentiellement chiffrée via DPAPI (préfixe `dpapi:`). Une valeur sans ce
+/// préfixe est une clé enregistrée par une version antérieure de l'app (en clair) : elle est
+/// renvoyée telle quelle et transparemment re-chiffrée pour la prochaine lecture, sans que
+/// l'utilisateur n'ait à ressaisir sa clé API.
+fn get_encrypted(conn: &Connection, key: &str) -> rusqlite::Result<Option<String>> {
+    let Some(raw) = get_raw(conn, key)? else {
+        return Ok(None);
+    };
+    if raw.is_empty() {
+        return Ok(None);
+    }
+    match raw.strip_prefix(DPAPI_PREFIX) {
+        Some(encoded) => match dpapi::unprotect(encoded) {
+            Ok(plain) => Ok(Some(plain)),
+            Err(e) => {
+                // Un blob DPAPI illisible (profil Windows recréé, compte migré...) ne doit
+                // jamais faire planter le chargement des settings — on retombe sur "pas de
+                // clé configurée", l'utilisateur la ressaisit dans Paramètres.
+                crate::applog!("[settings] déchiffrement DPAPI échoué pour {key}: {e}");
+                Ok(None)
+            }
+        },
+        None => {
+            if let Ok(encrypted) = dpapi::protect(&raw) {
+                let _ = set_raw(conn, key, &format!("{DPAPI_PREFIX}{encrypted}"));
+            }
+            Ok(Some(raw))
+        }
+    }
+}
+
+/// Chiffre `value` via DPAPI avant écriture — jamais de secret en clair sur disque.
+fn set_encrypted(conn: &Connection, key: &str, value: &str) -> rusqlite::Result<()> {
+    match dpapi::protect(value) {
+        Ok(encrypted) => set_raw(conn, key, &format!("{DPAPI_PREFIX}{encrypted}")),
+        Err(e) => {
+            crate::applog!("[settings] chiffrement DPAPI échoué pour {key}, stockage en clair en secours: {e}");
+            set_raw(conn, key, value)
+        }
+    }
+}
+
 pub fn load_settings(conn: &Connection) -> rusqlite::Result<AppSettings> {
-    let henrik_api_key = get_raw(conn, KEY_HENRIK_API_KEY)?.filter(|v| !v.is_empty());
+    // `henrik_api_key` ne porte QUE la clé perso de l'utilisateur (jamais un jeton de
+    // proxy) : c'est la valeur pré-remplie dans le champ éditable de Paramètres, et il ne
+    // faut surtout pas qu'un utilisateur puisse "enregistrer" par erreur le jeton de proxy
+    // comme s'il s'agissait de sa propre clé Henrik.
+    let henrik_api_key = get_encrypted(conn, KEY_HENRIK_API_KEY)?.filter(|v| !v.is_empty());
+    // En revanche, `henrik_api_key_set` reflète "l'app peut-elle appeler Henrik maintenant"
+    // — vrai aussi via le relais proxy compilé, pour ne pas bloquer inutilement la
+    // recherche sur un build donné à quelqu'un sans clé perso (voir Search.tsx).
+    let henrik_api_key_set = henrik_api_key.is_some() || default_proxy_access().is_some();
     let default_region =
         get_raw(conn, KEY_DEFAULT_REGION)?.unwrap_or_else(|| DEFAULT_REGION.to_string());
     let auto_update_enabled = get_raw(conn, KEY_AUTO_UPDATE)?
         .map(|v| v == "true")
-        .unwrap_or(false);
+        .unwrap_or(true);
     let riot_local_disabled = get_raw(conn, KEY_LOOKUP_ONLY_MODE)?
         .map(|v| v == "true")
         .unwrap_or(false); // V2 livrée : détection activée par défaut (best-effort).
+    let discord_rpc_client_id = get_raw(conn, KEY_DISCORD_RPC_CLIENT_ID)?
+        .filter(|v| !v.is_empty())
+        .or_else(|| default_discord_client_id().map(String::from));
     let discord_rpc_enabled = get_raw(conn, KEY_DISCORD_RPC_ENABLED)?
         .map(|v| v == "true")
-        .unwrap_or(false);
-    let discord_rpc_client_id = get_raw(conn, KEY_DISCORD_RPC_CLIENT_ID)?.filter(|v| !v.is_empty());
+        // Pas de préférence explicite enregistrée : activé par défaut si un client_id est
+        // disponible (utilisateur ou valeur compilée), pour que la RPC marche "out of the
+        // box" sur un build donné à quelqu'un.
+        .unwrap_or_else(|| discord_rpc_client_id.is_some());
     let status_watcher_enabled = get_raw(conn, KEY_STATUS_WATCHER_ENABLED)?
         .map(|v| v == "true")
         .unwrap_or(false);
+    let usage_metrics_enabled = get_raw(conn, KEY_USAGE_METRICS_ENABLED)?
+        .map(|v| v == "true")
+        .unwrap_or(false);
+    let ui_theme =
+        get_raw(conn, KEY_UI_THEME)?.unwrap_or_else(|| DEFAULT_UI_THEME.to_string());
+    let ui_accent =
+        get_raw(conn, KEY_UI_ACCENT)?.unwrap_or_else(|| DEFAULT_UI_ACCENT.to_string());
+    let overlay_density = get_raw(conn, KEY_OVERLAY_DENSITY)?
+        .unwrap_or_else(|| DEFAULT_OVERLAY_DENSITY.to_string());
+    let loss_streak_alert_enabled = get_raw(conn, KEY_LOSS_STREAK_ALERT_ENABLED)?
+        .map(|v| v == "true")
+        .unwrap_or(false);
+    let loss_streak_alert_count = get_raw(conn, KEY_LOSS_STREAK_ALERT_COUNT)?
+        .and_then(|v| v.parse::<i64>().ok())
+        .unwrap_or(DEFAULT_LOSS_STREAK_ALERT_COUNT);
+    let inactivity_reminder_enabled = get_raw(conn, KEY_INACTIVITY_REMINDER_ENABLED)?
+        .map(|v| v == "true")
+        .unwrap_or(false);
+    let inactivity_reminder_days = get_raw(conn, KEY_INACTIVITY_REMINDER_DAYS)?
+        .and_then(|v| v.parse::<i64>().ok())
+        .unwrap_or(DEFAULT_INACTIVITY_REMINDER_DAYS);
 
     Ok(AppSettings {
-        henrik_api_key_set: henrik_api_key.is_some(),
+        henrik_api_key_set,
         henrik_api_key,
         default_region,
         auto_update_enabled,
@@ -107,18 +261,30 @@ pub fn load_settings(conn: &Connection) -> rusqlite::Result<AppSettings> {
         discord_rpc_enabled,
         discord_rpc_client_id,
         status_watcher_enabled,
+        usage_metrics_enabled,
+        ui_theme,
+        ui_accent,
+        overlay_density,
+        loss_streak_alert_enabled,
+        loss_streak_alert_count,
+        inactivity_reminder_enabled,
+        inactivity_reminder_days,
     })
 }
 
 pub fn set_henrik_api_key(conn: &Connection, api_key: &str) -> rusqlite::Result<()> {
-    set_raw(conn, KEY_HENRIK_API_KEY, api_key)
+    set_encrypted(conn, KEY_HENRIK_API_KEY, api_key)
 }
 
-pub fn get_henrik_api_key(conn: &Connection) -> rusqlite::Result<Option<String>> {
-    get_raw(conn, KEY_HENRIK_API_KEY)?
-        .filter(|v| !v.is_empty())
-        .map(Ok)
-        .transpose()
+/// Justificatif à utiliser pour le prochain appel Henrik : la clé perso de l'utilisateur si
+/// elle est enregistrée (mode `Direct`, va droit à `api.henrikdev.xyz`), sinon le relais
+/// proxy compilé si disponible (mode `Proxy`, voir `default_proxy_access`), sinon rien
+/// (l'appelant renvoie `HenrikError::MissingApiKey`).
+pub fn get_henrik_api_key(conn: &Connection) -> rusqlite::Result<Option<HenrikAuth>> {
+    if let Some(key) = get_encrypted(conn, KEY_HENRIK_API_KEY)?.filter(|v| !v.is_empty()) {
+        return Ok(Some(HenrikAuth::Direct(key)));
+    }
+    Ok(default_proxy_access())
 }
 
 pub fn set_default_region(conn: &Connection, region: &str) -> rusqlite::Result<()> {
@@ -174,6 +340,65 @@ pub fn set_status_watcher_enabled(conn: &Connection, enabled: bool) -> rusqlite:
     )
 }
 
+pub fn set_usage_metrics_enabled(conn: &Connection, enabled: bool) -> rusqlite::Result<()> {
+    set_raw(
+        conn,
+        KEY_USAGE_METRICS_ENABLED,
+        if enabled { "true" } else { "false" },
+    )
+}
+
+pub fn set_ui_theme(conn: &Connection, theme: &str) -> rusqlite::Result<()> {
+    set_raw(conn, KEY_UI_THEME, theme)
+}
+
+pub fn set_ui_accent(conn: &Connection, accent: &str) -> rusqlite::Result<()> {
+    set_raw(conn, KEY_UI_ACCENT, accent)
+}
+
+/// Backlog #31 : `"compact"` | `"detailed"`.
+pub fn set_overlay_density(conn: &Connection, density: &str) -> rusqlite::Result<()> {
+    set_raw(conn, KEY_OVERLAY_DENSITY, density)
+}
+
+/// Backlog #24 : toggle + seuil de l'alerte "N défaites d'affilée".
+pub fn set_loss_streak_alert_enabled(conn: &Connection, enabled: bool) -> rusqlite::Result<()> {
+    set_raw(
+        conn,
+        KEY_LOSS_STREAK_ALERT_ENABLED,
+        if enabled { "true" } else { "false" },
+    )
+}
+
+pub fn set_loss_streak_alert_count(conn: &Connection, count: i64) -> rusqlite::Result<()> {
+    set_raw(conn, KEY_LOSS_STREAK_ALERT_COUNT, &count.max(1).to_string())
+}
+
+/// Backlog #32 : toggle + seuil (en jours) du rappel d'inactivité.
+pub fn set_inactivity_reminder_enabled(conn: &Connection, enabled: bool) -> rusqlite::Result<()> {
+    set_raw(
+        conn,
+        KEY_INACTIVITY_REMINDER_ENABLED,
+        if enabled { "true" } else { "false" },
+    )
+}
+
+pub fn set_inactivity_reminder_days(conn: &Connection, days: i64) -> rusqlite::Result<()> {
+    set_raw(conn, KEY_INACTIVITY_REMINDER_DAYS, &days.max(1).to_string())
+}
+
+const KEY_LAST_INACTIVITY_REMINDER_SENT: &str = "last_inactivity_reminder_sent_at";
+
+/// Horodatage (unix seconds) du dernier rappel d'inactivité envoyé — évite de renotifier
+/// à chaque tick de `inactivity_reminder.rs` tant qu'un jour ne s'est pas écoulé.
+pub fn get_last_inactivity_reminder_sent(conn: &Connection) -> rusqlite::Result<Option<i64>> {
+    Ok(get_raw(conn, KEY_LAST_INACTIVITY_REMINDER_SENT)?.and_then(|v| v.parse::<i64>().ok()))
+}
+
+pub fn set_last_inactivity_reminder_sent(conn: &Connection, ts: i64) -> rusqlite::Result<()> {
+    set_raw(conn, KEY_LAST_INACTIVITY_REMINDER_SENT, &ts.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -188,15 +413,20 @@ mod tests {
     fn defaults_when_nothing_saved() {
         let conn = memory_conn();
         let settings = load_settings(&conn).unwrap();
-        assert!(!settings.henrik_api_key_set);
+        // Ces champs retombent sur les valeurs compilées depuis `.env` (voir build.rs) si un
+        // `.env` local en fournit — non déterministe entre postes de dev, donc on compare à
+        // la fonction plutôt qu'à une constante en dur.
+        assert_eq!(settings.henrik_api_key_set, default_proxy_access().is_some());
+        // Le champ éditable ne reflète JAMAIS le relais proxy, seulement une clé perso.
+        assert!(settings.henrik_api_key.is_none());
+        assert_eq!(settings.discord_rpc_client_id.is_some(), default_discord_client_id().is_some());
+        assert_eq!(settings.discord_rpc_enabled, default_discord_client_id().is_some());
         assert_eq!(settings.default_region, DEFAULT_REGION);
-        assert!(!settings.auto_update_enabled);
+        // Opt-out par défaut : sinon les mises à jour n'atteignent que les utilisateurs qui
+        // pensent à aller l'activer dans Paramètres.
+        assert!(settings.auto_update_enabled);
         // V2 livrée : détection activée par défaut (voir doc du champ).
         assert!(!settings.riot_local_disabled);
-        // V3 : tout ce qui ajoute un appel réseau périodique ou une connexion IPC externe
-        // est opt-in par défaut.
-        assert!(!settings.discord_rpc_enabled);
-        assert!(settings.discord_rpc_client_id.is_none());
         assert!(!settings.status_watcher_enabled);
     }
 
@@ -215,10 +445,13 @@ mod tests {
     }
 
     #[test]
-    fn empty_discord_rpc_client_id_is_treated_as_unset() {
+    fn empty_discord_rpc_client_id_falls_back_to_compiled_default() {
         let conn = memory_conn();
         set_discord_rpc_client_id(&conn, "").unwrap();
-        assert!(load_settings(&conn).unwrap().discord_rpc_client_id.is_none());
+        assert_eq!(
+            load_settings(&conn).unwrap().discord_rpc_client_id.as_deref(),
+            default_discord_client_id()
+        );
     }
 
     #[test]
@@ -236,7 +469,10 @@ mod tests {
         let settings = load_settings(&conn).unwrap();
         assert!(settings.henrik_api_key_set);
         assert_eq!(settings.henrik_api_key.as_deref(), Some("my-secret-key"));
-        assert_eq!(get_henrik_api_key(&conn).unwrap().as_deref(), Some("my-secret-key"));
+        assert_eq!(
+            get_henrik_api_key(&conn).unwrap(),
+            Some(HenrikAuth::Direct("my-secret-key".to_string()))
+        );
 
         // Le Debug custom ne doit jamais faire fuiter la clé en clair dans les logs.
         let debug_output = format!("{:?}", settings);
@@ -245,13 +481,38 @@ mod tests {
     }
 
     #[test]
-    fn empty_api_key_is_treated_as_unset() {
+    fn legacy_plaintext_api_key_is_migrated_to_dpapi_on_read() {
+        let conn = memory_conn();
+        // Simule une clé enregistrée par une version antérieure de l'app, avant l'ajout du
+        // chiffrement au repos (voir dpapi.rs) — stockée en clair dans la table settings.
+        set_raw(&conn, KEY_HENRIK_API_KEY, "legacy-plaintext-key").unwrap();
+
+        let settings = load_settings(&conn).unwrap();
+        assert_eq!(settings.henrik_api_key.as_deref(), Some("legacy-plaintext-key"));
+
+        // La valeur brute en base doit maintenant être chiffrée, plus jamais en clair.
+        let raw_after_read = get_raw(&conn, KEY_HENRIK_API_KEY).unwrap().unwrap();
+        assert!(raw_after_read.starts_with(DPAPI_PREFIX));
+        assert!(!raw_after_read.contains("legacy-plaintext-key"));
+
+        // Et une relecture ultérieure déchiffre correctement la valeur migrée.
+        assert_eq!(
+            get_henrik_api_key(&conn).unwrap(),
+            Some(HenrikAuth::Direct("legacy-plaintext-key".to_string()))
+        );
+    }
+
+    #[test]
+    fn empty_api_key_falls_back_to_compiled_proxy_or_none() {
         let conn = memory_conn();
         set_henrik_api_key(&conn, "").unwrap();
 
         let settings = load_settings(&conn).unwrap();
-        assert!(!settings.henrik_api_key_set);
+        assert_eq!(settings.henrik_api_key_set, default_proxy_access().is_some());
+        // Toujours vide : la clé perso vide ne doit jamais laisser fuiter le jeton proxy
+        // dans le champ éditable de Paramètres.
         assert!(settings.henrik_api_key.is_none());
+        assert_eq!(get_henrik_api_key(&conn).unwrap(), default_proxy_access());
     }
 
     #[test]
@@ -276,5 +537,68 @@ mod tests {
         assert!(settings.auto_update_enabled);
         assert!(settings.riot_local_disabled);
         assert_eq!(settings.default_region, "na");
+    }
+
+    #[test]
+    fn usage_metrics_toggle_round_trip() {
+        let conn = memory_conn();
+        assert!(!load_settings(&conn).unwrap().usage_metrics_enabled);
+
+        set_usage_metrics_enabled(&conn, true).unwrap();
+        assert!(load_settings(&conn).unwrap().usage_metrics_enabled);
+    }
+
+    #[test]
+    fn ui_theme_and_accent_default_then_round_trip() {
+        let conn = memory_conn();
+        let defaults = load_settings(&conn).unwrap();
+        assert_eq!(defaults.ui_theme, "dark");
+        assert_eq!(defaults.ui_accent, "red");
+
+        set_ui_theme(&conn, "light").unwrap();
+        set_ui_accent(&conn, "cyan").unwrap();
+
+        let settings = load_settings(&conn).unwrap();
+        assert_eq!(settings.ui_theme, "light");
+        assert_eq!(settings.ui_accent, "cyan");
+    }
+
+    #[test]
+    fn overlay_density_default_then_round_trip() {
+        let conn = memory_conn();
+        assert_eq!(load_settings(&conn).unwrap().overlay_density, "detailed");
+
+        set_overlay_density(&conn, "compact").unwrap();
+        assert_eq!(load_settings(&conn).unwrap().overlay_density, "compact");
+    }
+
+    #[test]
+    fn loss_streak_alert_defaults_then_round_trip() {
+        let conn = memory_conn();
+        let defaults = load_settings(&conn).unwrap();
+        assert!(!defaults.loss_streak_alert_enabled);
+        assert_eq!(defaults.loss_streak_alert_count, 3);
+
+        set_loss_streak_alert_enabled(&conn, true).unwrap();
+        set_loss_streak_alert_count(&conn, 5).unwrap();
+
+        let settings = load_settings(&conn).unwrap();
+        assert!(settings.loss_streak_alert_enabled);
+        assert_eq!(settings.loss_streak_alert_count, 5);
+    }
+
+    #[test]
+    fn inactivity_reminder_defaults_then_round_trip() {
+        let conn = memory_conn();
+        let defaults = load_settings(&conn).unwrap();
+        assert!(!defaults.inactivity_reminder_enabled);
+        assert_eq!(defaults.inactivity_reminder_days, 3);
+
+        set_inactivity_reminder_enabled(&conn, true).unwrap();
+        set_inactivity_reminder_days(&conn, 7).unwrap();
+
+        let settings = load_settings(&conn).unwrap();
+        assert!(settings.inactivity_reminder_enabled);
+        assert_eq!(settings.inactivity_reminder_days, 7);
     }
 }

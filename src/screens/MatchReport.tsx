@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { SkeletonScreen } from "../components/Skeleton";
 import { Link, useParams } from "react-router-dom";
 
 import { useAccount } from "../hooks/usePlayer";
@@ -33,7 +34,7 @@ export default function MatchReport() {
 
   if (detail.isError) return <ErrorState error={detail.error} />;
   if (detail.isLoading || account.isLoading) {
-    return <p className="text-sm text-lo">Chargement…</p>;
+    return <SkeletonScreen className="p-6" />;
   }
 
   const data = detail.data?.data;
@@ -58,7 +59,7 @@ export default function MatchReport() {
           <button
             type="button"
             onClick={() => setShowRecap(true)}
-            className="btn-clip mt-1 shrink-0 bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#96F0DF]"
+            className="btn-clip mt-1 shrink-0 bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#FF5969]"
           >
             Carte de recap
           </button>

@@ -13,6 +13,50 @@
 @tailwind utilities;
 
 @layer base {
+  /* Backlog #33 (thème clair) + #38 (accent personnalisable) : toutes les couleurs
+     Tailwind du design HUD (base/surface/raised/line/accent/crit/hi/lo, voir
+     tailwind.config.js) sont portées par ces variables CSS plutôt que des hex en dur,
+     pour que `data-theme`/`data-accent` sur `<html>` (posés par App.tsx selon les
+     réglages) les fassent varier sans toucher une seule classe Tailwind dans les
+     composants. `:root` = identité HUD d'origine (dark, accent rouge).
+     Rank colors (badge de rang) ne sont volontairement PAS ici : ce sont les couleurs
+     officielles Riot, invariantes par thème (voir tailwind.config.js `colors.rank`). */
+  :root {
+    --color-base: 11 14 17;
+    --color-surface: 18 22 27;
+    --color-raised: 23 28 34;
+    --color-line: 34 40 47;
+    --color-accent: 255 59 78;
+    --color-accent-dim: 163 51 62;
+    --color-crit: 196 100 110;
+    --color-crit-dim: 140 37 48;
+    --color-hi: 232 236 239;
+    --color-lo: 122 133 144;
+  }
+
+  :root[data-theme="light"] {
+    --color-base: 241 243 245;
+    --color-surface: 255 255 255;
+    --color-raised: 231 235 238;
+    --color-line: 199 207 214;
+    --color-crit: 162 50 65;
+    --color-hi: 16 21 26;
+    --color-lo: 75 85 99;
+  }
+
+  :root[data-accent="cyan"] {
+    --color-accent: 124 232 211;
+    --color-accent-dim: 63 156 141;
+  }
+  :root[data-accent="violet"] {
+    --color-accent: 166 114 224;
+    --color-accent-dim: 110 69 160;
+  }
+  :root[data-accent="amber"] {
+    --color-accent: 212 175 55;
+    --color-accent-dim: 140 114 34;
+  }
+
   html,
   body,
   #root {
@@ -32,7 +76,7 @@
   }
 
   ::selection {
-    background-color: rgba(124, 232, 211, 0.25);
+    background-color: rgb(var(--color-accent) / 0.25);
   }
 
   ::-webkit-scrollbar {
@@ -45,7 +89,7 @@
     background-color: theme("colors.line");
   }
   ::-webkit-scrollbar-thumb:hover {
-    background-color: #2e3640;
+    background-color: rgb(var(--color-lo) / 0.6);
   }
 }
 
@@ -77,7 +121,7 @@
     box-shadow: inset 0 0 0 1px theme("colors.line");
   }
 
-  /* Variante bouton/CTA : fond cyan plein, coin coupé. */
+  /* Variante bouton/CTA : fond rouge plein, coin coupé. */
   .btn-clip {
     clip-path: polygon(
       0 0,
@@ -150,6 +194,38 @@
     transform: translate(0, 0);
   }
 
+  /* Backlog #35 : placeholder de chargement HUD (composant `Skeleton.tsx`) — scanline en
+     boucle plutôt qu'un spinner générique, cohérent avec `.scanline-once` ci-dessous mais
+     répété tant que le chargement dure. */
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background-color: theme("colors.surface");
+    box-shadow: inset 0 0 0 1px theme("colors.line");
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    top: -40%;
+    height: 40%;
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--color-accent) / 0.08),
+      transparent
+    );
+    animation: skeleton-scan 1.6s ease-in-out infinite;
+  }
+  @keyframes skeleton-scan {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(350%);
+    }
+  }
+
   /* Scanline discrète jouée une fois au chargement du dashboard. */
   .scanline-once {
     position: relative;
@@ -164,7 +240,7 @@
     background: linear-gradient(
       to bottom,
       transparent,
-      rgba(124, 232, 211, 0.045),
+      rgb(var(--color-accent) / 0.045),
       transparent
     );
     animation: scanline 900ms ease-out 1 forwards;
@@ -181,10 +257,65 @@
     }
   }
 
+  /* Backlog #34 : entrée animée entre écrans — wipe clip-path cohérent avec l'identité
+     "coin coupé" du design HUD (voir `.panel-clip`), rejouée à chaque changement de route
+     via la prop `key` sur le wrapper dans App.tsx (voir `RouteTransition`). */
+  .route-enter {
+    animation: route-enter 220ms ease-out both;
+  }
+  @keyframes route-enter {
+    from {
+      opacity: 0;
+      clip-path: inset(0 0 0 100%);
+    }
+    to {
+      opacity: 1;
+      clip-path: inset(0 0 0 0%);
+    }
+  }
+
+  /* Backlog #36 : pulse sur le badge de rang à la détection d'une promotion/dérank (voir
+     `RankBadge.tsx` prop `pulse`) — anneau qui s'étend puis s'efface, couleur alignée sur
+     les mêmes conventions que le reste de l'app (victoires/promotion = accent,
+     défaites/dérank = crit, voir p.ex. le récap de session dans Home.tsx). */
+  .rank-pulse-up {
+    animation: rank-pulse-up 900ms ease-out 3;
+  }
+  .rank-pulse-down {
+    animation: rank-pulse-down 900ms ease-out 3;
+  }
+  @keyframes rank-pulse-up {
+    from {
+      box-shadow: 0 0 0 0 rgb(var(--color-accent) / 0.55);
+    }
+    to {
+      box-shadow: 0 0 0 12px rgb(var(--color-accent) / 0);
+    }
+  }
+  @keyframes rank-pulse-down {
+    from {
+      box-shadow: 0 0 0 0 rgb(var(--color-crit) / 0.55);
+    }
+    to {
+      box-shadow: 0 0 0 12px rgb(var(--color-crit) / 0);
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .scanline-once::after {
       animation: none;
       opacity: 0;
+    }
+    .route-enter {
+      animation: none;
+    }
+    .skeleton::after {
+      animation: none;
+      opacity: 0;
+    }
+    .rank-pulse-up,
+    .rank-pulse-down {
+      animation: none;
     }
     .target-lock::before,
     .target-lock::after {

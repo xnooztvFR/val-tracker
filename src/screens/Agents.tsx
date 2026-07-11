@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Skeleton } from "../components/Skeleton";
 import { useParams } from "react-router-dom";
 
 import { useAccount } from "../hooks/usePlayer";
@@ -6,9 +7,11 @@ import { useMatches } from "../hooks/useMatches";
 import ErrorState from "../components/ErrorState";
 import StaleDataBanner from "../components/StaleDataBanner";
 import Panel from "../components/Panel";
+import EmptyState from "../components/EmptyState";
 import SampleSizeSwitch, { type SampleSize } from "../components/SampleSizeSwitch";
 import type { MatchEntry } from "../lib/tauriApi";
 import { agentIconUrl, formatKdRatio, formatPercent } from "../lib/format";
+import { AGENT_ROLE_ORDER, agentRole, agentRoleLabel, type AgentRole } from "../lib/agentRoles";
 
 interface AgentStats {
   id: string;
@@ -68,6 +71,32 @@ function computeAgentStats(matches: MatchEntry[], puuid: string): AgentStats[] {
   return [...byAgent.values()].sort((a, b) => b.matches - a.matches);
 }
 
+interface RoleStats {
+  role: AgentRole;
+  matches: number;
+  wins: number;
+  kills: number;
+  deaths: number;
+}
+
+/** Backlog #17 : regroupe les stats déjà agrégées par agent (computeAgentStats) par rôle
+ * (Duelist/Controller/Initiator/Sentinel) — pas de nouvel appel réseau, juste une deuxième
+ * passe sur des données déjà en mémoire. */
+function computeRoleStats(rows: AgentStats[]): RoleStats[] {
+  const byRole = new Map<AgentRole, RoleStats>();
+  for (const row of rows) {
+    const role = agentRole(row.name);
+    if (!role) continue;
+    const entry = byRole.get(role) ?? { role, matches: 0, wins: 0, kills: 0, deaths: 0 };
+    entry.matches += row.matches;
+    entry.wins += row.wins;
+    entry.kills += row.kills;
+    entry.deaths += row.deaths;
+    byRole.set(role, entry);
+  }
+  return AGENT_ROLE_ORDER.map((role) => byRole.get(role)).filter((r): r is RoleStats => Boolean(r));
+}
+
 export default function Agents() {
   const { region, name, tag } = useParams<{ region: string; name: string; tag: string }>();
   const [sampleSize, setSampleSize] = useState<SampleSize>(20);
@@ -80,6 +109,7 @@ export default function Agents() {
     () => (matches.data && puuid ? computeAgentStats(matches.data.data, puuid) : []),
     [matches.data, puuid],
   );
+  const roleRows = useMemo(() => computeRoleStats(rows), [rows]);
 
   return (
     <div className="space-y-4">
@@ -90,7 +120,23 @@ export default function Agents() {
 
       {matches.isError && <ErrorState error={matches.error} />}
       {matches.data?.stale && <StaleDataBanner cachedAt={matches.data.cached_at} />}
-      {matches.isLoading && <p className="text-sm text-lo">Chargement…</p>}
+      {matches.isLoading && <Skeleton className="h-32 w-full" />}
+
+      {roleRows.length > 0 && (
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          {roleRows.map((role) => (
+            <Panel key={role.role} className="p-3">
+              <p className="hud-label text-[10px]">{agentRoleLabel(role.role)}</p>
+              <p className="stat-value mt-1 text-lg font-bold text-hi">
+                {formatPercent((role.wins / role.matches) * 100)}
+              </p>
+              <p className="stat-value text-[11px] text-lo">
+                {role.matches} matchs · K/D {formatKdRatio(role.kills, role.deaths)}
+              </p>
+            </Panel>
+          ))}
+        </div>
+      )}
 
       {rows.length > 0 && (
         <Panel className="overflow-x-auto">
@@ -150,7 +196,7 @@ export default function Agents() {
       )}
 
       {matches.data && rows.length === 0 && (
-        <p className="text-sm text-lo">Aucune donnée d'agent sur cet échantillon.</p>
+        <EmptyState icon="radar" title="Aucune donnée d'agent" detail="Aucun match sur cet échantillon." />
       )}
     </div>
   );

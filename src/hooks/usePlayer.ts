@@ -54,3 +54,12 @@ export function useDuoStats(puuid: string | undefined, minMatches = 2) {
     enabled: Boolean(puuid),
   });
 }
+
+/** Backlog #23 : extension "squad" (trios) de useDuoStats. */
+export function useSquadStats(puuid: string | undefined, minMatches = 2) {
+  return useQuery({
+    queryKey: ["squad_stats", puuid, minMatches],
+    queryFn: () => tauriApi.listSquadStats(puuid!, minMatches),
+    enabled: Boolean(puuid),
+  });
+}

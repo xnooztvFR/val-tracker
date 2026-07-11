@@ -1,8 +1,10 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { Skeleton } from "../components/Skeleton";
 
 import { useVlrEventMatches } from "../hooks/useVlr";
 import ErrorState from "../components/ErrorState";
 import Panel from "../components/Panel";
+import EmptyState from "../components/EmptyState";
 
 export default function VlrEventDetail() {
   const { eventId } = useParams<{ eventId: string }>();
@@ -19,8 +21,8 @@ export default function VlrEventDetail() {
       <h1 className="hud-label text-sm">{list[0]?.event ?? "Matchs de l'événement"}</h1>
 
       {matches.isError && <ErrorState error={matches.error} />}
-      {matches.isLoading && <p className="text-sm text-lo">Chargement…</p>}
-      {matches.data && list.length === 0 && <p className="text-sm text-lo">Aucun match.</p>}
+      {matches.isLoading && <Skeleton className="h-32 w-full" />}
+      {matches.data && list.length === 0 && <EmptyState icon="match" title="Aucun match" />}
 
       <div className="space-y-2">
         {list.map((match) => (

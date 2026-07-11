@@ -10,11 +10,19 @@ src-tauri/target/
 src-tauri/gen/
 src-tauri/Cargo.lock.bak
 
-# Config locale / secrets — la clé API Henrik ne vit que dans le dossier de données
-# utilisateur Tauri (app_data_dir), jamais dans le repo.
+# Relais Cloudflare Worker (proxy) — état/cache local de la CLI wrangler, jamais committé
+.wrangler/
+src-tauri/proxy/.wrangler/
+
+# Config locale / secrets
 .env
 .env.*
 !.env.example
+
+# Notes de travail internes (pas destinées au dépôt public)
+CLAUDE.md
+TODO.md
+prompt-refonte-design.md
 
 # Éditeurs / OS
 .vscode/*

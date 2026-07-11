@@ -1,0 +1,8 @@
+name = "val-tracker-henrik-proxy"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+# Secrets à définir via `wrangler secret put <NOM>` — jamais dans ce fichier ni committés :
+#   HENRIK_API_KEY  — la vraie clé API Henrik Dev (voir README.md dans ce dossier)
+#   PROXY_TOKEN     — jeton d'accès au relais, distinct de la clé Henrik (celui qui finit
+#                     compilé dans le binaire de l'app via HENRIK_PROXY_TOKEN dans .env)

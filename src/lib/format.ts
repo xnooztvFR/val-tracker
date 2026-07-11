@@ -3,6 +3,8 @@
 // 9-11 Silver, 12-14 Gold, 15-17 Platinum, 18-20 Diamond, 21-23 Ascendant,
 // 24-26 Immortal, 27 Radiant.
 
+import type { MatchEntry } from "./tauriApi";
+
 export interface RankInfo {
   name: string;
   colorClass: string;
@@ -60,6 +62,63 @@ const RANK_GLOW_COLORS: Array<[max: number, hex: string]> = [
   [26, "#c23b6c"],
   [27, "#f4e285"],
 ];
+
+/** Backlog #13 : libellé complet (avec sous-rang) par tier Henrik, pour le sélecteur
+ * d'objectif de progression — plus précis que les buckets de `RANK_NAMES` ci-dessus. */
+export const FULL_TIER_LABELS: Array<{ tier: number; label: string }> = [
+  { tier: 3, label: "Fer 1" },
+  { tier: 4, label: "Fer 2" },
+  { tier: 5, label: "Fer 3" },
+  { tier: 6, label: "Bronze 1" },
+  { tier: 7, label: "Bronze 2" },
+  { tier: 8, label: "Bronze 3" },
+  { tier: 9, label: "Argent 1" },
+  { tier: 10, label: "Argent 2" },
+  { tier: 11, label: "Argent 3" },
+  { tier: 12, label: "Or 1" },
+  { tier: 13, label: "Or 2" },
+  { tier: 14, label: "Or 3" },
+  { tier: 15, label: "Platine 1" },
+  { tier: 16, label: "Platine 2" },
+  { tier: 17, label: "Platine 3" },
+  { tier: 18, label: "Diamant 1" },
+  { tier: 19, label: "Diamant 2" },
+  { tier: 20, label: "Diamant 3" },
+  { tier: 21, label: "Ascendant 1" },
+  { tier: 22, label: "Ascendant 2" },
+  { tier: 23, label: "Ascendant 3" },
+  { tier: 24, label: "Immortel 1" },
+  { tier: 25, label: "Immortel 2" },
+  { tier: 26, label: "Immortel 3" },
+  { tier: 27, label: "Radiant" },
+];
+
+export interface GoalProgress {
+  percent: number;
+  reached: boolean;
+}
+
+/** Backlog #13 : progression approximative vers un objectif de rank — à tier égal, se base
+ * sur le RR courant vs le RR cible ; sinon sur la position relative entre les deux tiers
+ * (chaque palier de rang compte pour un pas égal, faute de barème RR officiel entre rangs). */
+export function computeGoalProgress(
+  currentTier: number,
+  currentRr: number,
+  targetTier: number,
+  targetRr: number | null,
+): GoalProgress {
+  const effectiveTargetRr = targetRr ?? 0;
+  if (currentTier > targetTier || (currentTier === targetTier && currentRr >= effectiveTargetRr)) {
+    return { percent: 100, reached: true };
+  }
+  if (currentTier === targetTier) {
+    return { percent: Math.max(0, Math.min(100, (currentRr / (targetRr ?? 100)) * 100)), reached: false };
+  }
+  if (targetTier <= 0) {
+    return { percent: 0, reached: false };
+  }
+  return { percent: Math.max(0, Math.min(100, (currentTier / targetTier) * 100)), reached: false };
+}
 
 /** Couleur brute (hex) du tier, pour les effets de lueur (box-shadow inline) derrière le
  * badge de rang — Tailwind ne peut pas générer de classe dynamique pour ça. */
@@ -134,4 +193,57 @@ export function splitRiotId(input: string): { name: string; tag: string } | null
   const idx = trimmed.lastIndexOf("#");
   if (idx <= 0 || idx === trimmed.length - 1) return null;
   return { name: trimmed.slice(0, idx), tag: trimmed.slice(idx + 1) };
+}
+
+const SESSION_GAP_MS = 30 * 60 * 1000;
+
+export interface MatchSession {
+  matches: MatchEntry[];
+  startedAt: string | null;
+  wins: number;
+  losses: number;
+}
+
+/** Backlog #14 : regroupe les matchs (triés du plus récent au plus ancien, comme renvoyé
+ * par Henrik) en sessions de jeu — un écart de plus de 30 min entre deux matchs
+ * consécutifs marque le début d'une nouvelle session. */
+export function groupMatchesIntoSessions(matches: MatchEntry[], puuid: string): MatchSession[] {
+  const sessions: MatchSession[] = [];
+  let current: MatchSession | null = null;
+  let previousTimestamp: number | null = null;
+
+  for (const match of matches) {
+    const startedAt = match.metadata.started_at;
+    const timestamp = startedAt ? new Date(startedAt).getTime() : null;
+    const validTimestamp = timestamp !== null && !Number.isNaN(timestamp) ? timestamp : null;
+    const gapExceeded =
+      previousTimestamp !== null &&
+      validTimestamp !== null &&
+      previousTimestamp - validTimestamp > SESSION_GAP_MS;
+
+    if (!current || gapExceeded) {
+      current = { matches: [], startedAt, wins: 0, losses: 0 };
+      sessions.push(current);
+    }
+
+    current.matches.push(match);
+    const player = match.players.find((p) => p.puuid === puuid);
+    const team = match.teams.find((t) => t.team_id === player?.team_id);
+    if (team?.won === true) current.wins += 1;
+    else if (team?.won === false) current.losses += 1;
+
+    if (validTimestamp !== null) previousTimestamp = validTimestamp;
+  }
+
+  return sessions;
+}
+
+/** "Session du 10/07" — pour l'en-tête de groupe dans MatchHistory.tsx. */
+export function formatSessionHeader(iso: string | null): string {
+  if (!iso) return "Session";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "Session";
+  const day = date.getDate().toString().padStart(2, "0");
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  return `Session du ${day}/${month}`;
 }

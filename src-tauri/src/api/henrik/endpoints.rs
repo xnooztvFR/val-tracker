@@ -12,11 +12,32 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use tokio::sync::Mutex;
 
-use super::client::HenrikClient;
+use super::client::{HenrikAuth, HenrikClient};
 use super::types::{
     AccountData, EsportsScheduleEntry, HenrikEnvelope, LeaderboardData, MatchDetailData,
-    MatchEntry, MmrData, MmrHistoryData, QueueStatusEntry, StatusData,
+    MatchEntry, MatchMetadata, MatchPlayer, MatchTeam, MmrData, MmrHistoryAccount,
+    MmrHistoryData, MmrHistoryEntry, PlayerStats, QueueStatusEntry, StatusData, StoredMatch,
+    StoredMmrEntry, TeamRounds,
 };
+
+/// Masque les segments de type UUID (puuid, match_id...) d'un chemin d'API avant de
+/// l'écrire dans les logs — un puuid est une donnée personnelle, pas juste un détail de
+/// debug.
+fn redact_ids(path: &str) -> String {
+    path.split('/')
+        .map(|segment| if is_uuid_like(segment) { "<id>" } else { segment })
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
+fn is_uuid_like(segment: &str) -> bool {
+    let bytes = segment.as_bytes();
+    bytes.len() == 36
+        && bytes.iter().enumerate().all(|(i, b)| match i {
+            8 | 13 | 18 | 23 => *b == b'-',
+            _ => b.is_ascii_hexdigit(),
+        })
+}
 use super::{
     cache, HenrikError, TtlSeconds, TTL_ACCOUNT, TTL_CROSSHAIR, TTL_ESPORTS, TTL_LEADERBOARD,
     TTL_MATCHES, TTL_MATCH_DETAIL, TTL_MMR, TTL_MMR_HISTORY, TTL_STATUS,
@@ -35,10 +56,22 @@ pub struct Fetched<T> {
     pub cached_at: Option<i64>,
 }
 
+/// Backlog #50 : accumule un évènement de métrique d'usage local si l'utilisateur a
+/// activé `AppSettings::usage_metrics_enabled` — no-op sinon (défaut), pour ne pas payer
+/// une écriture SQLite à chaque appel Henrik quand personne ne regarde le dashboard.
+fn record_usage_if_enabled(conn: &Connection, kind: crate::db::UsageEventKind) {
+    let enabled = crate::settings::load_settings(conn)
+        .map(|s| s.usage_metrics_enabled)
+        .unwrap_or(false);
+    if enabled {
+        let _ = crate::db::record_usage_event(conn, kind);
+    }
+}
+
 pub(crate) async fn fetch_with_cache<T: DeserializeOwned>(
     db: &Mutex<Connection>,
     client: &HenrikClient,
-    api_key: &str,
+    api_key: &HenrikAuth,
     path: &str,
     ttl: TtlSeconds,
     force: bool,
@@ -46,7 +79,11 @@ pub(crate) async fn fetch_with_cache<T: DeserializeOwned>(
     if !force {
         let cached = {
             let conn = db.lock().await;
-            cache::get_fresh(&conn, path)?
+            let cached = cache::get_fresh(&conn, path)?;
+            if cached.is_some() {
+                record_usage_if_enabled(&conn, crate::db::UsageEventKind::CacheHit);
+            }
+            cached
         };
 
         if let Some((payload, expires_at)) = cached {
@@ -70,14 +107,20 @@ pub(crate) async fn fetch_with_cache<T: DeserializeOwned>(
             let envelope: HenrikEnvelope<T> = match serde_json::from_str(&body) {
                 Ok(v) => v,
                 Err(e) => {
-                    let snippet: String = body.chars().take(800).collect();
-                    eprintln!("[henrik] parse échoué pour {path}: {e}\n[henrik] corps (800 premiers caractères): {snippet}");
+                    let safe_path = redact_ids(path);
+                    if cfg!(debug_assertions) {
+                        let snippet: String = body.chars().take(800).collect();
+                        crate::applog!("[henrik] parse échoué pour {safe_path}: {e}\n[henrik] corps (800 premiers caractères): {snippet}");
+                    } else {
+                        crate::applog!("[henrik] parse échoué pour {safe_path}: {e}");
+                    }
                     return Err(HenrikError::Serde(e));
                 }
             };
             let fetched_at = {
                 let conn = db.lock().await;
                 cache::set(&conn, path, &body, ttl)?;
+                record_usage_if_enabled(&conn, crate::db::UsageEventKind::NetworkFetch);
                 chrono::Utc::now().timestamp()
             };
             Ok(Fetched {
@@ -92,6 +135,7 @@ pub(crate) async fn fetch_with_cache<T: DeserializeOwned>(
         Err(err) => {
             let stale = {
                 let conn = db.lock().await;
+                record_usage_if_enabled(&conn, crate::db::UsageEventKind::ApiError);
                 cache::get_stale(&conn, path)?
             };
             match stale {
@@ -117,7 +161,7 @@ pub(crate) fn encode(segment: &str) -> String {
 pub async fn get_account(
     db: &Mutex<Connection>,
     client: &HenrikClient,
-    api_key: Option<&str>,
+    api_key: Option<&HenrikAuth>,
     name: &str,
     tag: &str,
     force: bool,
@@ -127,10 +171,25 @@ pub async fn get_account(
     fetch_with_cache(db, client, api_key, &path, TTL_ACCOUNT, force).await
 }
 
+/// Variante by-puuid du compte, utilisée pour résoudre nom/tag/région à partir du PUUID
+/// local détecté via l'API Riot locale (V4, liaison "Mon compte" sans RSO — voir
+/// `commands::detect_local_account`).
+pub async fn get_account_by_puuid(
+    db: &Mutex<Connection>,
+    client: &HenrikClient,
+    api_key: Option<&HenrikAuth>,
+    puuid: &str,
+    force: bool,
+) -> Result<Fetched<AccountData>, HenrikError> {
+    let api_key = api_key.ok_or(HenrikError::MissingApiKey)?;
+    let path = format!("/valorant/v2/by-puuid/account/{}", encode(puuid));
+    fetch_with_cache(db, client, api_key, &path, TTL_ACCOUNT, force).await
+}
+
 pub async fn get_mmr(
     db: &Mutex<Connection>,
     client: &HenrikClient,
-    api_key: Option<&str>,
+    api_key: Option<&HenrikAuth>,
     region: &str,
     name: &str,
     tag: &str,
@@ -151,7 +210,7 @@ pub async fn get_mmr(
 pub async fn get_mmr_by_puuid(
     db: &Mutex<Connection>,
     client: &HenrikClient,
-    api_key: Option<&str>,
+    api_key: Option<&HenrikAuth>,
     region: &str,
     puuid: &str,
     force: bool,
@@ -168,7 +227,7 @@ pub async fn get_mmr_by_puuid(
 pub async fn get_matches(
     db: &Mutex<Connection>,
     client: &HenrikClient,
-    api_key: Option<&str>,
+    api_key: Option<&HenrikAuth>,
     region: &str,
     name: &str,
     tag: &str,
@@ -183,7 +242,91 @@ pub async fn get_matches(
         encode(tag),
         size.clamp(1, 100)
     );
+    match fetch_with_cache(db, client, api_key, &path, TTL_MATCHES, force).await {
+        Err(HenrikError::NotFound) => Err(HenrikError::NotFound),
+        Err(live_err) => {
+            match get_stored_matches(db, client, api_key, region, name, tag, size, force).await {
+                Ok(stored) => Ok(Fetched {
+                    data: stored.data.into_iter().map(stored_match_to_entry).collect(),
+                    stale: true,
+                    from_network: stored.from_network,
+                    cached_at: stored.cached_at,
+                }),
+                Err(_) => Err(live_err),
+            }
+        }
+        ok => ok,
+    }
+}
+
+/// Repli "stored-matches" (v1) : n'expose que la ligne de stats du joueur demandé, pas le
+/// roster complet — voir la doc de `types::StoredMatch`. Utilisé uniquement quand le live
+/// v4 échoue (circuit breaker ouvert, panne API) ET qu'aucun cache frais/périmé n'existe
+/// déjà pour absorber la panne (`fetch_with_cache` gère déjà ce cas normal).
+async fn get_stored_matches(
+    db: &Mutex<Connection>,
+    client: &HenrikClient,
+    api_key: &HenrikAuth,
+    region: &str,
+    name: &str,
+    tag: &str,
+    size: u32,
+    force: bool,
+) -> Result<Fetched<Vec<StoredMatch>>, HenrikError> {
+    let path = format!(
+        "/valorant/v1/stored-matches/{}/{}/{}?size={}",
+        encode(region),
+        encode(name),
+        encode(tag),
+        size.clamp(1, 100)
+    );
     fetch_with_cache(db, client, api_key, &path, TTL_MATCHES, force).await
+}
+
+/// Traduit une ligne "stored" (un seul joueur) en `MatchEntry` à un seul joueur — assez
+/// pour qu'un écran de liste (map, date, KDA du joueur, victoire/défaite) reste utilisable
+/// en repli, pas assez pour un détail de match complet (roster adverse absent).
+fn stored_match_to_entry(stored: StoredMatch) -> MatchEntry {
+    let own_team_is_red = stored.stats.team.eq_ignore_ascii_case("red");
+    let (own_score, other_score) = if own_team_is_red {
+        (stored.teams.red, stored.teams.blue)
+    } else {
+        (stored.teams.blue, stored.teams.red)
+    };
+
+    MatchEntry {
+        metadata: MatchMetadata {
+            match_id: Some(stored.meta.id),
+            map: Some(stored.meta.map),
+            queue: None,
+            started_at: Some(stored.meta.started_at),
+            game_length_in_ms: None,
+        },
+        players: vec![MatchPlayer {
+            puuid: Some(stored.stats.puuid),
+            name: None,
+            tag: None,
+            team_id: Some(stored.stats.team.clone()),
+            agent: Some(stored.stats.character),
+            stats: Some(PlayerStats {
+                score: Some(stored.stats.score),
+                kills: Some(stored.stats.kills),
+                deaths: Some(stored.stats.deaths),
+                assists: Some(stored.stats.assists),
+                headshots: None,
+                bodyshots: None,
+                legshots: None,
+            }),
+        }],
+        teams: vec![MatchTeam {
+            team_id: Some(stored.stats.team),
+            won: Some(own_score > other_score),
+            rounds: Some(TeamRounds {
+                won: Some(own_score),
+                lost: Some(other_score),
+            }),
+        }],
+    }
 }
 
 /// Historique de RR complet (au-delà des snapshots collectés localement) — utilisé pour
@@ -192,7 +335,7 @@ pub async fn get_matches(
 pub async fn get_mmr_history(
     db: &Mutex<Connection>,
     client: &HenrikClient,
-    api_key: Option<&str>,
+    api_key: Option<&HenrikAuth>,
     region: &str,
     name: &str,
     tag: &str,
@@ -205,7 +348,64 @@ pub async fn get_mmr_history(
         encode(name),
         encode(tag)
     );
+    match fetch_with_cache(db, client, api_key, &path, TTL_MMR_HISTORY, force).await {
+        Err(HenrikError::NotFound) => Err(HenrikError::NotFound),
+        Err(live_err) => {
+            match get_stored_mmr_history(db, client, api_key, region, name, tag, force).await {
+                Ok(stored) => Ok(Fetched {
+                    data: MmrHistoryData {
+                        account: MmrHistoryAccount {
+                            name: Some(name.to_string()),
+                            tag: Some(tag.to_string()),
+                            puuid: None,
+                        },
+                        history: stored.data.into_iter().map(stored_mmr_to_entry).collect(),
+                    },
+                    stale: true,
+                    from_network: stored.from_network,
+                    cached_at: stored.cached_at,
+                }),
+                Err(_) => Err(live_err),
+            }
+        }
+        ok => ok,
+    }
+}
+
+/// Repli "stored-mmr-history" (v1) : mêmes champs essentiels (date/tier/rr/map) que la v2
+/// live utilisée normalement, contrairement à `stored-matches` qui a une forme bien plus
+/// pauvre — voir la doc de `types::StoredMmrEntry`.
+async fn get_stored_mmr_history(
+    db: &Mutex<Connection>,
+    client: &HenrikClient,
+    api_key: &HenrikAuth,
+    region: &str,
+    name: &str,
+    tag: &str,
+    force: bool,
+) -> Result<Fetched<Vec<StoredMmrEntry>>, HenrikError> {
+    let path = format!(
+        "/valorant/v1/stored-mmr-history/{}/{}/{}",
+        encode(region),
+        encode(name),
+        encode(tag)
+    );
     fetch_with_cache(db, client, api_key, &path, TTL_MMR_HISTORY, force).await
+}
+
+fn stored_mmr_to_entry(stored: StoredMmrEntry) -> MmrHistoryEntry {
+    MmrHistoryEntry {
+        date: Some(stored.date),
+        elo: Some(stored.elo),
+        last_change: Some(stored.last_mmr_change),
+        rr: Some(stored.ranking_in_tier),
+        match_id: Some(stored.match_id),
+        refunded_rr: None,
+        was_derank_protected: None,
+        map: Some(stored.map),
+        season: None,
+        tier: Some(stored.tier),
+    }
 }
 
 /// Détail complet d'un match (round par round, économie) — plus riche que l'entrée
@@ -213,7 +413,7 @@ pub async fn get_mmr_history(
 pub async fn get_match_detail(
     db: &Mutex<Connection>,
     client: &HenrikClient,
-    api_key: Option<&str>,
+    api_key: Option<&HenrikAuth>,
     match_id: &str,
     force: bool,
 ) -> Result<Fetched<MatchDetailData>, HenrikError> {
@@ -229,7 +429,7 @@ pub async fn get_match_detail(
 pub async fn get_leaderboard(
     db: &Mutex<Connection>,
     client: &HenrikClient,
-    api_key: Option<&str>,
+    api_key: Option<&HenrikAuth>,
     region: &str,
     size: u32,
     start_index: u32,
@@ -254,7 +454,7 @@ pub async fn get_leaderboard(
 pub async fn get_status(
     db: &Mutex<Connection>,
     client: &HenrikClient,
-    api_key: Option<&str>,
+    api_key: Option<&HenrikAuth>,
     region: &str,
     force: bool,
 ) -> Result<Fetched<StatusData>, HenrikError> {
@@ -267,7 +467,7 @@ pub async fn get_status(
 pub async fn get_queue_status(
     db: &Mutex<Connection>,
     client: &HenrikClient,
-    api_key: Option<&str>,
+    api_key: Option<&HenrikAuth>,
     region: &str,
     force: bool,
 ) -> Result<Fetched<Vec<QueueStatusEntry>>, HenrikError> {
@@ -280,7 +480,7 @@ pub async fn get_queue_status(
 pub async fn get_esports_schedule(
     db: &Mutex<Connection>,
     client: &HenrikClient,
-    api_key: Option<&str>,
+    api_key: Option<&HenrikAuth>,
     region: Option<&str>,
     league: Option<&str>,
     force: bool,
@@ -308,7 +508,7 @@ pub async fn get_esports_schedule(
 pub async fn get_crosshair_preview(
     db: &Mutex<Connection>,
     client: &HenrikClient,
-    api_key: Option<&str>,
+    api_key: Option<&HenrikAuth>,
     code: &str,
     force: bool,
 ) -> Result<String, HenrikError> {
@@ -332,4 +532,80 @@ pub async fn get_crosshair_preview(
         cache::set(&conn, &path, &encoded, TTL_CROSSHAIR)?;
     }
     Ok(encoded)
+}
+
+#[cfg(test)]
+mod stored_fallback_tests {
+    use super::*;
+    use super::super::types::{
+        NamedRef, StoredMatchMeta, StoredMatchStats, StoredMatchTeamScore, TierRef,
+    };
+
+    fn sample_stored_match(team: &str, own: i64, other: i64) -> StoredMatch {
+        let (red, blue) = if team.eq_ignore_ascii_case("red") {
+            (own, other)
+        } else {
+            (other, own)
+        };
+        StoredMatch {
+            meta: StoredMatchMeta {
+                id: "match-1".to_string(),
+                map: NamedRef {
+                    id: None,
+                    name: Some("Ascent".to_string()),
+                },
+                mode: "Competitive".to_string(),
+                started_at: "2026-07-11T00:00:00Z".to_string(),
+            },
+            stats: StoredMatchStats {
+                puuid: "puuid-1".to_string(),
+                team: team.to_string(),
+                character: NamedRef {
+                    id: None,
+                    name: Some("Jett".to_string()),
+                },
+                score: 250,
+                kills: 20,
+                deaths: 10,
+                assists: 5,
+            },
+            teams: StoredMatchTeamScore { red, blue },
+        }
+    }
+
+    #[test]
+    fn stored_match_to_entry_marks_win_when_own_team_scores_higher() {
+        let entry = stored_match_to_entry(sample_stored_match("Red", 13, 7));
+        assert_eq!(entry.teams[0].won, Some(true));
+        assert_eq!(entry.players[0].puuid.as_deref(), Some("puuid-1"));
+    }
+
+    #[test]
+    fn stored_match_to_entry_marks_loss_when_own_team_scores_lower_on_blue_side() {
+        let entry = stored_match_to_entry(sample_stored_match("Blue", 7, 13));
+        assert_eq!(entry.teams[0].won, Some(false));
+        assert_eq!(entry.metadata.map.unwrap().name.as_deref(), Some("Ascent"));
+    }
+
+    #[test]
+    fn stored_mmr_to_entry_carries_over_rr_and_tier() {
+        let entry = stored_mmr_to_entry(StoredMmrEntry {
+            match_id: "match-1".to_string(),
+            tier: TierRef {
+                id: Some(21),
+                name: Some("Immortal 1".to_string()),
+            },
+            map: NamedRef {
+                id: None,
+                name: Some("Bind".to_string()),
+            },
+            ranking_in_tier: 42,
+            last_mmr_change: -15,
+            elo: 1234,
+            date: "2026-07-11".to_string(),
+        });
+        assert_eq!(entry.rr, Some(42));
+        assert_eq!(entry.last_change, Some(-15));
+        assert_eq!(entry.tier.unwrap().name.as_deref(), Some("Immortal 1"));
+    }
 }

@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
+import { Skeleton } from "../components/Skeleton";
 
-import { useAccount, useDuoStats } from "../hooks/usePlayer";
+import { useAccount, useDuoStats, useSquadStats } from "../hooks/usePlayer";
 import Panel from "../components/Panel";
 import ErrorState from "../components/ErrorState";
 import { formatPercent } from "../lib/format";
@@ -14,6 +15,7 @@ export default function Duo() {
   const account = useAccount(name, tag);
   const puuid = account.data?.data.puuid;
   const duo = useDuoStats(puuid);
+  const squad = useSquadStats(puuid);
 
   return (
     <div className="space-y-4">
@@ -26,7 +28,7 @@ export default function Duo() {
       </div>
 
       {duo.isError && <ErrorState error={duo.error} />}
-      {duo.isLoading && <p className="text-sm text-lo">Chargement…</p>}
+      {duo.isLoading && <Skeleton className="h-32 w-full" />}
 
       {duo.data && duo.data.length === 0 && (
         <p className="text-sm text-lo">
@@ -60,6 +62,45 @@ export default function Duo() {
               </Panel>
             );
           })}
+        </div>
+      )}
+
+      {squad.data && squad.data.length > 0 && (
+        <div className="space-y-2">
+          <div>
+            <h2 className="hud-label text-sm">Squad (3 joueurs)</h2>
+            <p className="mt-1 text-xs text-lo">
+              Matchs où toi et deux coéquipiers précis étiez dans la même party simultanément.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {squad.data.map((s) => {
+              const winPercent = Math.round((s.matches_won / s.matches_played) * 100);
+              return (
+                <Panel key={`${s.teammate_a_puuid}-${s.teammate_b_puuid}`} className="p-4">
+                  <p className="text-sm font-semibold text-hi">
+                    {s.teammate_a_name}
+                    <span className="text-lo">#{s.teammate_a_tag}</span>
+                    <span className="text-lo"> &amp; </span>
+                    {s.teammate_b_name}
+                    <span className="text-lo">#{s.teammate_b_tag}</span>
+                  </p>
+                  <div className="mt-2 flex items-center gap-3">
+                    <span
+                      className={`font-display text-lg font-bold tracking-hud ${
+                        winPercent >= 50 ? "text-accent" : "text-crit"
+                      }`}
+                    >
+                      {formatPercent(winPercent)}
+                    </span>
+                    <span className="text-xs text-lo">
+                      {s.matches_won} victoires / {s.matches_played} matchs ensemble
+                    </span>
+                  </div>
+                </Panel>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

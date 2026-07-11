@@ -2,6 +2,7 @@
 name = "val-tracker"
 version = "0.1.0"
 description = "Valorant Tracker — app desktop de suivi de rank et de stats"
+license = "GPL-3.0-or-later"
 edition = "2021"
 rust-version = "1.77"
 
@@ -32,6 +33,11 @@ chrono = { version = "0.4", features = ["serde"] }
 thiserror = "1"
 anyhow = "1"
 urlencoding = "2"
+
+[target.'cfg(windows)'.dependencies]
+# Chiffrement au repos de la clé API Henrik via DPAPI (voir settings.rs::crypto) — liée au
+# compte Windows de l'utilisateur, pas de secret supplémentaire à gérer.
+windows = { version = "0.61", features = ["Win32_Security_Cryptography", "Win32_Foundation"] }
 
 [profile.release]
 panic = "abort"

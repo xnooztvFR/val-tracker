@@ -1,4 +1,5 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { SkeletonScreen } from "../components/Skeleton";
 
 import { useVlrTeam, useVlrTeamMatches } from "../hooks/useVlr";
 import ErrorState from "../components/ErrorState";
@@ -12,7 +13,7 @@ export default function VlrTeamDetail() {
   const matches = useVlrTeamMatches(id);
 
   if (team.isError) return <ErrorState error={team.error} />;
-  if (team.isLoading) return <p className="text-sm text-lo">Chargement…</p>;
+  if (team.isLoading) return <SkeletonScreen className="p-6" />;
 
   const data = team.data?.data;
   if (!data) return <p className="text-sm text-lo">Équipe introuvable.</p>;

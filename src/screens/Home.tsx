@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
+import { Skeleton, SkeletonScreen } from "../components/Skeleton";
 import { useParams } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useAccount, useMmr, useMmrHistory, useRankSnapshots } from "../hooks/usePlayer";
 import { useMatches } from "../hooks/useMatches";
@@ -13,91 +14,13 @@ import RankHistoryChart from "../components/RankHistoryChart";
 import QueueStatusStrip from "../components/QueueStatusStrip";
 import ErrorState from "../components/ErrorState";
 import StaleDataBanner from "../components/StaleDataBanner";
+import PlayerNotesPanel from "../components/PlayerNotesPanel";
+import ProgressionGoalPanel from "../components/ProgressionGoalPanel";
 import { tauriApi } from "../lib/tauriApi";
-import type { MatchEntry } from "../lib/tauriApi";
 import { agentIconUrl, formatKdRatio, formatPercent, playerCardIconUrl, rankGlowColor } from "../lib/format";
+import { computeOverview } from "../lib/stats";
 
 const MMR_TTL_SECONDS = 600;
-
-interface AgentTally {
-  id: string;
-  name: string;
-  matches: number;
-  wins: number;
-  kills: number;
-  deaths: number;
-}
-
-function computeOverview(matches: MatchEntry[], puuid: string) {
-  let wins = 0;
-  let played = 0;
-  let kills = 0;
-  let deaths = 0;
-  let assists = 0;
-  let headshots = 0;
-  let bodyshots = 0;
-  let legshots = 0;
-  let scoreSum = 0;
-  let roundsSum = 0;
-  const agents = new Map<string, AgentTally>();
-
-  for (const match of matches) {
-    const player = match.players.find((p) => p.puuid === puuid);
-    if (!player?.stats) continue;
-    played += 1;
-
-    kills += player.stats.kills ?? 0;
-    deaths += player.stats.deaths ?? 0;
-    assists += player.stats.assists ?? 0;
-    headshots += player.stats.headshots ?? 0;
-    bodyshots += player.stats.bodyshots ?? 0;
-    legshots += player.stats.legshots ?? 0;
-    scoreSum += player.stats.score ?? 0;
-
-    const team = match.teams.find((t) => t.team_id === player.team_id);
-    const won = Boolean(team?.won);
-    if (won) wins += 1;
-    const roundsPlayed = (team?.rounds?.won ?? 0) + (team?.rounds?.lost ?? 0);
-    roundsSum += roundsPlayed > 0 ? roundsPlayed : 1;
-
-    const agentId = player.agent?.id;
-    if (agentId) {
-      const tally = agents.get(agentId) ?? {
-        id: agentId,
-        name: player.agent?.name ?? "Agent inconnu",
-        matches: 0,
-        wins: 0,
-        kills: 0,
-        deaths: 0,
-      };
-      tally.matches += 1;
-      if (won) tally.wins += 1;
-      tally.kills += player.stats.kills ?? 0;
-      tally.deaths += player.stats.deaths ?? 0;
-      agents.set(agentId, tally);
-    }
-  }
-
-  const totalShots = headshots + bodyshots + legshots;
-  const topAgent = [...agents.values()].sort((a, b) => b.matches - a.matches)[0] ?? null;
-
-  return {
-    played,
-    wins,
-    losses: played - wins,
-    kills,
-    deaths,
-    assists,
-    headshots,
-    winPercent: played > 0 ? (wins / played) * 100 : 0,
-    kd: formatKdRatio(kills, deaths),
-    hsPercent: totalShots > 0 ? (headshots / totalShots) * 100 : 0,
-    bodyPercent: totalShots > 0 ? (bodyshots / totalShots) * 100 : 0,
-    legPercent: totalShots > 0 ? (legshots / totalShots) * 100 : 0,
-    acs: played > 0 ? Math.round(scoreSum / Math.max(roundsSum, 1)) : 0,
-    topAgent,
-  };
-}
 
 export default function Home() {
   const { region, name, tag } = useParams<{ region: string; name: string; tag: string }>();
@@ -111,6 +34,15 @@ export default function Home() {
   const snapshots = useRankSnapshots(puuid);
   const mmrHistory = useMmrHistory({ region, name, tag });
   const matches = useMatches({ region, name, tag, size: sampleSize });
+  // Backlog #12 : la note libre vit sur `tracked_players` (upsertée à chaque vue de profil
+  // par `fetch_account`) — pas de commande dédiée "get one", on relit la liste récente et on
+  // filtre par puuid plutôt que d'ajouter un aller-retour réseau supplémentaire.
+  const trackedPlayer = useQuery({
+    queryKey: ["trackedPlayer", puuid],
+    queryFn: () => tauriApi.listTrackedPlayers(200),
+    enabled: Boolean(puuid),
+    select: (players) => players.find((p) => p.puuid === puuid) ?? null,
+  });
 
   const remaining = useCountdown(mmr.data?.cached_at, MMR_TTL_SECONDS);
 
@@ -118,6 +50,20 @@ export default function Home() {
     () => (matches.data && puuid ? computeOverview(matches.data.data, puuid) : null),
     [matches.data, puuid],
   );
+
+  // Backlog #36 : pulse sur le badge de rang si le dernier snapshot enregistré diffère du
+  // précédent ET vient d'être écrit il y a moins de 2 min (cette session) — pas d'animation
+  // en revisitant un profil dont le rank a changé il y a plusieurs jours.
+  const rankPulse = useMemo((): "up" | "down" | null => {
+    const list = snapshots.data;
+    if (!list || list.length < 2) return null;
+    const latest = list[list.length - 1];
+    const previous = list[list.length - 2];
+    if (latest.tier === previous.tier) return null;
+    const ageSeconds = Date.now() / 1000 - latest.recorded_at;
+    if (ageSeconds > 120) return null;
+    return latest.tier > previous.tier ? "up" : "down";
+  }, [snapshots.data]);
 
   async function handleRefresh() {
     if (!puuid || !region || !name || !tag) return;
@@ -131,7 +77,7 @@ export default function Home() {
   }
 
   if (account.isLoading) {
-    return <p className="text-sm text-lo">Chargement du profil…</p>;
+    return <SkeletonScreen className="p-6" />;
   }
   if (account.isError) {
     return <ErrorState error={account.error} />;
@@ -178,6 +124,7 @@ export default function Home() {
             tierPatched={current?.currenttierpatched}
             rr={current?.ranking_in_tier}
             size="md"
+            pulse={rankPulse}
           />
         </div>
 
@@ -216,6 +163,24 @@ export default function Home() {
         </div>
       </Panel>
 
+      {puuid && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <ProgressionGoalPanel
+            key={puuid}
+            puuid={puuid}
+            currentTier={current?.currenttier}
+            currentRr={current?.ranking_in_tier}
+          />
+          <PlayerNotesPanel
+            // Remonte une fois les notes chargées, pour ne pas figer le textarea sur une
+            // valeur initiale vide capturée avant la résolution de la requête.
+            key={`${puuid}-${trackedPlayer.data ? "loaded" : "pending"}`}
+            puuid={puuid}
+            initialNotes={trackedPlayer.data?.notes ?? null}
+          />
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <h1 className="hud-label text-sm">Vue d'ensemble</h1>
         <SampleSizeSwitch value={sampleSize} onChange={setSampleSize} />
@@ -223,7 +188,7 @@ export default function Home() {
 
       {matches.isError && <ErrorState error={matches.error} />}
       {matches.data?.stale && <StaleDataBanner cachedAt={matches.data.cached_at} />}
-      {matches.isLoading && <p className="text-sm text-lo">Chargement des stats…</p>}
+      {matches.isLoading && <Skeleton className="h-32 w-full" />}
 
       {overview && (
         <>
@@ -233,14 +198,14 @@ export default function Home() {
               value={formatPercent(overview.winPercent)}
               hint={`${overview.wins}V — ${overview.losses}D`}
               gaugePercent={overview.winPercent}
-              gaugeColor={overview.winPercent >= 50 ? "#7CE8D3" : "#FF5F5F"}
+              gaugeColor={overview.winPercent >= 50 ? "rgb(var(--color-accent))" : "rgb(var(--color-crit))"}
             />
             <StatCard label="K/D" value={overview.kd} hint={`${overview.kills} kills`} icon={<KdIcon />} />
             <StatCard
               label="Headshot %"
               value={formatPercent(overview.hsPercent)}
               gaugePercent={overview.hsPercent}
-              gaugeColor="#7CE8D3"
+              gaugeColor="rgb(var(--color-accent))"
             />
             <StatCard label="ACS" value={overview.acs.toString()} icon={<TargetIcon />} />
           </div>
@@ -284,8 +249,8 @@ export default function Home() {
             <Panel className="p-4">
               <p className="hud-label mb-3">Précision (têtes / corps / jambes)</p>
               <div className="space-y-2.5">
-                <AccuracyBar label="Tête" percent={overview.hsPercent} color="#7CE8D3" />
-                <AccuracyBar label="Corps" percent={overview.bodyPercent} color="#7A8590" />
+                <AccuracyBar label="Tête" percent={overview.hsPercent} color="rgb(var(--color-accent))" />
+                <AccuracyBar label="Corps" percent={overview.bodyPercent} color="rgb(var(--color-lo))" />
                 <AccuracyBar label="Jambes" percent={overview.legPercent} color="#3A424B" />
               </div>
             </Panel>

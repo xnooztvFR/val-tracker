@@ -307,12 +307,7 @@ fn update_discord_presence(app: &AppHandle, settings: &crate::settings::AppSetti
         return;
     };
 
-    let (details, state_text) = match snapshot.state.as_str() {
-        "pregame" => ("Sélection des agents".to_string(), region_label(snapshot)),
-        "in_game" => ("En partie".to_string(), region_label(snapshot)),
-        "menu" => ("Dans le menu".to_string(), "En attente de partie".to_string()),
-        _ => ("Valorant Tracker".to_string(), "Hors-jeu".to_string()),
-    };
+    let (details, state_text) = presence_text(&snapshot.state, snapshot.region.as_deref());
 
     rpc.update(
         client_id,
@@ -323,10 +318,21 @@ fn update_discord_presence(app: &AppHandle, settings: &crate::settings::AppSetti
     );
 }
 
-fn region_label(snapshot: &LiveSnapshot) -> String {
-    match snapshot.region.as_deref() {
+fn region_label(region: Option<&str>) -> String {
+    match region {
         Some(region) => format!("Région : {}", region.to_uppercase()),
         None => "Partie en cours".to_string(),
+    }
+}
+
+/// Traduit un état de partie + région en (details, state) Rich Presence — pur, testable
+/// sans `AppHandle` ni `LiveSnapshot`.
+fn presence_text(state: &str, region: Option<&str>) -> (String, String) {
+    match state {
+        "pregame" => ("Sélection des agents".to_string(), region_label(region)),
+        "in_game" => ("En partie".to_string(), region_label(region)),
+        "menu" => ("Dans le menu".to_string(), "En attente de partie".to_string()),
+        _ => ("Valorant Tracker".to_string(), "Hors-jeu".to_string()),
     }
 }
 
@@ -342,5 +348,76 @@ async fn read_settings(app: &AppHandle) -> crate::settings::AppSettings {
         discord_rpc_enabled: false,
         discord_rpc_client_id: None,
         status_watcher_enabled: false,
+        usage_metrics_enabled: false,
+        ui_theme: "dark".to_string(),
+        ui_accent: "red".to_string(),
+        overlay_density: "detailed".to_string(),
+        loss_streak_alert_enabled: false,
+        loss_streak_alert_count: 3,
+        inactivity_reminder_enabled: false,
+        inactivity_reminder_days: 3,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn next_interval_is_idle_when_out_of_game_or_in_menu() {
+        let mut ctx = PollContext::default();
+        ctx.previous_state = Some(GameState::HorsJeu);
+        assert_eq!(next_interval(&ctx), IDLE_INTERVAL);
+        ctx.previous_state = Some(GameState::Menu);
+        assert_eq!(next_interval(&ctx), IDLE_INTERVAL);
+    }
+
+    #[test]
+    fn next_interval_is_active_when_pregame_ingame_or_unknown() {
+        let mut ctx = PollContext::default();
+        ctx.previous_state = Some(GameState::Pregame);
+        assert_eq!(next_interval(&ctx), ACTIVE_INTERVAL);
+        ctx.previous_state = Some(GameState::InGame);
+        assert_eq!(next_interval(&ctx), ACTIVE_INTERVAL);
+        ctx.previous_state = None;
+        assert_eq!(next_interval(&ctx), ACTIVE_INTERVAL);
+    }
+
+    #[test]
+    fn region_label_formats_known_region_uppercase() {
+        assert_eq!(region_label(Some("eu")), "Région : EU");
+    }
+
+    #[test]
+    fn region_label_falls_back_when_region_unknown() {
+        assert_eq!(region_label(None), "Partie en cours");
+    }
+
+    #[test]
+    fn presence_text_maps_each_known_state() {
+        assert_eq!(
+            presence_text("pregame", Some("eu")),
+            ("Sélection des agents".to_string(), "Région : EU".to_string())
+        );
+        assert_eq!(
+            presence_text("in_game", None),
+            ("En partie".to_string(), "Partie en cours".to_string())
+        );
+        assert_eq!(
+            presence_text("menu", None),
+            ("Dans le menu".to_string(), "En attente de partie".to_string())
+        );
+    }
+
+    #[test]
+    fn presence_text_falls_back_for_unknown_or_offline_state() {
+        assert_eq!(
+            presence_text("hors_jeu", None),
+            ("Valorant Tracker".to_string(), "Hors-jeu".to_string())
+        );
+        assert_eq!(
+            presence_text("anything_else", None),
+            ("Valorant Tracker".to_string(), "Hors-jeu".to_string())
+        );
+    }
 }

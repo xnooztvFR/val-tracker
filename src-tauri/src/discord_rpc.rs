@@ -74,7 +74,7 @@ fn run(rx: std::sync::mpsc::Receiver<RpcCommand>) {
                             connected_client_id = Some(client_id);
                         }
                         Err(err) => {
-                            eprintln!("[discord_rpc] connexion IPC impossible (Discord lancé ? client_id valide ?): {err}");
+                            crate::applog!("[discord_rpc] connexion IPC impossible (Discord lancé ? client_id valide ?): {err}");
                             continue;
                         }
                     }

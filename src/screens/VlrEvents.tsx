@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { Skeleton } from "../components/Skeleton";
 import { Link, useNavigate } from "react-router-dom";
 
 import { useVlrEvents } from "../hooks/useVlr";
 import ErrorState from "../components/ErrorState";
 import Panel from "../components/Panel";
+import EmptyState from "../components/EmptyState";
 
 const REGION_OPTIONS = [
   { value: "", label: "Toutes régions" },
@@ -76,8 +78,8 @@ export default function VlrEvents() {
       </div>
 
       {events.isError && <ErrorState error={events.error} />}
-      {events.isLoading && <p className="text-sm text-lo">Chargement…</p>}
-      {events.data && list.length === 0 && <p className="text-sm text-lo">Aucun événement.</p>}
+      {events.isLoading && <Skeleton className="h-32 w-full" />}
+      {events.data && list.length === 0 && <EmptyState icon="team" title="Aucun événement" />}
 
       <div className="grid gap-2 sm:grid-cols-2">
         {list.map((event) => (

@@ -2,9 +2,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod api;
+mod applog;
 mod commands;
 mod db;
 mod discord_rpc;
+mod dpapi;
+mod inactivity_reminder;
 mod overlay;
 mod riot_local;
 mod settings;
@@ -31,6 +34,7 @@ fn main() {
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
             let handle = app.handle().clone();
+            applog::init(&handle);
 
             let db_path = db::resolve_db_path(&handle)?;
             let conn = db::init_db(&db_path)?;
@@ -60,10 +64,14 @@ fn main() {
             // AppSettings::status_watcher_enabled), voir status_watcher.rs.
             status_watcher::start(handle.clone());
 
+            // Backlog #32 — rappel d'inactivité : opt-in (settings::AppSettings::
+            // inactivity_reminder_enabled), voir inactivity_reminder.rs.
+            inactivity_reminder::start(handle.clone());
+
             let shortcut_registered = match overlay::window::register_toggle_shortcut(&handle) {
                 Ok(()) => true,
                 Err(err) => {
-                    eprintln!(
+                    applog!(
                         "[overlay] raccourci global Ctrl+Shift+V indisponible (probablement déjà pris par une autre appli): {err}"
                     );
                     false
@@ -82,6 +90,15 @@ fn main() {
             commands::save_discord_rpc_enabled,
             commands::save_discord_rpc_client_id,
             commands::save_status_watcher_enabled,
+            commands::save_usage_metrics_enabled,
+            commands::get_usage_metrics_summary,
+            commands::save_ui_theme,
+            commands::save_ui_accent,
+            commands::save_overlay_density,
+            commands::save_loss_streak_alert_enabled,
+            commands::save_loss_streak_alert_count,
+            commands::save_inactivity_reminder_enabled,
+            commands::save_inactivity_reminder_days,
             commands::verify_henrik_api_key,
             commands::fetch_account,
             commands::fetch_mmr,
@@ -109,10 +126,21 @@ fn main() {
             commands::get_overlay_shortcut_status,
             commands::record_party_from_match,
             commands::list_duo_stats,
+            commands::list_squad_stats,
             commands::list_tracked_players,
             commands::toggle_favorite_player,
+            commands::list_favorite_players,
+            commands::reorder_favorite_players,
             commands::list_rank_snapshots,
             commands::reset_local_stats,
+            commands::save_player_notes,
+            commands::get_progression_goal,
+            commands::save_progression_goal,
+            commands::clear_progression_goal,
+            commands::set_self_account,
+            commands::list_self_accounts,
+            commands::detect_local_account,
+            commands::get_recent_logs,
         ])
         .run(tauri::generate_context!())
         .expect("erreur lors du lancement de l'application Tauri");

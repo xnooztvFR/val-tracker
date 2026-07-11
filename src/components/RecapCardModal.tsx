@@ -6,12 +6,16 @@ const WIDTH = 900;
 const HEIGHT = 506;
 const CUT = 28;
 
+// Palette figée volontairement (pas de rgb(var(--color-*))) : cette carte est une image
+// exportée/partagée (canvas 2D, `fillStyle` ne résout pas les custom properties CSS de
+// toute façon), pensée comme un visuel de marque cohérent quel que soit le thème/accent
+// choisi dans Paramètres — pas une surface d'UI qui doit suivre les préférences live.
 const COLORS = {
   base: "#0B0E11",
   surface: "#12161B",
   line: "#22282F",
-  accent: "#7CE8D3",
-  crit: "#FF5F5F",
+  accent: "#FF3B4E",
+  crit: "#C4646E",
   hi: "#E8ECEF",
   lo: "#7A8590",
 };
@@ -183,7 +187,7 @@ export default function RecapCardModal({ data, onClose }: RecapCardModalProps) {
           <button
             type="button"
             onClick={handleCopy}
-            className="btn-clip bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#96F0DF]"
+            className="btn-clip bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#FF5969]"
           >
             Copier l'image
           </button>

@@ -31,7 +31,7 @@ interface Point {
 }
 
 const MIN_POINTS_FOR_CHART = 3;
-const LINE_COLOR = "#7CE8D3";
+const LINE_COLOR = "rgb(var(--color-accent))";
 const MONO = '"JetBrains Mono", Consolas, monospace';
 /** Deux points à moins de 2 min d'écart avec le même tier/RR sont considérés comme la
  * même partie vue depuis les deux sources (snapshot local + historique serveur). */
@@ -106,10 +106,10 @@ export default function RankHistoryChart({ snapshots, serverHistory = [] }: Rank
     <Panel className="h-48 p-3">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
-          <CartesianGrid stroke="rgba(255,255,255,0.05)" vertical={false} />
+          <CartesianGrid stroke="rgb(var(--color-lo) / 0.15)" vertical={false} />
           <XAxis
             dataKey="date"
-            tick={{ fontSize: 10, fill: "#7A8590", fontFamily: MONO }}
+            tick={{ fontSize: 10, fill: "rgb(var(--color-lo))", fontFamily: MONO }}
             minTickGap={30}
             axisLine={false}
             tickLine={false}
@@ -117,8 +117,8 @@ export default function RankHistoryChart({ snapshots, serverHistory = [] }: Rank
           <YAxis hide domain={["dataMin - 20", "dataMax + 20"]} />
           <Tooltip
             contentStyle={{
-              background: "#171C22",
-              border: "1px solid #22282F",
+              background: "rgb(var(--color-raised))",
+              border: "1px solid rgb(var(--color-line))",
               borderRadius: 0,
               fontSize: 12,
               fontFamily: MONO,

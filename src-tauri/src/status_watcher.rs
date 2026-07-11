@@ -45,10 +45,16 @@ async fn tick(app: &AppHandle, ctx: &mut WatchContext) {
     let (enabled, api_key, region) = {
         let state = app.state::<AppState>();
         let conn = state.db.lock().await;
-        match crate::settings::load_settings(&conn) {
-            Ok(s) => (s.status_watcher_enabled, s.henrik_api_key, s.default_region),
-            Err(_) => (false, None, "eu".to_string()),
-        }
+        let (enabled, region) = match crate::settings::load_settings(&conn) {
+            Ok(s) => (s.status_watcher_enabled, s.default_region),
+            Err(_) => (false, "eu".to_string()),
+        };
+        // Utilise `get_henrik_api_key` (Direct clé perso OU Proxy compilé) plutôt que le
+        // champ `henrik_api_key` de `AppSettings`, qui ne porte volontairement que la clé
+        // perso (voir settings.rs::load_settings) — sinon ce watcher resterait muet sur un
+        // build donné à quelqu'un sans clé perso.
+        let api_key = crate::settings::get_henrik_api_key(&conn).ok().flatten();
+        (enabled, api_key, region)
     };
     if !enabled {
         // Réglage désactivé : on efface l'état connu pour repartir propre si jamais

@@ -2,29 +2,38 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { useSettingsStore } from "../store/settingsStore";
-import { tauriApi } from "../lib/tauriApi";
+import { tauriApi, type UsageMetricsSummary } from "../lib/tauriApi";
 import { REGIONS } from "../lib/format";
 import { useUpdater } from "../hooks/useUpdater";
+import StatCard from "../components/StatCard";
 
 type VerifyState = "idle" | "checking" | "valid" | "invalid" | "error";
 type Category =
   | "general"
+  | "appearance"
   | "overlay"
   | "discord"
   | "notifications"
   | "updates"
   | "crosshair"
+  | "shortcuts"
   | "data"
+  | "logs"
+  | "health"
   | "about";
 
 const CATEGORIES: Array<{ id: Category; label: string }> = [
   { id: "general", label: "Général" },
+  { id: "appearance", label: "Apparence" },
   { id: "overlay", label: "Overlay en jeu" },
   { id: "discord", label: "Discord" },
   { id: "notifications", label: "Notifications" },
   { id: "updates", label: "Mises à jour" },
   { id: "crosshair", label: "Crosshair" },
+  { id: "shortcuts", label: "Raccourcis" },
   { id: "data", label: "Données locales" },
+  { id: "logs", label: "Logs" },
+  { id: "health", label: "Santé" },
   { id: "about", label: "À propos" },
 ];
 
@@ -43,6 +52,14 @@ export default function Settings() {
     setDiscordRpcEnabled,
     setDiscordRpcClientId,
     setStatusWatcherEnabled,
+    setUsageMetricsEnabled,
+    setUiTheme,
+    setUiAccent,
+    setOverlayDensity,
+    setLossStreakAlertEnabled,
+    setLossStreakAlertCount,
+    setInactivityReminderEnabled,
+    setInactivityReminderDays,
   } = useSettingsStore();
   const [searchParams] = useSearchParams();
   const initialCategory = searchParams.get("section");
@@ -83,10 +100,20 @@ export default function Settings() {
             onSaveRegion={setDefaultRegion}
           />
         )}
+        {category === "appearance" && (
+          <AppearanceSection
+            theme={settings?.ui_theme ?? "dark"}
+            accent={settings?.ui_accent ?? "red"}
+            onChangeTheme={setUiTheme}
+            onChangeAccent={setUiAccent}
+          />
+        )}
         {category === "overlay" && (
           <OverlaySection
             disabled={settings?.riot_local_disabled ?? false}
             onChange={setRiotLocalDisabled}
+            density={settings?.overlay_density ?? "detailed"}
+            onChangeDensity={setOverlayDensity}
           />
         )}
         {category === "discord" && (
@@ -101,16 +128,32 @@ export default function Settings() {
           <NotificationsSection
             statusWatcherEnabled={settings?.status_watcher_enabled ?? false}
             onChangeStatusWatcher={setStatusWatcherEnabled}
+            lossStreakAlertEnabled={settings?.loss_streak_alert_enabled ?? false}
+            lossStreakAlertCount={settings?.loss_streak_alert_count ?? 3}
+            onChangeLossStreakAlertEnabled={setLossStreakAlertEnabled}
+            onChangeLossStreakAlertCount={setLossStreakAlertCount}
+            inactivityReminderEnabled={settings?.inactivity_reminder_enabled ?? false}
+            inactivityReminderDays={settings?.inactivity_reminder_days ?? 3}
+            onChangeInactivityReminderEnabled={setInactivityReminderEnabled}
+            onChangeInactivityReminderDays={setInactivityReminderDays}
           />
         )}
         {category === "updates" && (
           <UpdatesSection
-            enabled={settings?.auto_update_enabled ?? false}
+            enabled={settings?.auto_update_enabled ?? true}
             onChange={setAutoUpdateEnabled}
           />
         )}
         {category === "crosshair" && <CrosshairSection />}
+        {category === "shortcuts" && <ShortcutsSection />}
         {category === "data" && <DataSection />}
+        {category === "logs" && <LogsSection />}
+        {category === "health" && (
+          <HealthSection
+            enabled={settings?.usage_metrics_enabled ?? false}
+            onChange={setUsageMetricsEnabled}
+          />
+        )}
         {category === "about" && <AboutSection />}
       </div>
     </div>
@@ -196,7 +239,7 @@ function GeneralSection({
             type="button"
             onClick={handleSaveKey}
             disabled={!apiKeyInput.trim()}
-            className="btn-clip bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#96F0DF] disabled:opacity-50"
+            className="btn-clip bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#FF5969] disabled:opacity-50"
           >
             Enregistrer
           </button>
@@ -231,12 +274,92 @@ function GeneralSection({
   );
 }
 
+const THEMES: Array<{ id: string; label: string }> = [
+  { id: "dark", label: "Sombre (défaut)" },
+  { id: "light", label: "Clair" },
+];
+
+const ACCENTS: Array<{ id: string; label: string; swatch: string }> = [
+  { id: "red", label: "Rouge (défaut)", swatch: "#FF3B4E" },
+  { id: "cyan", label: "Cyan", swatch: "#7CE8D3" },
+  { id: "violet", label: "Violet", swatch: "#A672E0" },
+  { id: "amber", label: "Ambre", swatch: "#D4AF37" },
+];
+
+function AppearanceSection({
+  theme,
+  accent,
+  onChangeTheme,
+  onChangeAccent,
+}: {
+  theme: string;
+  accent: string;
+  onChangeTheme: (theme: string) => Promise<void>;
+  onChangeAccent: (accent: string) => Promise<void>;
+}) {
+  return (
+    <div className="max-w-xl space-y-6">
+      <SectionTitle>Apparence</SectionTitle>
+
+      <section className="space-y-2">
+        <h2 className="hud-label">Thème</h2>
+        <div className="flex gap-2">
+          {THEMES.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => onChangeTheme(t.id)}
+              className={`border px-4 py-2 text-sm transition-colors ${
+                theme === t.id
+                  ? "border-accent text-hi"
+                  : "border-line text-lo hover:border-line hover:text-hi"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="hud-label">Couleur d'accent</h2>
+        <p className="text-xs text-lo">
+          Identité HUD par défaut en rouge — quelques variantes disponibles sans casser le
+          reste du design (coins coupés, typographie, contrastes).
+        </p>
+        <div className="flex gap-2">
+          {ACCENTS.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              onClick={() => onChangeAccent(a.id)}
+              className={`flex items-center gap-2 border px-3 py-2 text-sm transition-colors ${
+                accent === a.id ? "border-hi text-hi" : "border-line text-lo hover:text-hi"
+              }`}
+            >
+              <span
+                className="h-3 w-3 shrink-0 rounded-full"
+                style={{ backgroundColor: a.swatch }}
+              />
+              {a.label}
+            </button>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function OverlaySection({
   disabled,
   onChange,
+  density,
+  onChangeDensity,
 }: {
   disabled: boolean;
   onChange: (disabled: boolean) => Promise<void>;
+  density: string;
+  onChangeDensity: (density: string) => Promise<void>;
 }) {
   const [shortcutRegistered, setShortcutRegistered] = useState<boolean | null>(null);
 
@@ -262,10 +385,34 @@ function OverlaySection({
           type="checkbox"
           checked={!disabled}
           onChange={(e) => onChange(!e.target.checked)}
-          className="h-4 w-4 border-line bg-surface accent-[#7CE8D3]"
+          className="h-4 w-4 border-line bg-surface accent-accent"
         />
         Activer la détection automatique de partie et l'overlay
       </label>
+
+      <section className="space-y-2">
+        <h2 className="hud-label">Densité d'affichage</h2>
+        <div className="flex gap-2">
+          {OVERLAY_DENSITIES.map((d) => (
+            <button
+              key={d.id}
+              type="button"
+              onClick={() => onChangeDensity(d.id)}
+              className={`border px-4 py-2 text-sm transition-colors ${
+                density === d.id
+                  ? "border-accent text-hi"
+                  : "border-line text-lo hover:border-line hover:text-hi"
+              }`}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-lo">
+          « Compact » n'affiche que le badge de rang des joueurs détectés ; « Détaillé »
+          (défaut) ajoute le nom du rang et le RR.
+        </p>
+      </section>
 
       {shortcutRegistered === false && (
         <div className="relative border border-crit/30 bg-crit/5 py-2.5 pl-4 pr-3 text-xs text-hi">
@@ -297,6 +444,11 @@ function OverlaySection({
     </div>
   );
 }
+
+const OVERLAY_DENSITIES: Array<{ id: string; label: string }> = [
+  { id: "compact", label: "Compact" },
+  { id: "detailed", label: "Détaillé (défaut)" },
+];
 
 function DiscordSection({
   enabled,
@@ -336,7 +488,7 @@ function DiscordSection({
           type="checkbox"
           checked={enabled}
           onChange={(e) => onChangeEnabled(e.target.checked)}
-          className="h-4 w-4 border-line bg-surface accent-[#7CE8D3]"
+          className="h-4 w-4 border-line bg-surface accent-accent"
         />
         Activer la Rich Presence Discord
       </label>
@@ -354,7 +506,7 @@ function DiscordSection({
             type="button"
             onClick={handleSave}
             disabled={!input.trim()}
-            className="btn-clip bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#96F0DF] disabled:opacity-50"
+            className="btn-clip bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#FF5969] disabled:opacity-50"
           >
             Enregistrer
           </button>
@@ -381,9 +533,25 @@ function DiscordSection({
 function NotificationsSection({
   statusWatcherEnabled,
   onChangeStatusWatcher,
+  lossStreakAlertEnabled,
+  lossStreakAlertCount,
+  onChangeLossStreakAlertEnabled,
+  onChangeLossStreakAlertCount,
+  inactivityReminderEnabled,
+  inactivityReminderDays,
+  onChangeInactivityReminderEnabled,
+  onChangeInactivityReminderDays,
 }: {
   statusWatcherEnabled: boolean;
   onChangeStatusWatcher: (enabled: boolean) => Promise<void>;
+  lossStreakAlertEnabled: boolean;
+  lossStreakAlertCount: number;
+  onChangeLossStreakAlertEnabled: (enabled: boolean) => Promise<void>;
+  onChangeLossStreakAlertCount: (count: number) => Promise<void>;
+  inactivityReminderEnabled: boolean;
+  inactivityReminderDays: number;
+  onChangeInactivityReminderEnabled: (enabled: boolean) => Promise<void>;
+  onChangeInactivityReminderDays: (days: number) => Promise<void>;
 }) {
   return (
     <div className="max-w-xl space-y-4">
@@ -406,15 +574,75 @@ function NotificationsSection({
             type="checkbox"
             checked={statusWatcherEnabled}
             onChange={(e) => onChangeStatusWatcher(e.target.checked)}
-            className="h-4 w-4 border-line bg-surface accent-[#7CE8D3]"
+            className="h-4 w-4 border-line bg-surface accent-accent"
           />
           Me notifier des incidents et changements de file d'attente sur ma région par
           défaut
         </label>
         <p className="text-xs text-lo">
-          Seul réglage qui déclenche un appel réseau périodique même quand tu ne regardes pas
-          l'app (toutes les {"~3 min, respecte le cache/rate limiter existant"}) — désactivé
-          par défaut, à toi de l'activer si tu veux être alerté en tâche de fond.
+          Seul réglage (avec le rappel d'inactivité ci-dessous) qui déclenche un appel réseau
+          périodique même quand tu ne regardes pas l'app (toutes les{" "}
+          {"~3 min, respecte le cache/rate limiter existant"}) — désactivé par défaut, à toi
+          de l'activer si tu veux être alerté en tâche de fond.
+        </p>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="hud-label">Série de défaites</h2>
+        <label className="flex items-center gap-2.5 text-sm text-hi">
+          <input
+            type="checkbox"
+            checked={lossStreakAlertEnabled}
+            onChange={(e) => onChangeLossStreakAlertEnabled(e.target.checked)}
+            className="h-4 w-4 border-line bg-surface accent-accent"
+          />
+          Me notifier après plusieurs défaites d'affilée
+        </label>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min={1}
+            max={20}
+            value={lossStreakAlertCount}
+            onChange={(e) => onChangeLossStreakAlertCount(Number(e.target.value))}
+            disabled={!lossStreakAlertEnabled}
+            className={`w-20 disabled:opacity-50 ${INPUT_CLASS}`}
+          />
+          <span className="text-sm text-lo">défaites d'affilée</span>
+        </div>
+        <p className="text-xs text-lo">
+          Vérifié sur tes comptes marqués « à soi » (voir TopNav) à chaque consultation de
+          l'historique de matchs — pas d'appel réseau dédié.
+        </p>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="hud-label">Rappel d'inactivité</h2>
+        <label className="flex items-center gap-2.5 text-sm text-hi">
+          <input
+            type="checkbox"
+            checked={inactivityReminderEnabled}
+            onChange={(e) => onChangeInactivityReminderEnabled(e.target.checked)}
+            className="h-4 w-4 border-line bg-surface accent-accent"
+          />
+          Me rappeler si je n'ai pas consulté mes stats depuis un moment
+        </label>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-lo">Après</span>
+          <input
+            type="number"
+            min={1}
+            max={30}
+            value={inactivityReminderDays}
+            onChange={(e) => onChangeInactivityReminderDays(Number(e.target.value))}
+            disabled={!inactivityReminderEnabled}
+            className={`w-20 disabled:opacity-50 ${INPUT_CLASS}`}
+          />
+          <span className="text-sm text-lo">jours sans consulter un compte « à soi »</span>
+        </div>
+        <p className="text-xs text-lo">
+          Rappel doux, jamais plus d'une fois par jour — nécessite au moins un compte marqué
+          « à soi » (voir TopNav → sélecteur de comptes).
         </p>
       </section>
     </div>
@@ -438,7 +666,7 @@ function UpdatesSection({
           type="checkbox"
           checked={enabled}
           onChange={(e) => onChange(e.target.checked)}
-          className="h-4 w-4 border-line bg-surface accent-[#7CE8D3]"
+          className="h-4 w-4 border-line bg-surface accent-accent"
         />
         Vérifier automatiquement les mises à jour au démarrage
       </label>
@@ -516,7 +744,7 @@ function CrosshairSection() {
         <button
           type="submit"
           disabled={!code.trim() || state === "loading"}
-          className="btn-clip bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#96F0DF] disabled:opacity-50"
+          className="btn-clip bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#FF5969] disabled:opacity-50"
         >
           {state === "loading" ? "Génération…" : "Prévisualiser"}
         </button>
@@ -581,6 +809,190 @@ function DataSection() {
         {status === "done" && <p className="mt-2 text-sm text-accent">Données effacées.</p>}
         {status === "error" && <p className="mt-2 text-sm text-crit">Échec de la suppression.</p>}
       </div>
+    </div>
+  );
+}
+
+const SHORTCUTS: Array<{ keys: string; description: string }> = [
+  {
+    keys: "Ctrl+Shift+V",
+    description:
+      "Bascule l'overlay en jeu entre mode click-through (affichage seul) et mode interactif (déplaçable à la souris).",
+  },
+  {
+    keys: "Ctrl+K",
+    description:
+      "Ouvre la palette de commande (Rechercher un joueur, aller à un écran, sauter vers un joueur récent/favori). Fenêtre principale uniquement.",
+  },
+];
+
+function ShortcutsSection() {
+  return (
+    <div className="max-w-xl space-y-4">
+      <SectionTitle>Raccourcis clavier</SectionTitle>
+      <p className="text-sm text-lo">
+        Liste centralisée de tous les raccourcis clavier de l'app. D'autres pourront s'y
+        ajouter au fil des futures versions.
+      </p>
+
+      <div className="divide-y divide-line border border-line">
+        {SHORTCUTS.map((s) => (
+          <div key={s.keys} className="flex items-start gap-4 px-4 py-3">
+            <span className="hud-label shrink-0 border border-line bg-surface px-2 py-1 font-mono text-[11px] text-hi">
+              {s.keys}
+            </span>
+            <p className="text-sm text-lo">{s.description}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HealthSection({
+  enabled,
+  onChange,
+}: {
+  enabled: boolean;
+  onChange: (enabled: boolean) => Promise<void>;
+}) {
+  const [summary, setSummary] = useState<UsageMetricsSummary | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    try {
+      setSummary(await tauriApi.getUsageMetricsSummary());
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (enabled) load();
+  }, [enabled]);
+
+  const totalRequests = (summary?.cache_hits ?? 0) + (summary?.network_fetches ?? 0);
+  const hitRate = totalRequests > 0 ? Math.round(((summary?.cache_hits ?? 0) / totalRequests) * 100) : 0;
+
+  return (
+    <div className="max-w-3xl space-y-4">
+      <SectionTitle>Santé de l'app</SectionTitle>
+      <p className="text-sm text-lo">
+        Dashboard 100% local (taux de cache hit, erreurs API des 7 derniers jours) — rien
+        n'est jamais envoyé nulle part, ça reste dans ta base SQLite locale.
+      </p>
+
+      <label className="flex items-center gap-2.5 text-sm text-hi">
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(e) => onChange(e.target.checked)}
+          className="h-4 w-4 border-line bg-surface accent-accent"
+        />
+        Accumuler ces métriques localement
+      </label>
+      <p className="text-xs text-lo">
+        Désactivé par défaut : ajoute une petite écriture SQLite à chaque appel Henrik pour
+        compter les évènements, activable uniquement si tu veux ce suivi.
+      </p>
+
+      {enabled && (
+        <>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={load}
+              disabled={loading}
+              className="border border-line px-4 py-2 font-display text-xs font-semibold uppercase tracking-hud text-hi transition-colors hover:bg-surface disabled:opacity-50"
+            >
+              {loading ? "Actualisation…" : "Actualiser"}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <StatCard
+              label="Taux de cache hit (7j)"
+              value={`${hitRate}%`}
+              hint={`${summary?.cache_hits ?? 0} / ${totalRequests} requêtes servies depuis le cache`}
+              gaugePercent={hitRate}
+              gaugeColor="#7CE8D3"
+            />
+            <StatCard
+              label="Appels réseau (7j)"
+              value={String(summary?.network_fetches ?? 0)}
+              hint="Cache manqué ou périmé, requête Henrik effectuée"
+            />
+            <StatCard
+              label="Erreurs API (7j)"
+              value={String(summary?.api_errors ?? 0)}
+              hint="Rate limit, circuit breaker, panne réseau..."
+            />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function LogsSection() {
+  const [snapshot, setSnapshot] = useState<{ path: string | null; content: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [copyState, setCopyState] = useState<"idle" | "copied">("idle");
+
+  async function load() {
+    setLoading(true);
+    try {
+      setSnapshot(await tauriApi.getRecentLogs());
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function handleCopy() {
+    if (!snapshot?.content) return;
+    await navigator.clipboard.writeText(snapshot.content);
+    setCopyState("copied");
+    setTimeout(() => setCopyState("idle"), 2000);
+  }
+
+  return (
+    <div className="max-w-3xl space-y-4">
+      <SectionTitle>Logs</SectionTitle>
+      <p className="text-sm text-lo">
+        Dernières entrées du fichier de log local de l'app — utile pour du support/debug
+        sans avoir à fouiller <span className="font-mono text-xs">%APPDATA%</span> à la main.
+      </p>
+      {snapshot?.path && (
+        <p className="font-mono text-xs text-lo/70 break-all">{snapshot.path}</p>
+      )}
+
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={load}
+          disabled={loading}
+          className="border border-line px-4 py-2 font-display text-xs font-semibold uppercase tracking-hud text-hi transition-colors hover:bg-surface disabled:opacity-50"
+        >
+          {loading ? "Actualisation…" : "Actualiser"}
+        </button>
+        <button
+          type="button"
+          onClick={handleCopy}
+          disabled={!snapshot?.content}
+          className="border border-line px-4 py-2 font-display text-xs font-semibold uppercase tracking-hud text-hi transition-colors hover:bg-surface disabled:opacity-50"
+        >
+          {copyState === "copied" ? "Copié !" : "Copier"}
+        </button>
+      </div>
+
+      <pre className="max-h-[60vh] overflow-auto border border-line bg-surface p-4 font-mono text-[11px] leading-relaxed text-lo">
+        {snapshot?.content ? snapshot.content : "Aucun log pour l'instant."}
+      </pre>
     </div>
   );
 }
