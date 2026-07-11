@@ -1,0 +1,18 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capacités des fenêtres — fenêtre principale sans decorations (titlebar custom : drag/minimize/close, mode mini) et fenêtre overlay V2 (drag en mode interactif, events d'état de partie).",
+  "windows": ["main", "overlay"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-minimize",
+    "core:window:allow-close",
+    "core:window:allow-start-dragging",
+    "core:window:allow-set-size",
+    "core:window:allow-set-always-on-top",
+    "core:window:allow-outer-size",
+    "core:window:allow-scale-factor",
+    "updater:default",
+    "process:allow-restart"
+  ]
+}

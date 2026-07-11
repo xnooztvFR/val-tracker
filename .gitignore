@@ -1,0 +1,29 @@
+# Frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+*.tsbuildinfo
+
+# Tauri / Rust
+src-tauri/target/
+src-tauri/gen/
+src-tauri/Cargo.lock.bak
+
+# Config locale / secrets — la clé API Henrik ne vit que dans le dossier de données
+# utilisateur Tauri (app_data_dir), jamais dans le repo.
+.env
+.env.*
+!.env.example
+
+# Éditeurs / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
