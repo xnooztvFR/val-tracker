@@ -50,8 +50,7 @@ automatique de partie avec un petit overlay affichant le rank de ton lobby.
    *Exécuter quand même*. Le binaire est bien signé (intégrité vérifiable), ce n'est qu'un
    avertissement de réputation, pas un antivirus qui bloque un malware.
 3. Au premier lancement, l'app te guide en 3 étapes : renseigner une clé API
-   [Henrik Dev](https://discord.com/invite/X3GaVkX2YN) (gratuite, à demander sur leur
-   Discord), choisir ta région, et vérifier la détection automatique du client Riot.
+   [Henrik Dev](https://api.henrikdev.xyz/dashboard/api-keys) (gratuite), choisir ta région, et vérifier la détection automatique du client Riot.
 4. Les mises à jour suivantes s'installent automatiquement (ou via *Paramètres → Mises à
    jour → Vérifier maintenant*).
 

@@ -48,8 +48,7 @@ with a small overlay showing your lobby's ranks.
    authority. Click *More info* then *Run anyway*. The binary is properly signed (integrity
    is verifiable), this is just a reputation warning, not an antivirus blocking malware.
 3. On first launch, the app walks you through 3 steps: enter a
-   [Henrik Dev](https://discord.com/invite/X3GaVkX2YN) API key (free, request one on their
-   Discord), pick your region, and check the automatic Riot client detection.
+   [Henrik Dev](https://api.henrikdev.xyz/dashboard/api-keys) API key (free), pick your region, and check the automatic Riot client detection.
 4. Future updates install automatically (or via *Settings → Updates → Check now*).
 
 ### Privacy

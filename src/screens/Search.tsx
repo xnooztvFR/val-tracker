@@ -7,6 +7,7 @@ import { useSettingsStore } from "../store/settingsStore";
 import { tauriApi, type TrackedPlayer } from "../lib/tauriApi";
 import { REGIONS, rankInfo, splitRiotId } from "../lib/format";
 import OnboardingWizard from "../components/OnboardingWizard";
+import logo from "../assets/logo.png";
 
 export default function Search() {
   const navigate = useNavigate();
@@ -85,9 +86,7 @@ export default function Search() {
 
   return (
     <div className="mx-auto flex h-full w-full max-w-2xl flex-col items-center justify-center overflow-y-auto px-6 py-10">
-      <div className="btn-clip flex h-14 w-14 items-center justify-center bg-accent font-display text-2xl font-bold text-base">
-        V
-      </div>
+      <img src={logo} alt="Valorant Tracker" className="h-14 w-14 object-contain" />
 
       <h1 className="mt-6 text-center font-display text-3xl font-bold uppercase tracking-hud text-hi">
         Traque ton <span className="text-accent">rank</span>

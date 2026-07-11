@@ -7,6 +7,7 @@ import { playerCardIconUrl, rankGlowColor, rankInfo } from "../lib/format";
 import DetectionStatusBadge from "./DetectionStatusBadge";
 import ApiStatusBadge from "./ApiStatusBadge";
 import AccountSwitcher from "./AccountSwitcher";
+import logo from "../assets/logo.png";
 
 const GLOBAL_TABS = [
   { to: "/classement", label: "Classement" },
@@ -45,9 +46,7 @@ export default function TopNav() {
         aria-label="Accueil"
         className="mr-3 flex shrink-0 items-center gap-2 self-center pr-2"
       >
-        <div className="btn-clip flex h-6 w-6 items-center justify-center bg-accent font-display text-xs font-bold text-base">
-          V
-        </div>
+        <img src={logo} alt="" className="h-6 w-6 object-contain" />
       </button>
 
       {player && (
