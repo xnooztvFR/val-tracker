@@ -1,4 +1,4 @@
-[🇫🇷 Français](README.md)&nbsp;|&nbsp;🇬🇧 English
+[🇫🇷 Français](README.md)&nbsp;|&nbsp;🇺🇸 English
 
 # Valorant Tracker
 
