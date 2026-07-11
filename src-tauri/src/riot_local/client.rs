@@ -105,18 +105,42 @@ struct Presence {
 
 #[derive(Deserialize)]
 struct PresencePrivate {
+    /// `sessionLoopState` vit sous `matchPresenceData`, pas à la racine de `private` —
+    /// le chercher à la racine le laisse toujours à `None` (silencieusement, `Option`
+    /// oblige) et fait retomber `fetch_game_state` sur `Menu` en permanence, quel que soit
+    /// l'état réel de la partie. C'est le bug d'origine derrière l'overlay qui ne
+    /// s'affichait jamais.
+    #[serde(rename = "matchPresenceData")]
+    match_presence_data: Option<MatchPresenceData>,
+    #[serde(rename = "partyPresenceData")]
+    party_presence_data: Option<PartyPresenceData>,
+}
+
+#[derive(Deserialize)]
+struct MatchPresenceData {
     #[serde(rename = "sessionLoopState")]
     session_loop_state: Option<String>,
 }
 
+#[derive(Deserialize)]
+struct PartyPresenceData {
+    /// Version du client Valorant (ex: `release-13.00-shipping-32-4990475`) — requise en
+    /// en-tête `X-Riot-ClientVersion` des appels GLZ (voir `get_glz_json`), sans quoi Riot
+    /// répond `400 INVALID_HEADERS`. Extraite d'ici plutôt que codée en dur pour rester
+    /// valide d'un patch à l'autre sans mise à jour de l'app.
+    #[serde(rename = "partyClientVersion")]
+    party_client_version: Option<String>,
+}
+
 /// Interroge l'état courant du client Riot via la presence chat du joueur local :
 /// `sessionLoopState` vaut MENUS / PREGAME / INGAME quand Valorant tourne. Pas de
-/// presence Valorant = jeu fermé (HorsJeu).
+/// presence Valorant = jeu fermé (HorsJeu). Renvoie aussi la version du client courante
+/// (voir `PartyPresenceData`), nécessaire pour les appels GLZ du roster.
 pub async fn fetch_game_state(
     client: &reqwest::Client,
     lockfile: &LockfileInfo,
     local_puuid: &str,
-) -> anyhow::Result<GameState> {
+) -> anyhow::Result<(GameState, Option<String>)> {
     let response: PresencesResponse =
         get_local_json(client, lockfile, "/chat/v4/presences").await?;
 
@@ -124,11 +148,11 @@ pub async fn fetch_game_state(
         p.puuid.as_deref() == Some(local_puuid)
             && p.product.as_deref() == Some("valorant")
     }) else {
-        return Ok(GameState::HorsJeu);
+        return Ok((GameState::HorsJeu, None));
     };
 
     let Some(private_b64) = own.private.as_deref() else {
-        return Ok(GameState::Menu);
+        return Ok((GameState::Menu, None));
     };
     let decoded = base64::engine::general_purpose::STANDARD
         .decode(private_b64)
@@ -136,11 +160,19 @@ pub async fn fetch_game_state(
     let private: PresencePrivate =
         serde_json::from_slice(&decoded).context("parse presence privée")?;
 
-    Ok(match private.session_loop_state.as_deref() {
+    let client_version = private
+        .party_presence_data
+        .and_then(|p| p.party_client_version);
+    let session_loop_state = private
+        .match_presence_data
+        .and_then(|m| m.session_loop_state);
+
+    let state = match session_loop_state.as_deref() {
         Some("PREGAME") => GameState::Pregame,
         Some("INGAME") => GameState::InGame,
         _ => GameState::Menu,
-    })
+    };
+    Ok((state, client_version))
 }
 
 // ---- Entitlements + roster de la partie (endpoints GLZ) ----
@@ -198,15 +230,28 @@ fn glz_base(region: &str) -> String {
     format!("https://glz-{region}-1.{shard}.a.pvp.net")
 }
 
+/// En-tête `X-Riot-ClientPlatform` attendu par les endpoints GLZ : un JSON générique
+/// encodé en base64 décrivant la plateforme (identique pour tout client Windows, pas
+/// spécifique à la machine — valeur utilisée telle quelle par la plupart des clients tiers
+/// non officiels de l'API Valorant).
+fn client_platform_header() -> String {
+    base64::engine::general_purpose::STANDARD.encode(
+        r#"{"platformType":"PC","platformOS":"Windows","platformOSVersion":"10.0.19042.1.256.64bit","platformChipset":"Unknown"}"#,
+    )
+}
+
 async fn get_glz_json(
     client: &reqwest::Client,
     entitlements: &Entitlements,
+    client_version: &str,
     url: &str,
 ) -> anyhow::Result<serde_json::Value> {
     let response = client
         .get(url)
         .bearer_auth(&entitlements.access_token)
         .header("X-Riot-Entitlements-JWT", &entitlements.token)
+        .header("X-Riot-ClientPlatform", client_platform_header())
+        .header("X-Riot-ClientVersion", client_version)
         .send()
         .await
         .with_context(|| format!("GET glz {url}"))?
@@ -222,6 +267,7 @@ pub async fn fetch_pregame_player_puuids(
     lockfile: &LockfileInfo,
     local_puuid: &str,
     region: &str,
+    client_version: &str,
 ) -> anyhow::Result<Vec<String>> {
     let entitlements = fetch_entitlements(client, lockfile).await?;
     let base = glz_base(region);
@@ -229,6 +275,7 @@ pub async fn fetch_pregame_player_puuids(
     let player = get_glz_json(
         client,
         &entitlements,
+        client_version,
         &format!("{base}/pregame/v1/players/{local_puuid}"),
     )
     .await?;
@@ -241,6 +288,7 @@ pub async fn fetch_pregame_player_puuids(
     let game = get_glz_json(
         client,
         &entitlements,
+        client_version,
         &format!("{base}/pregame/v1/matches/{match_id}"),
     )
     .await?;
@@ -262,6 +310,7 @@ pub async fn fetch_coregame_player_puuids(
     lockfile: &LockfileInfo,
     local_puuid: &str,
     region: &str,
+    client_version: &str,
 ) -> anyhow::Result<Vec<String>> {
     let entitlements = fetch_entitlements(client, lockfile).await?;
     let base = glz_base(region);
@@ -269,6 +318,7 @@ pub async fn fetch_coregame_player_puuids(
     let player = get_glz_json(
         client,
         &entitlements,
+        client_version,
         &format!("{base}/core-game/v1/players/{local_puuid}"),
     )
     .await?;
@@ -281,6 +331,7 @@ pub async fn fetch_coregame_player_puuids(
     let game = get_glz_json(
         client,
         &entitlements,
+        client_version,
         &format!("{base}/core-game/v1/matches/{match_id}"),
     )
     .await?;

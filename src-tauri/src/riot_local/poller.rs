@@ -48,6 +48,7 @@ pub fn stop(handle: PollerHandle) {
 }
 
 async fn run_loop(app: AppHandle, mut stop_rx: watch::Receiver<bool>) {
+    crate::applog!("[riot_local] poller démarré, log_path={:?}", crate::applog::path());
     let mut ctx = PollContext::default();
 
     loop {
@@ -81,6 +82,10 @@ struct PollContext {
     lockfile: Option<LockfileInfo>,
     local_puuid: Option<String>,
     region: Option<String>,
+    /// Version du client Valorant, extraite de la presence (voir `client::fetch_game_state`)
+    /// et requise en en-tête des appels GLZ du roster — mise en cache comme `region` car
+    /// elle ne change pas d'un tick à l'autre pour une même session.
+    client_version: Option<String>,
     previous_state: Option<GameState>,
     last_snapshot: Option<LiveSnapshot>,
     /// Échecs consécutifs de l'API locale (lockfile présent mais injoignable) — voir
@@ -102,6 +107,7 @@ impl PollContext {
         self.lockfile = None;
         self.local_puuid = None;
         self.region = None;
+        self.client_version = None;
         self.local_failures = 0;
         self.clear_roster();
     }
@@ -118,6 +124,9 @@ async fn tick(app: &AppHandle, ctx: &mut PollContext) {
     let default_region = settings.default_region.clone();
 
     if disabled {
+        if ctx.previous_state.is_some() {
+            crate::applog!("[riot_local] détection désactivée dans les réglages");
+        }
         publish(app, ctx, &settings, LiveSnapshot::disabled());
         crate::overlay::window::hide_overlay(app);
         ctx.previous_state = None;
@@ -127,7 +136,10 @@ async fn tick(app: &AppHandle, ctx: &mut PollContext) {
 
     let lockfile = match lockfile::read_lockfile() {
         Ok(Some(info)) => info,
-        _ => {
+        other => {
+            if ctx.previous_state != Some(GameState::HorsJeu) {
+                crate::applog!("[riot_local] lockfile introuvable/illisible: {other:?}");
+            }
             publish(app, ctx, &settings, LiveSnapshot::offline());
             crate::overlay::window::hide_overlay(app);
             ctx.previous_state = Some(GameState::HorsJeu);
@@ -152,7 +164,8 @@ async fn tick(app: &AppHandle, ctx: &mut PollContext) {
                 ctx.local_puuid = Some(puuid);
                 ctx.local_failures = 0;
             }
-            Err(_) => {
+            Err(err) => {
+                crate::applog!("[riot_local] échec fetch_local_puuid: {err:#}");
                 on_local_api_failure(app, ctx, &settings).await;
                 return;
             }
@@ -163,8 +176,14 @@ async fn tick(app: &AppHandle, ctx: &mut PollContext) {
     };
 
     let state = match client::fetch_game_state(&http, &lockfile, &local_puuid).await {
-        Ok(state) => state,
-        Err(_) => {
+        Ok((state, client_version)) => {
+            if let Some(client_version) = client_version {
+                ctx.client_version = Some(client_version);
+            }
+            state
+        }
+        Err(err) => {
+            crate::applog!("[riot_local] échec fetch_game_state: {err:#}");
             on_local_api_failure(app, ctx, &settings).await;
             return;
         }
@@ -186,15 +205,15 @@ async fn tick(app: &AppHandle, ctx: &mut PollContext) {
         GameState::Pregame | GameState::InGame => {
             if ctx.roster_state == Some(state) && !ctx.roster.is_empty() {
                 ctx.roster.clone()
-            } else {
+            } else if let Some(client_version) = ctx.client_version.clone() {
                 let fetched = match state {
                     GameState::Pregame => {
-                        client::fetch_pregame_player_puuids(&http, &lockfile, &local_puuid, &region)
+                        client::fetch_pregame_player_puuids(&http, &lockfile, &local_puuid, &region, &client_version)
                             .await
                             .unwrap_or_default()
                     }
                     GameState::InGame => {
-                        client::fetch_coregame_player_puuids(&http, &lockfile, &local_puuid, &region)
+                        client::fetch_coregame_player_puuids(&http, &lockfile, &local_puuid, &region, &client_version)
                             .await
                             .unwrap_or_default()
                     }
@@ -210,6 +229,10 @@ async fn tick(app: &AppHandle, ctx: &mut PollContext) {
                     ctx.roster = fetched.clone();
                     fetched
                 }
+            } else {
+                // Version du client pas encore connue (premier tick de la session) —
+                // retentera dès qu'un tick aura lu la presence avec succès.
+                Vec::new()
             }
         }
         _ => {
@@ -217,6 +240,16 @@ async fn tick(app: &AppHandle, ctx: &mut PollContext) {
             Vec::new()
         }
     };
+
+    if ctx.previous_state != Some(state) {
+        crate::applog!(
+            "[riot_local] transition {:?} -> {} (region={:?}, roster={})",
+            ctx.previous_state.map(GameState::as_str),
+            state.as_str(),
+            region,
+            players.len()
+        );
+    }
 
     on_state_changed(app, ctx.previous_state, state).await;
     ctx.previous_state = Some(state);

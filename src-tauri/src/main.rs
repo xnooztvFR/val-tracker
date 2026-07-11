@@ -52,7 +52,11 @@ fn main() {
             // Ctrl+Shift+V (bascule click-through de l'overlay). Best-effort : un échec
             // d'enregistrement du raccourci ne doit pas empêcher l'app de démarrer.
             app.manage(riot_local::LiveState::new());
-            riot_local::poller::start(handle.clone());
+            // Le handle doit rester géré pour toute la durée de vie de l'app : il détient
+            // le `watch::Sender` qui maintient la boucle de polling en vie. Le laisser
+            // tomber ici fermerait immédiatement le canal et arrêterait `run_loop` dès sa
+            // première itération, avant même le premier tick (bug constaté en session).
+            app.manage(riot_local::poller::start(handle.clone()));
 
             // V3 — Rich Presence Discord : thread IPC dédié, piloté depuis le poller (état
             // de partie déjà calculé là-bas) et depuis Paramètres. Best-effort : géré même
