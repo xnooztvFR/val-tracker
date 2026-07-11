@@ -18,6 +18,14 @@ if (-not (Test-Path $keyPath) -or -not (Test-Path $keyPasswordPath)) {
     throw "Clé de signature updater introuvable ($keyPath). Voir README.md > Signature."
 }
 
+# signtool.exe (Authenticode) vient du Windows SDK mais n'est pas ajouté au PATH par défaut.
+$signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" -ErrorAction SilentlyContinue |
+    Sort-Object FullName -Descending | Select-Object -First 1
+if (-not $signtool) {
+    throw "signtool.exe introuvable — installe le Windows SDK (composant 'Windows SDK Signing Tools')."
+}
+$env:PATH = "$($signtool.DirectoryName);$env:PATH"
+
 $conf = Get-Content "$root\src-tauri\tauri.conf.json" -Raw | ConvertFrom-Json
 $version = $conf.version
 $repo = "xnooztvFR/val-tracker"
