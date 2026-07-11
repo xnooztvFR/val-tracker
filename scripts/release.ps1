@@ -37,7 +37,7 @@ if (gh release view $tag --repo $repo 2>$null) {
     throw "La release $tag existe déjà sur $repo. Monte la version dans src-tauri/tauri.conf.json et package.json d'abord."
 }
 
-$env:TAURI_SIGNING_PRIVATE_KEY_PATH = $keyPath
+$env:TAURI_SIGNING_PRIVATE_KEY = (Get-Content $keyPath -Raw)
 $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = (Get-Content $keyPasswordPath -Raw).Trim()
 
 npm run tauri build
