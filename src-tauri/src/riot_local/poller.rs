@@ -283,10 +283,13 @@ async fn on_local_api_failure(app: &AppHandle, ctx: &mut PollContext, settings: 
     ctx.reset_session();
 }
 
-/// Réagit aux transitions : affiche/masque l'overlay, notifie la fin de partie.
+/// Réagit aux transitions : affiche/masque l'overlay, notifie la fin de partie. L'overlay
+/// ne s'affiche qu'en pregame (sélection d'agents) — une fois la manche lancée (`InGame`),
+/// il se masque : il peut sinon gêner le focus/la visée pendant l'action (retour
+/// utilisateur : kills loupés à cause de l'overlay affiché pendant le combat).
 async fn on_state_changed(app: &AppHandle, previous: Option<GameState>, current: GameState) {
     match current {
-        GameState::Pregame | GameState::InGame => {
+        GameState::Pregame => {
             crate::overlay::window::show_overlay(app).await;
         }
         _ => {
