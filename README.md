@@ -102,36 +102,38 @@ Deux mécanismes de signature distincts, à ne pas confondre :
 
 `tauri-plugin-updater` est câblé (voir `src-tauri/src/main.rs`, `src/hooks/useUpdater.ts`,
 `src/components/UpdateBanner.tsx`, section **Mises à jour** des Paramètres). L'app vérifie
-`https://github.com/xnooztvFR/val-tracker/releases/latest/download/latest.json` — le manifest
-`latest.json` est généré et publié automatiquement par le workflow de release (voir
-ci-dessous), il n'y a rien à héberger manuellement.
+`https://github.com/xnooztvFR/val-tracker/releases/latest/download/latest.json`.
+
+Le dépôt GitHub **xnooztvFR/val-tracker** ne sert que de point de distribution — le code
+source n'y est jamais poussé. Chaque release est buildée en local et publiée directement en
+tant qu'assets GitHub via `gh` (GitHub CLI).
 
 Pour publier une nouvelle version :
 
-```bash
-# 1. Monter la version dans package.json ET src-tauri/tauri.conf.json (doivent matcher)
-# 2. Committer, puis taguer avec le même numéro, préfixé "v"
-git tag v0.2.0
-git push origin v0.2.0
+```powershell
+# 1. Monter "version" dans src-tauri/tauri.conf.json (et package.json pour rester cohérent)
+# 2. gh auth login une seule fois si ce n'est pas déjà fait
+pwsh -File scripts/release.ps1
 ```
 
-Le tag déclenche `.github/workflows/release.yml` : build Windows, import du certificat de
-signature, build+signature via `tauri-apps/tauri-action`, publication d'un **brouillon** de
-release GitHub avec les installeurs + `latest.json`. Vérifier le brouillon (notes de version,
-artefacts présents) puis le publier manuellement sur GitHub — c'est cette publication qui
-rend la mise à jour visible par l'updater des clients déjà installés (les brouillons ne sont
-pas lus par `releases/latest/...`).
+Le script (`scripts/release.ps1`) :
+- build (`npm run tauri build`, signé Authenticode + updater),
+- génère `latest.json` à partir du binaire NSIS produit (`windows-x86_64` → le `.exe` NSIS,
+  utilisé par l'auto-update ; le `.msi` est aussi publié en asset pour installation manuelle),
+- publie une **release brouillon** sur GitHub avec `gh release create` (installeurs + `.sig` +
+  `latest.json`).
 
-**Secrets GitHub Actions requis** (Settings → Secrets and variables → Actions du repo) :
+Vérifier le brouillon sur github.com (notes, assets présents) puis le publier manuellement —
+c'est cette publication qui rend la mise à jour visible par l'updater des clients déjà
+installés (`releases/latest/...` ignore les brouillons).
 
-| Secret | Contenu |
+Secrets/clés nécessaires, tous **locaux uniquement** (jamais commités, voir `.gitignore` /
+`~/.tauri/`) :
+
+| Fichier local | Rôle |
 | --- | --- |
-| `TAURI_SIGNING_PRIVATE_KEY` | Contenu du fichier `~/.tauri/val-tracker.key` |
-| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Mot de passe de cette clé |
-| `WINDOWS_CERTIFICATE` | PFX du certificat Authenticode encodé en base64 |
-| `WINDOWS_CERTIFICATE_PASSWORD` | Mot de passe du PFX |
-
-`GITHUB_TOKEN` est fourni automatiquement par GitHub Actions, pas besoin de le créer.
+| `~/.tauri/val-tracker.key` + `.key.password.txt` | Signature updater (Ed25519) |
+| `~/.tauri/val-tracker-codesign.pfx` | Certificat Authenticode (déjà importé dans le magasin Windows local, utilisé via son thumbprint dans `tauri.conf.json`) |
 
 ## Architecture
 
