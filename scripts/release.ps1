@@ -55,8 +55,11 @@ if (-not $nsisExe -or -not $nsisSig) {
 
 # windows-x86_64 pointe vers le NSIS (updater silencieux) ; le MSI reste dispo en asset
 # pour une installation manuelle mais n'est pas utilisé par l'auto-update.
+# GitHub remplace les espaces des noms de fichiers par des points à l'upload — l'URL doit
+# refléter le nom final, sinon l'updater obtient un 404.
 $signature = (Get-Content $nsisSig.FullName -Raw).Trim()
 $pubDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+$nsisAssetName = $nsisExe.Name -replace " ", "."
 
 $latestJson = [ordered]@{
     version  = $version
@@ -65,7 +68,7 @@ $latestJson = [ordered]@{
     platforms = [ordered]@{
         "windows-x86_64" = [ordered]@{
             signature = $signature
-            url       = "https://github.com/$repo/releases/download/$tag/$($nsisExe.Name)"
+            url       = "https://github.com/$repo/releases/download/$tag/$nsisAssetName"
         }
     }
 } | ConvertTo-Json -Depth 5
