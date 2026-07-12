@@ -120,6 +120,8 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_settings,
+            commands::set_pending_changelog,
+            commands::take_pending_changelog,
             commands::save_henrik_api_key,
             commands::save_default_region,
             commands::save_auto_update_enabled,

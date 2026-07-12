@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Trans, useTranslation } from "react-i18next";
+import { getVersion } from "@tauri-apps/api/app";
 
 import { useSettingsStore } from "../store/settingsStore";
 import { tauriApi, type UsageMetricsSummary } from "../lib/tauriApi";
@@ -1153,10 +1154,18 @@ function LogsSection() {
 
 function AboutSection() {
   const { t } = useTranslation("settings");
+  const [version, setVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    getVersion()
+      .then(setVersion)
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="max-w-xl space-y-2">
       <SectionTitle>{t("about.title")}</SectionTitle>
-      <p className="text-sm text-lo">{t("about.version", { version: "0.1.0" })}</p>
+      <p className="text-sm text-lo">{t("about.version", { version: version ?? "…" })}</p>
       <p className="text-xs text-lo">{t("about.disclaimer")}</p>
     </div>
   );

@@ -39,6 +39,15 @@ const KEY_NOTES_PIN_ENABLED: &str = "notes_pin_enabled";
 /// (seul `notes_pin_enabled` l'est) ; la vérification se fait entièrement côté Rust via
 /// `verify_notes_pin`.
 const KEY_NOTES_PIN: &str = "notes_pin";
+/// Backlog #72 (fix) : changelog de la mise à jour tout juste installée, écrit juste avant
+/// `relaunch()` et lu (puis effacé) par `ChangelogModal.tsx` au chargement suivant. Stocké
+/// côté Rust plutôt qu'en `localStorage` : `invoke()` attend la fin de l'écriture SQLite
+/// avant de résoudre côté JS, alors qu'un `localStorage.setItem()` suivi immédiatement d'un
+/// `relaunch()` (qui tue le process) n'offre aucune garantie que WebView2 ait flush
+/// l'écriture sur disque avant la mort du process — c'était la cause du bug "la popup
+/// n'apparaît jamais" malgré une mise à jour réussie.
+const KEY_PENDING_CHANGELOG_VERSION: &str = "pending_changelog_version";
+const KEY_PENDING_CHANGELOG_NOTES: &str = "pending_changelog_notes";
 
 const DEFAULT_UI_THEME: &str = "dark";
 const DEFAULT_UI_ACCENT: &str = "red";
@@ -477,6 +486,26 @@ pub fn set_last_inactivity_reminder_sent(conn: &Connection, ts: i64) -> rusqlite
     set_raw(conn, KEY_LAST_INACTIVITY_REMINDER_SENT, &ts.to_string())
 }
 
+/// Écrit le changelog en attente juste avant `relaunch()` — voir doc de
+/// `KEY_PENDING_CHANGELOG_VERSION`.
+pub fn set_pending_changelog(conn: &Connection, version: &str, notes: &str) -> rusqlite::Result<()> {
+    set_raw(conn, KEY_PENDING_CHANGELOG_VERSION, version)?;
+    set_raw(conn, KEY_PENDING_CHANGELOG_NOTES, notes)
+}
+
+/// Lit puis efface immédiatement le changelog en attente (affichage unique, au premier
+/// chargement suivant l'installation).
+pub fn take_pending_changelog(conn: &Connection) -> rusqlite::Result<Option<(String, String)>> {
+    let version = get_raw(conn, KEY_PENDING_CHANGELOG_VERSION)?;
+    let Some(version) = version.filter(|v| !v.is_empty()) else {
+        return Ok(None);
+    };
+    let notes = get_raw(conn, KEY_PENDING_CHANGELOG_NOTES)?.unwrap_or_default();
+    set_raw(conn, KEY_PENDING_CHANGELOG_VERSION, "")?;
+    set_raw(conn, KEY_PENDING_CHANGELOG_NOTES, "")?;
+    Ok(Some((version, notes)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -717,5 +746,19 @@ mod tests {
         clear_notes_pin(&conn).unwrap();
         assert!(!load_settings(&conn).unwrap().notes_pin_enabled);
         assert!(!verify_notes_pin(&conn, "1234").unwrap());
+    }
+
+    #[test]
+    fn pending_changelog_round_trip_and_single_read() {
+        let conn = memory_conn();
+        assert!(take_pending_changelog(&conn).unwrap().is_none());
+
+        set_pending_changelog(&conn, "0.3.9", "Nouveautés de la v0.3.9").unwrap();
+        let (version, notes) = take_pending_changelog(&conn).unwrap().unwrap();
+        assert_eq!(version, "0.3.9");
+        assert_eq!(notes, "Nouveautés de la v0.3.9");
+
+        // Lecture unique : effacé après le premier `take`.
+        assert!(take_pending_changelog(&conn).unwrap().is_none());
     }
 }

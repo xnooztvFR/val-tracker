@@ -3,11 +3,6 @@ import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { invoke } from "@tauri-apps/api/core";
 
-/** Backlog #72 : clé localStorage portant le changelog de la mise à jour tout juste
- * installée, écrite juste avant `relaunch()` (l'objet `Update` ne survit pas au
- * redémarrage) et lue par `ChangelogModal.tsx` au chargement suivant. */
-export const PENDING_CHANGELOG_KEY = "val-tracker:pending-changelog";
-
 export type UpdaterStatus =
   | "idle"
   | "checking"
@@ -113,16 +108,20 @@ export function useUpdater(): UpdaterState {
         }
       });
       setStatus("ready");
-      // Backlog #72 : `update.body` porte les notes de version (champ "notes" de
-      // latest.json, voir scripts/release.ps1) — persistées ici car l'objet `Update` ne
-      // survit pas à `relaunch()`, lues par ChangelogModal au prochain chargement.
+      // Backlog #72 (fix) : `update.body` porte les notes de version (champ "notes" de
+      // latest.json, voir scripts/release.ps1) — persistées côté Rust (SQLite) car l'objet
+      // `Update` ne survit pas à `relaunch()`, lues par ChangelogModal au prochain
+      // chargement. `invoke()` est awaité : contrairement à un `localStorage.setItem()`
+      // suivi immédiatement d'un `relaunch()` (qui tue le process sans garantie que
+      // WebView2 ait flush l'écriture sur disque), la commande Tauri ne résout qu'une fois
+      // l'écriture SQLite terminée.
       try {
-        localStorage.setItem(
-          PENDING_CHANGELOG_KEY,
-          JSON.stringify({ version: update.version, notes: update.body ?? "" }),
-        );
+        await invoke("set_pending_changelog", {
+          version: update.version,
+          notes: update.body ?? "",
+        });
       } catch {
-        // best-effort : pas de changelog affiché si localStorage est indisponible.
+        // best-effort : pas de changelog affiché si l'écriture échoue.
       }
       await relaunch();
     } catch (err) {

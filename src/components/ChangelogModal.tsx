@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { getVersion } from "@tauri-apps/api/app";
+import { invoke } from "@tauri-apps/api/core";
 
-import { PENDING_CHANGELOG_KEY } from "../hooks/useUpdater";
 import Panel from "./Panel";
 
 interface PendingChangelog {
@@ -10,35 +9,22 @@ interface PendingChangelog {
   notes: string;
 }
 
-function readPendingChangelog(): PendingChangelog | null {
-  try {
-    const raw = localStorage.getItem(PENDING_CHANGELOG_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<PendingChangelog>;
-    if (typeof parsed.version !== "string") return null;
-    return { version: parsed.version, notes: typeof parsed.notes === "string" ? parsed.notes : "" };
-  } catch {
-    return null;
-  }
-}
-
 /** Backlog #72 : modal "Quoi de neuf" au premier lancement suivant une mise à jour
  * silencieuse (NSIS) — évite de devoir aller lire la release GitHub. Se déclenche une
- * seule fois : `useUpdater.installNow` écrit le changelog en `localStorage` juste avant
- * `relaunch()`, ce composant le lit puis l'efface immédiatement au montage suivant, ne
- * comparant la version stockée à la version courante que pour éviter un affichage
- * fantôme si l'entrée localStorage traîne après un rollback manuel. */
+ * seule fois : `useUpdater.installNow` écrit le changelog côté Rust (SQLite) juste avant
+ * `relaunch()` (voir `set_pending_changelog`), ce composant le lit puis l'efface
+ * immédiatement au montage suivant via `take_pending_changelog` (lecture unique côté
+ * backend, pas de `localStorage` — un `setItem()` juste avant de tuer le process n'offrait
+ * aucune garantie de flush sur disque avant WebView2, ce qui faisait que la popup
+ * n'apparaissait jamais malgré une mise à jour réussie). */
 export default function ChangelogModal() {
   const { t } = useTranslation("componentsExtra");
   const [changelog, setChangelog] = useState<PendingChangelog | null>(null);
 
   useEffect(() => {
-    const pending = readPendingChangelog();
-    if (!pending) return;
-    localStorage.removeItem(PENDING_CHANGELOG_KEY);
-    getVersion()
-      .then((currentVersion) => {
-        if (currentVersion === pending.version) setChangelog(pending);
+    invoke<PendingChangelog | null>("take_pending_changelog")
+      .then((pending) => {
+        if (pending) setChangelog(pending);
       })
       .catch(() => {});
   }, []);

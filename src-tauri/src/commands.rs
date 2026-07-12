@@ -83,6 +83,37 @@ pub async fn get_settings(state: State<'_, AppState>) -> Result<AppSettings, Com
     Ok(crate::settings::load_settings(&conn)?)
 }
 
+#[derive(Debug, Serialize)]
+pub struct PendingChangelog {
+    version: String,
+    notes: String,
+}
+
+/// Backlog #72 (fix) : écrit le changelog en attente côté Rust (SQLite) juste avant
+/// `relaunch()` — voir doc de `settings::KEY_PENDING_CHANGELOG_VERSION` pour la raison
+/// (remplace un `localStorage.setItem()` racy vis-à-vis du kill de process immédiat).
+#[tauri::command]
+pub async fn set_pending_changelog(
+    state: State<'_, AppState>,
+    version: String,
+    notes: String,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::set_pending_changelog(&conn, &version, &notes)?;
+    Ok(())
+}
+
+/// Lit puis efface le changelog en attente (affichage unique) — appelé par
+/// `ChangelogModal.tsx` au montage.
+#[tauri::command]
+pub async fn take_pending_changelog(
+    state: State<'_, AppState>,
+) -> Result<Option<PendingChangelog>, CommandError> {
+    let conn = state.db.lock().await;
+    Ok(crate::settings::take_pending_changelog(&conn)?
+        .map(|(version, notes)| PendingChangelog { version, notes }))
+}
+
 #[tauri::command]
 pub async fn save_henrik_api_key(
     state: State<'_, AppState>,
