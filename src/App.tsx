@@ -10,6 +10,7 @@ import TopNav from "./components/TopNav";
 import StatusBanner from "./components/StatusBanner";
 import MiniOverlay from "./components/MiniOverlay";
 import UpdateBanner from "./components/UpdateBanner";
+import ChangelogModal from "./components/ChangelogModal";
 import CommandPalette from "./components/CommandPalette";
 import Search from "./screens/Search";
 import { useUiStore } from "./store/uiStore";
@@ -109,6 +110,7 @@ export default function App() {
         <>
           <TopNav />
           <UpdateBanner />
+          <ChangelogModal />
           <StatusBanner />
           <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <Suspense fallback={<RouteFallback />}>

@@ -5,7 +5,12 @@ le code source : le dépôt xnooztvFR/val-tracker ne sert que de point de distri
 Nécessite `gh auth login` fait au préalable.
 #>
 param(
-    [switch]$Draft = $true
+    [switch]$Draft = $true,
+    # Backlog #72 : chemin d'un fichier markdown/texte avec le vrai changelog de cette
+    # version — utilisé à la fois comme description de la release GitHub ET comme champ
+    # "notes" de latest.json (lu par tauri-plugin-updater, affiché dans ChangelogModal.tsx
+    # après l'auto-update). Sans ce paramètre, retombe sur un texte générique.
+    [string]$NotesFile
 )
 
 $ErrorActionPreference = "Stop"
@@ -35,6 +40,13 @@ Write-Host "== Build release $tag ==" -ForegroundColor Cyan
 
 if (gh release view $tag --repo $repo 2>$null) {
     throw "La release $tag existe déjà sur $repo. Monte la version dans src-tauri/tauri.conf.json et package.json d'abord."
+}
+
+$releaseNotes = if ($NotesFile) {
+    if (-not (Test-Path $NotesFile)) { throw "NotesFile introuvable: $NotesFile" }
+    Get-Content $NotesFile -Raw
+} else {
+    "Voir les changements de cette version."
 }
 
 $env:TAURI_SIGNING_PRIVATE_KEY = (Get-Content $keyPath -Raw)
@@ -70,7 +82,7 @@ $nsisSha256 = (Get-FileHash $nsisExe.FullName -Algorithm SHA256).Hash.ToLower()
 
 $latestJson = [ordered]@{
     version  = $version
-    notes    = "Voir les changements de cette version."
+    notes    = $releaseNotes
     pub_date = $pubDate
     platforms = [ordered]@{
         "windows-x86_64" = [ordered]@{
@@ -91,10 +103,18 @@ if ($msiSig) { $assets += $msiSig.FullName }
 Write-Host "== Publication de $tag sur $repo (brouillon) ==" -ForegroundColor Cyan
 $draftFlag = if ($Draft) { "--draft" } else { $null }
 
-gh release create $tag @assets `
-    --repo $repo `
-    --title "Valorant Tracker $tag" `
-    --notes "Voir les changements de cette version." `
-    $draftFlag
+if ($NotesFile) {
+    gh release create $tag @assets `
+        --repo $repo `
+        --title "Valorant Tracker $tag" `
+        --notes-file $NotesFile `
+        $draftFlag
+} else {
+    gh release create $tag @assets `
+        --repo $repo `
+        --title "Valorant Tracker $tag" `
+        --notes $releaseNotes `
+        $draftFlag
+}
 
 Write-Host "Release $tag créée en brouillon. Vérifie les notes et les assets sur GitHub avant de la publier." -ForegroundColor Green

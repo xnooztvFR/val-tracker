@@ -40,6 +40,12 @@
     "updateFailed": "Échec de la mise à jour",
     "closeButton": "Fermer"
   },
+  "changelogModal": {
+    "title": "Quoi de neuf",
+    "version": "Val Tracker {{version}}",
+    "noNotes": "Mise à jour installée avec succès.",
+    "close": "Fermer"
+  },
   "playerNotesPanel": {
     "title": "Notes",
     "locked": "Verrouillé",

@@ -15,6 +15,7 @@
     "updater:default",
     "process:allow-restart",
     "clipboard-manager:allow-write-text",
-    "autostart:default"
+    "autostart:default",
+    "core:app:allow-version"
   ]
 }

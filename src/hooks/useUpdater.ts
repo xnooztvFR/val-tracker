@@ -3,6 +3,11 @@ import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { invoke } from "@tauri-apps/api/core";
 
+/** Backlog #72 : clé localStorage portant le changelog de la mise à jour tout juste
+ * installée, écrite juste avant `relaunch()` (l'objet `Update` ne survit pas au
+ * redémarrage) et lue par `ChangelogModal.tsx` au chargement suivant. */
+export const PENDING_CHANGELOG_KEY = "val-tracker:pending-changelog";
+
 export type UpdaterStatus =
   | "idle"
   | "checking"
@@ -108,6 +113,17 @@ export function useUpdater(): UpdaterState {
         }
       });
       setStatus("ready");
+      // Backlog #72 : `update.body` porte les notes de version (champ "notes" de
+      // latest.json, voir scripts/release.ps1) — persistées ici car l'objet `Update` ne
+      // survit pas à `relaunch()`, lues par ChangelogModal au prochain chargement.
+      try {
+        localStorage.setItem(
+          PENDING_CHANGELOG_KEY,
+          JSON.stringify({ version: update.version, notes: update.body ?? "" }),
+        );
+      } catch {
+        // best-effort : pas de changelog affiché si localStorage est indisponible.
+      }
       await relaunch();
     } catch (err) {
       setStatus("error");

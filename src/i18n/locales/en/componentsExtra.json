@@ -40,6 +40,12 @@
     "updateFailed": "Update failed",
     "closeButton": "Close"
   },
+  "changelogModal": {
+    "title": "What's new",
+    "version": "Val Tracker {{version}}",
+    "noNotes": "Update installed successfully.",
+    "close": "Close"
+  },
   "playerNotesPanel": {
     "title": "Notes",
     "locked": "Locked",
