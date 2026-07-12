@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Skeleton } from "../components/Skeleton";
@@ -13,6 +14,38 @@ import i18n from "../i18n";
 import type { MatchEntry } from "../lib/tauriApi";
 
 const MATCH_HISTORY_SIZE = 20;
+
+type ResultFilter = "all" | "win" | "loss";
+
+function matchResult(match: MatchEntry, puuid: string): boolean | null | undefined {
+  const player = match.players.find((p) => p.puuid === puuid);
+  const team = match.teams.find((t) => t.team_id === player?.team_id);
+  return team?.won;
+}
+
+function Chip({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`hud-label whitespace-nowrap border px-2.5 py-1 text-[11px] transition-colors ${
+        active
+          ? "border-accent text-accent"
+          : "border-line text-lo hover:border-accent hover:text-hi"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
 
 function csvEscape(value: string | number): string {
   const str = String(value);
@@ -83,6 +116,42 @@ export default function MatchHistory() {
   const puuid = account.data?.data.puuid;
   const riotId = name && tag ? `${name}-${tag}` : "joueur";
 
+  const [resultFilter, setResultFilter] = useState<ResultFilter>("all");
+  const [agentFilter, setAgentFilter] = useState<string | null>(null);
+  const [mapFilter, setMapFilter] = useState<string | null>(null);
+
+  const { agents, maps } = useMemo(() => {
+    const agentSet = new Map<string, string>();
+    const mapSet = new Set<string>();
+    if (matches.data && puuid) {
+      for (const match of matches.data.data) {
+        const player = match.players.find((p) => p.puuid === puuid);
+        if (player?.agent?.name) agentSet.set(player.agent.name, player.agent.name);
+        if (match.metadata.map?.name) mapSet.add(match.metadata.map.name);
+      }
+    }
+    return { agents: [...agentSet.keys()].sort(), maps: [...mapSet].sort() };
+  }, [matches.data, puuid]);
+
+  const filteredMatches = useMemo(() => {
+    if (!matches.data || !puuid) return [];
+    return matches.data.data.filter((match) => {
+      if (resultFilter !== "all") {
+        const won = matchResult(match, puuid);
+        if (resultFilter === "win" && won !== true) return false;
+        if (resultFilter === "loss" && won !== false) return false;
+      }
+      if (agentFilter) {
+        const player = match.players.find((p) => p.puuid === puuid);
+        if (player?.agent?.name !== agentFilter) return false;
+      }
+      if (mapFilter && match.metadata.map?.name !== mapFilter) return false;
+      return true;
+    });
+  }, [matches.data, puuid, resultFilter, agentFilter, mapFilter]);
+
+  const hasActiveFilters = resultFilter !== "all" || agentFilter !== null || mapFilter !== null;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -113,6 +182,57 @@ export default function MatchHistory() {
       {matches.data?.stale && <StaleDataBanner cachedAt={matches.data.cached_at} />}
       {matches.isLoading && <Skeleton className="h-32 w-full" />}
 
+      {matches.data && puuid && matches.data.data.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Chip
+            label={t("history.filters.resultAll")}
+            active={resultFilter === "all"}
+            onClick={() => setResultFilter("all")}
+          />
+          <Chip
+            label={t("history.filters.resultWin")}
+            active={resultFilter === "win"}
+            onClick={() => setResultFilter((f) => (f === "win" ? "all" : "win"))}
+          />
+          <Chip
+            label={t("history.filters.resultLoss")}
+            active={resultFilter === "loss"}
+            onClick={() => setResultFilter((f) => (f === "loss" ? "all" : "loss"))}
+          />
+          <span className="mx-1 h-4 w-px bg-line" />
+          {agents.map((agent) => (
+            <Chip
+              key={agent}
+              label={agent}
+              active={agentFilter === agent}
+              onClick={() => setAgentFilter((a) => (a === agent ? null : agent))}
+            />
+          ))}
+          <span className="mx-1 h-4 w-px bg-line" />
+          {maps.map((mapName) => (
+            <Chip
+              key={mapName}
+              label={mapName}
+              active={mapFilter === mapName}
+              onClick={() => setMapFilter((m) => (m === mapName ? null : mapName))}
+            />
+          ))}
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={() => {
+                setResultFilter("all");
+                setAgentFilter(null);
+                setMapFilter(null);
+              }}
+              className="hud-label whitespace-nowrap px-2 py-1 text-[11px] text-lo underline decoration-dotted hover:text-hi"
+            >
+              {t("history.filters.reset")}
+            </button>
+          )}
+        </div>
+      )}
+
       {matches.data && puuid && (
         <div className="space-y-5">
           {matches.data.data.length === 0 && (
@@ -122,7 +242,14 @@ export default function MatchHistory() {
               detail={t("history.empty.detail")}
             />
           )}
-          {groupMatchesIntoSessions(matches.data.data, puuid).map((session, index) => (
+          {matches.data.data.length > 0 && filteredMatches.length === 0 && (
+            <EmptyState
+              icon="match"
+              title={t("history.filters.noMatch.title")}
+              detail={t("history.filters.noMatch.detail")}
+            />
+          )}
+          {groupMatchesIntoSessions(filteredMatches, puuid).map((session, index) => (
             <div key={session.matches[0]?.metadata.match_id ?? index} className="space-y-2">
               <div className="flex items-center justify-between">
                 <h2 className="hud-label text-[11px] text-lo">

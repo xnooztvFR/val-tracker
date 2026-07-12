@@ -6,6 +6,7 @@ import { Link, useParams } from "react-router-dom";
 import { useAccount } from "../hooks/usePlayer";
 import { useMatchDetail } from "../hooks/useMatches";
 import ErrorState from "../components/ErrorState";
+import InfoTooltip from "../components/InfoTooltip";
 import Panel from "../components/Panel";
 import StaleDataBanner from "../components/StaleDataBanner";
 import { formatDurationMs, formatKda, formatKdRatio } from "../lib/format";
@@ -125,13 +126,48 @@ export default function MatchDetail() {
             <tr>
               <th className="hud-label px-4 py-3 font-semibold">{t("detail.table.player")}</th>
               <th className="hud-label px-4 py-3 font-semibold">{t("detail.table.team")}</th>
-              <th className="hud-label px-4 py-3 font-semibold">{t("detail.table.kda")}</th>
-              <th className="hud-label px-4 py-3 font-semibold">{t("detail.table.kd")}</th>
-              <th className="hud-label px-4 py-3 font-semibold">{t("detail.table.score")}</th>
-              <th className="hud-label px-4 py-3 font-semibold">{t("detail.table.acs")}</th>
-              <th className="hud-label px-4 py-3 font-semibold">{t("detail.table.headshotPercent")}</th>
-              <th className="hud-label px-4 py-3 font-semibold">{t("detail.table.damageDealtReceived")}</th>
-              <th className="hud-label px-4 py-3 font-semibold">{t("detail.table.avgEconomy")}</th>
+              <th className="hud-label px-4 py-3 font-semibold">
+                <span className="inline-flex items-center gap-1">
+                  {t("detail.table.kda")}
+                  <InfoTooltip text={t("detail.table.tooltip.kda")} />
+                </span>
+              </th>
+              <th className="hud-label px-4 py-3 font-semibold">
+                <span className="inline-flex items-center gap-1">
+                  {t("detail.table.kd")}
+                  <InfoTooltip text={t("detail.table.tooltip.kd")} />
+                </span>
+              </th>
+              <th className="hud-label px-4 py-3 font-semibold">
+                <span className="inline-flex items-center gap-1">
+                  {t("detail.table.score")}
+                  <InfoTooltip text={t("detail.table.tooltip.score")} />
+                </span>
+              </th>
+              <th className="hud-label px-4 py-3 font-semibold">
+                <span className="inline-flex items-center gap-1">
+                  {t("detail.table.acs")}
+                  <InfoTooltip text={t("detail.table.tooltip.acs")} />
+                </span>
+              </th>
+              <th className="hud-label px-4 py-3 font-semibold">
+                <span className="inline-flex items-center gap-1">
+                  {t("detail.table.headshotPercent")}
+                  <InfoTooltip text={t("detail.table.tooltip.headshotPercent")} />
+                </span>
+              </th>
+              <th className="hud-label px-4 py-3 font-semibold">
+                <span className="inline-flex items-center gap-1">
+                  {t("detail.table.damageDealtReceived")}
+                  <InfoTooltip text={t("detail.table.tooltip.damageDealtReceived")} />
+                </span>
+              </th>
+              <th className="hud-label px-4 py-3 font-semibold">
+                <span className="inline-flex items-center gap-1">
+                  {t("detail.table.avgEconomy")}
+                  <InfoTooltip text={t("detail.table.tooltip.avgEconomy")} />
+                </span>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line/60">

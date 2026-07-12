@@ -95,6 +95,8 @@ export default function Settings() {
               language={settings?.ui_language ?? "fr"}
               onChangeLanguage={setUiLanguage}
             />
+            <SectionDivider />
+            <AutostartSection />
           </div>
         )}
         {category === "game" && (
@@ -381,6 +383,49 @@ function LanguageSection({
         ))}
       </div>
     </div>
+  );
+}
+
+/** Backlog #69 : pas de champ dans `AppSettings` — l'état de la tâche planifiée gérée par
+ * le plugin autostart fait déjà foi (voir commands.rs), donc requête directe plutôt que de
+ * dupliquer un flag dans le store zustand des settings. */
+function AutostartSection() {
+  const { t } = useTranslation("settings");
+  const [enabled, setEnabled] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    tauriApi
+      .getAutostartEnabled()
+      .then(setEnabled)
+      .catch(() => setEnabled(false))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleChange(value: boolean) {
+    setEnabled(value);
+    try {
+      await tauriApi.saveAutostartEnabled(value);
+    } catch {
+      setEnabled(!value);
+    }
+  }
+
+  return (
+    <section className="max-w-xl space-y-2">
+      <SectionTitle>{t("autostart.title")}</SectionTitle>
+      <label className="flex items-center gap-2.5 text-sm text-hi">
+        <input
+          type="checkbox"
+          checked={enabled}
+          disabled={loading}
+          onChange={(e) => handleChange(e.target.checked)}
+          className="h-4 w-4 border-line bg-surface accent-accent"
+        />
+        {t("autostart.label")}
+      </label>
+      <p className="text-xs text-lo">{t("autostart.hint")}</p>
+    </section>
   );
 }
 
@@ -906,9 +951,10 @@ function DataSection() {
   );
 }
 
-const SHORTCUT_KEYS = ["Ctrl+Shift+V", "Ctrl+K"] as const;
+const SHORTCUT_KEYS = ["Ctrl+Shift+V", "Ctrl+Shift+H", "Ctrl+K"] as const;
 const SHORTCUT_DESCRIPTION_KEYS: Record<(typeof SHORTCUT_KEYS)[number], string> = {
   "Ctrl+Shift+V": "shortcuts.ctrlShiftV",
+  "Ctrl+Shift+H": "shortcuts.ctrlShiftH",
   "Ctrl+K": "shortcuts.ctrlK",
 };
 

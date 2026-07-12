@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import InfoTooltip from "./InfoTooltip";
 import Panel from "./Panel";
 
 interface StatCardProps {
@@ -12,6 +13,8 @@ interface StatCardProps {
   icon?: ReactNode;
   /** Fait ressortir la carte (valeur plus grande) dans une grille asymétrique. */
   emphasis?: boolean;
+  /** Explication du jargon tracker (ADR, HS%, ACS...) affichée dans un badge "?" au survol. */
+  tooltip?: string;
 }
 
 export default function StatCard({
@@ -22,12 +25,16 @@ export default function StatCard({
   gaugeColor = "rgb(var(--color-accent))",
   icon,
   emphasis = false,
+  tooltip,
 }: StatCardProps) {
   return (
     <Panel hoverable className="flex h-full flex-col justify-between px-4 py-3.5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 text-left">
-          <p className="hud-label truncate">{label}</p>
+          <p className="hud-label flex items-center gap-1 truncate">
+            {label}
+            {tooltip && <InfoTooltip text={tooltip} />}
+          </p>
           <p className={`stat-value mt-1.5 font-bold leading-none ${emphasis ? "text-2xl" : "text-xl"}`}>
             {value}
           </p>

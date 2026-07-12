@@ -1,4 +1,7 @@
 {
+  "copyButton": {
+    "copied": "Copié !"
+  },
   "accountSwitcher": {
     "myAccounts": "Mes comptes",
     "close": "Fermer",

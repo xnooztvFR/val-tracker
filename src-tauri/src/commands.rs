@@ -1405,3 +1405,28 @@ pub async fn get_usage_metrics_summary(
     let since = chrono::Utc::now().timestamp() - USAGE_METRICS_WINDOW_SECS;
     Ok(crate::db::usage_metrics_summary(&conn, since)?)
 }
+
+// ---- Démarrage automatique avec Windows (backlog #69) ----
+
+/// Pas de champ dédié dans `AppSettings` : l'état de la tâche planifiée/clé de registre
+/// gérée par le plugin fait déjà foi (`ManagerExt::autolaunch`), pas besoin de dupliquer un
+/// flag en DB qui pourrait se désynchroniser (ex. l'utilisateur désactive le lancement au
+/// démarrage depuis le Gestionnaire des tâches Windows directement).
+#[tauri::command]
+pub async fn get_autostart_enabled(app: tauri::AppHandle) -> Result<bool, CommandError> {
+    use tauri_plugin_autostart::ManagerExt;
+    app.autolaunch()
+        .is_enabled()
+        .map_err(|e| CommandError::Unknown { message: e.to_string() })
+}
+
+#[tauri::command]
+pub async fn save_autostart_enabled(
+    app: tauri::AppHandle,
+    enabled: bool,
+) -> Result<(), CommandError> {
+    use tauri_plugin_autostart::ManagerExt;
+    let autolaunch = app.autolaunch();
+    let result = if enabled { autolaunch.enable() } else { autolaunch.disable() };
+    result.map_err(|e| CommandError::Unknown { message: e.to_string() })
+}

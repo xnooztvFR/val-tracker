@@ -17,6 +17,11 @@ tauri-plugin-process = "2"
 # de partie.
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-notification = "2"
+# Backlog #70 : bouton "copier le Riot ID" sans sélection manuelle.
+tauri-plugin-clipboard-manager = "2"
+# Backlog #69 : démarrage automatique avec Windows (pertinent car la détection de partie
+# suppose l'app déjà lancée avant le jeu).
+tauri-plugin-autostart = "2"
 # V3 — Rich Presence Discord : IPC local vers le client Discord desktop (pas d'API réseau).
 discord-rich-presence = "1"
 base64 = "0.22"

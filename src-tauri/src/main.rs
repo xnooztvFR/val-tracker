@@ -34,6 +34,13 @@ fn main() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
+        // Backlog #69 : démarrage auto avec Windows, désactivé tant que l'utilisateur ne
+        // l'active pas explicitement dans Paramètres (voir commands::save_autostart_enabled).
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .setup(|app| {
             let handle = app.handle().clone();
             applog::init(&handle);
@@ -84,6 +91,14 @@ fn main() {
                 }
             };
             app.manage(overlay::window::ShortcutStatus::registered(shortcut_registered));
+
+            // Backlog #68 : Ctrl+Shift+H montre/masque la fenêtre principale même quand
+            // Valorant a le focus. Best-effort comme le raccourci overlay ci-dessus.
+            if let Err(err) = overlay::window::register_main_window_shortcut(&handle) {
+                applog!(
+                    "[overlay] raccourci global Ctrl+Shift+H indisponible (probablement déjà pris par une autre appli): {err}"
+                );
+            }
 
             // La fenêtre overlay (V2) est créée à la demande puis seulement masquée, jamais
             // détruite (voir `overlay::window::hide_overlay`) — elle reste donc « ouverte »
@@ -169,6 +184,8 @@ fn main() {
             commands::clear_notes_pin,
             commands::verify_notes_pin,
             commands::fetch_external_image,
+            commands::get_autostart_enabled,
+            commands::save_autostart_enabled,
         ])
         .run(tauri::generate_context!())
         .expect("erreur lors du lancement de l'application Tauri");

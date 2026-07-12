@@ -46,6 +46,11 @@
     "fr": "Français",
     "en": "Anglais"
   },
+  "autostart": {
+    "title": "Démarrage automatique",
+    "label": "Lancer l'app au démarrage de Windows",
+    "hint": "Utile pour que la détection de partie soit déjà active quand tu lances Valorant."
+  },
   "overlay": {
     "title": "Overlay en jeu",
     "description": "Détecte automatiquement une partie en cours via l'API locale du Riot Client et affiche un overlay always-on-top avec le rank des joueurs du lobby. Aucune injection dans le jeu : uniquement une fenêtre superposée. Fonctionne en « plein écran sans bordure » (le plein écran exclusif peut masquer l'overlay).",
@@ -138,6 +143,7 @@
     "title": "Raccourcis clavier",
     "description": "Liste centralisée de tous les raccourcis clavier de l'app. D'autres pourront s'y ajouter au fil des futures versions.",
     "ctrlShiftV": "Bascule l'overlay en jeu entre mode click-through (affichage seul) et mode interactif (déplaçable à la souris).",
+    "ctrlShiftH": "Montre ou masque la fenêtre principale — fonctionne même quand Valorant a le focus.",
     "ctrlK": "Ouvre la palette de commande (Rechercher un joueur, aller à un écran, sauter vers un joueur récent/favori). Fenêtre principale uniquement."
   },
   "health": {

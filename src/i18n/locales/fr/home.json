@@ -7,7 +7,8 @@
     "winrateShort": "WR",
     "updateIn": "MAJ dans {{time}}",
     "refreshAvailable": "Actualisation disponible",
-    "refresh": "Actualiser"
+    "refresh": "Actualiser",
+    "copyRiotId": "Copier le Riot ID"
   },
   "overview": {
     "title": "Vue d'ensemble",
@@ -17,7 +18,12 @@
       "kd": "K/D",
       "headshotPercent": "Headshot %",
       "acs": "ACS",
-      "kdHint": "{{n}} kills"
+      "kdHint": "{{n}} kills",
+      "tooltip": {
+        "kd": "Ratio kills sur morts (kills ÷ morts).",
+        "headshotPercent": "Pourcentage de tirs qui touchent la tête.",
+        "acs": "Average Combat Score : score de combat moyen par round."
+      }
     },
     "miniStats": {
       "wins": "Victoires",
@@ -37,6 +43,9 @@
       "head": "Tête",
       "body": "Corps",
       "legs": "Jambes"
+    },
+    "lastMap": {
+      "title": "Dernière carte jouée"
     }
   },
   "rankProgression": "Progression du rank"

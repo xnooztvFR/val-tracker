@@ -194,6 +194,18 @@
     transform: translate(0, 0);
   }
 
+  /* Backlog #65 : viseur discret au survol des mêmes zones interactives que le
+     "verrouillage de cible" ci-dessus — un crosshair léger en plus des crochets de coin,
+     `pointer` en repli si le curseur custom ne charge pas. Couleur neutre fixe (pas de
+     variable CSS accent, pas supportée dans un data URI de curseur) pour rester discret
+     quel que soit l'accent choisi (#38). */
+  .target-lock:hover {
+    cursor:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='6' fill='none' stroke='%23E8ECEF' stroke-width='1' opacity='0.75'/%3E%3Cpath d='M10 1v4M10 15v4M1 10h4M15 10h4' stroke='%23E8ECEF' stroke-width='1' opacity='0.75'/%3E%3C/svg%3E")
+        10 10,
+      pointer;
+  }
+
   /* Backlog #35 : placeholder de chargement HUD (composant `Skeleton.tsx`) — scanline en
      boucle plutôt qu'un spinner générique, cohérent avec `.scanline-once` ci-dessous mais
      répété tant que le chargement dure. */

@@ -46,6 +46,11 @@
     "fr": "French",
     "en": "English"
   },
+  "autostart": {
+    "title": "Autostart",
+    "label": "Launch the app on Windows startup",
+    "hint": "Useful so match detection is already active by the time you launch Valorant."
+  },
   "overlay": {
     "title": "In-game overlay",
     "description": "Automatically detects an ongoing match via the Riot Client's local API and displays an always-on-top overlay with the lobby players' rank. No game injection: just an overlay window. Works in \"borderless fullscreen\" (exclusive fullscreen may hide the overlay).",
@@ -138,6 +143,7 @@
     "title": "Keyboard shortcuts",
     "description": "Centralized list of all the app's keyboard shortcuts. More may be added in future versions.",
     "ctrlShiftV": "Toggles the in-game overlay between click-through mode (display only) and interactive mode (movable with the mouse).",
+    "ctrlShiftH": "Shows or hides the main window — works even when Valorant has focus.",
     "ctrlK": "Opens the command palette (search a player, jump to a screen, jump to a recent/favorite player). Main window only."
   },
   "health": {

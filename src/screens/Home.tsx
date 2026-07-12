@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Skeleton, SkeletonScreen } from "../components/Skeleton";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useAccount, useMmr, useMmrHistory, useRankSnapshots } from "../hooks/usePlayer";
 import { useMatches } from "../hooks/useMatches";
 import { useCountdown, formatCountdown } from "../hooks/useCountdown";
+import CopyButton from "../components/CopyButton";
 import StatCard from "../components/StatCard";
 import SampleSizeSwitch, { SAMPLE_SIZES } from "../components/SampleSizeSwitch";
 import Panel from "../components/Panel";
@@ -17,8 +18,15 @@ import ErrorState from "../components/ErrorState";
 import StaleDataBanner from "../components/StaleDataBanner";
 import PlayerNotesPanel from "../components/PlayerNotesPanel";
 import ProgressionGoalPanel from "../components/ProgressionGoalPanel";
-import { tauriApi } from "../lib/tauriApi";
-import { agentIconUrl, formatKdRatio, formatPercent, playerCardIconUrl, rankGlowColor } from "../lib/format";
+import { tauriApi, type MatchEntry } from "../lib/tauriApi";
+import {
+  agentIconUrl,
+  formatKdRatio,
+  formatPercent,
+  mapSplashUrl,
+  playerCardIconUrl,
+  rankGlowColor,
+} from "../lib/format";
 import { computeOverview } from "../lib/stats";
 
 const MMR_TTL_SECONDS = 600;
@@ -111,9 +119,12 @@ export default function Home() {
           )}
           <div className="min-w-0">
             <p className="hud-label text-[10px]">{t("statusBar.operator", { region })}</p>
-            <p className="truncate font-display text-lg font-bold text-hi">
+            <p className="flex items-center gap-1.5 truncate font-display text-lg font-bold text-hi">
               {name}
               <span className="text-lo">#{tag}</span>
+              {name && tag && (
+                <CopyButton text={`${name}#${tag}`} label={t("statusBar.copyRiotId")} />
+              )}
             </p>
           </div>
         </div>
@@ -210,14 +221,21 @@ export default function Home() {
               value={overview.kd}
               hint={t("overview.stats.kdHint", { n: overview.kills })}
               icon={<KdIcon />}
+              tooltip={t("overview.stats.tooltip.kd")}
             />
             <StatCard
               label={t("overview.stats.headshotPercent")}
               value={formatPercent(overview.hsPercent)}
               gaugePercent={overview.hsPercent}
               gaugeColor="rgb(var(--color-accent))"
+              tooltip={t("overview.stats.tooltip.headshotPercent")}
             />
-            <StatCard label={t("overview.stats.acs")} value={overview.acs.toString()} icon={<TargetIcon />} />
+            <StatCard
+              label={t("overview.stats.acs")}
+              value={overview.acs.toString()}
+              icon={<TargetIcon />}
+              tooltip={t("overview.stats.tooltip.acs")}
+            />
           </div>
 
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
@@ -229,7 +247,7 @@ export default function Home() {
             <MiniStat label={t("overview.miniStats.headshots")} value={overview.headshots} />
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-3">
             <Panel className="p-4">
               <p className="hud-label mb-3">{t("overview.topAgent.title")}</p>
               {overview.topAgent ? (
@@ -276,6 +294,10 @@ export default function Home() {
                 <AccuracyBar label={t("overview.accuracy.legs")} percent={overview.legPercent} color="#3A424B" />
               </div>
             </Panel>
+
+            {region && name && tag && matches.data && matches.data.data.length > 0 && (
+              <LastMapWidget match={matches.data.data[0]} region={region} name={name} tag={tag} />
+            )}
           </div>
         </>
       )}
@@ -290,6 +312,46 @@ export default function Home() {
         />
       </div>
     </div>
+  );
+}
+
+/** Backlog #62 : mini-vignette de la carte du dernier match joué, entrée rapide vers
+ * MapStats pour cette carte précise (surlignée là-bas via ?carte=, voir MapStats.tsx). */
+function LastMapWidget({
+  match,
+  region,
+  name,
+  tag,
+}: {
+  match: MatchEntry;
+  region: string;
+  name: string;
+  tag: string;
+}) {
+  const { t } = useTranslation("home");
+  const map = match.metadata.map;
+  if (!map?.name) return null;
+
+  return (
+    <Link
+      to={`/joueur/${region}/${name}/${tag}/cartes?carte=${encodeURIComponent(map.name)}`}
+      className="target-lock relative block h-full overflow-hidden panel-clip"
+    >
+      {map.id && (
+        <img
+          src={mapSplashUrl(map.id)}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover opacity-40 transition-opacity hover:opacity-55"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
+          }}
+        />
+      )}
+      <div className="relative flex h-full flex-col justify-end bg-gradient-to-t from-surface via-surface/60 to-transparent p-4">
+        <p className="hud-label text-lo">{t("overview.lastMap.title")}</p>
+        <p className="font-display text-lg font-bold text-hi">{map.name}</p>
+      </div>
+    </Link>
   );
 }
 

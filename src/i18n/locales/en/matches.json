@@ -12,6 +12,16 @@
       "matchCount_other": "{{count}} matches",
       "record": "{{wins}}W - {{losses}}L"
     },
+    "filters": {
+      "resultAll": "All",
+      "resultWin": "Wins",
+      "resultLoss": "Losses",
+      "reset": "Reset",
+      "noMatch": {
+        "title": "No match found",
+        "detail": "Try widening your filters."
+      }
+    },
     "csv": {
       "header": {
         "date": "date",
@@ -55,7 +65,16 @@
       "acs": "ACS",
       "headshotPercent": "HS%",
       "damageDealtReceived": "Damage dealt/received",
-      "avgEconomy": "Avg. economy"
+      "avgEconomy": "Avg. economy",
+      "tooltip": {
+        "kda": "Kills / Deaths / Assists in this match.",
+        "kd": "Kills-to-deaths ratio (kills ÷ deaths).",
+        "score": "Cumulative combat score for the match (Riot impact points).",
+        "acs": "Average Combat Score: combat score averaged per round.",
+        "headshotPercent": "Percentage of shots that hit the head.",
+        "damageDealtReceived": "Damage dealt to opponents / damage received.",
+        "avgEconomy": "Average loadout value (weapons + armor) across bought rounds."
+      }
     },
     "roundDetail": {
       "title": "Round {{number}} — {{endType}}",

@@ -847,6 +847,9 @@ export const tauriApi = {
   clearNotesPin: () => invoke<void>("clear_notes_pin"),
   verifyNotesPin: (pin: string) => invoke<boolean>("verify_notes_pin", { pin }),
   fetchExternalImage: (url: string) => invoke<string>("fetch_external_image", { url }),
+  getAutostartEnabled: () => invoke<boolean>("get_autostart_enabled"),
+  saveAutostartEnabled: (enabled: boolean) =>
+    invoke<void>("save_autostart_enabled", { enabled }),
 
   fetchAccount: (name: string, tag: string, force = false) =>
     invoke<Fetched<AccountData>>("fetch_account", { name, tag, force }),

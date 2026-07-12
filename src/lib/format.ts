@@ -40,6 +40,12 @@ export function agentIconUrl(agentId: string): string {
   return `https://media.valorant-api.com/agents/${agentId}/displayicon.png`;
 }
 
+/** Splash art d'une carte depuis son UUID Henrik (NamedRef.id) — même CDN que les rangs.
+ * Backlog #62 : widget "dernière carte jouée". */
+export function mapSplashUrl(mapId: string): string {
+  return `https://media.valorant-api.com/maps/${mapId}/splash.png`;
+}
+
 /** Image de carte de joueur depuis son UUID (AccountData.card) — même CDN. */
 export function playerCardIconUrl(cardId: string): string {
   return `https://media.valorant-api.com/playercards/${cardId}/smallart.png`;

@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Skeleton } from "../components/Skeleton";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
@@ -50,6 +50,9 @@ export default function MapStats() {
   const { t } = useTranslation("stats");
   const { region, name, tag } = useParams<{ region: string; name: string; tag: string }>();
   const [sampleSize, setSampleSize] = useState<SampleSize>(20);
+  const [searchParams] = useSearchParams();
+  const focusedMap = searchParams.get("carte");
+  const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
 
   const account = useAccount(name, tag);
   const matches = useMatches({ region, name, tag, size: sampleSize });
@@ -59,6 +62,14 @@ export default function MapStats() {
     () => (matches.data && puuid ? aggregateByMap(matches.data.data, puuid) : []),
     [matches.data, puuid],
   );
+
+  // Backlog #62 : entrée rapide depuis le widget "dernière carte jouée" de Home — met en
+  // évidence la ligne correspondante plutôt que de filtrer (le tableau reste utile tel
+  // quel pour comparer les cartes entre elles).
+  useEffect(() => {
+    if (!focusedMap || rows.length === 0) return;
+    rowRefs.current[focusedMap]?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [focusedMap, rows]);
 
   const chartData = rows.map((row) => ({
     map: row.map,
@@ -125,7 +136,15 @@ export default function MapStats() {
             </thead>
             <tbody className="divide-y divide-line/60">
               {rows.map((row) => (
-                <tr key={row.map} className="text-hi/90 transition-colors hover:bg-raised/50">
+                <tr
+                  key={row.map}
+                  ref={(el) => {
+                    rowRefs.current[row.map] = el;
+                  }}
+                  className={`text-hi/90 transition-colors hover:bg-raised/50 ${
+                    focusedMap === row.map ? "bg-raised/70 outline outline-1 -outline-offset-1 outline-accent" : ""
+                  }`}
+                >
                   <td className="px-4 py-2.5 font-medium">{row.map}</td>
                   <td className="stat-value px-4 py-2.5">{row.played}</td>
                   <td className="stat-value px-4 py-2.5">{formatPercent((row.wins / row.played) * 100)}</td>

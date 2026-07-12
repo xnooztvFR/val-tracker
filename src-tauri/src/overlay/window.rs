@@ -16,6 +16,10 @@ use crate::AppState;
 
 pub const OVERLAY_LABEL: &str = "overlay";
 const TOGGLE_SHORTCUT: &str = "ctrl+shift+v";
+/// Backlog #68 : montrer/masquer la fenêtre principale même quand Valorant a le focus —
+/// `Ctrl+Shift+H` fonctionne comme `Ctrl+Shift+V` (raccourci OS global via
+/// tauri-plugin-global-shortcut, indépendant du focus applicatif).
+const MAIN_WINDOW_TOGGLE_SHORTCUT: &str = "ctrl+shift+h";
 const DEFAULT_POSITION: (f64, f64) = (24.0, 96.0);
 
 /// `true` tant que l'overlay ignore les clics (mode par défaut).
@@ -135,6 +139,32 @@ pub fn register_toggle_shortcut(app_handle: &AppHandle) -> anyhow::Result<()> {
             if event.state() == ShortcutState::Pressed {
                 let ignore = !CLICK_THROUGH.load(Ordering::Relaxed);
                 let _ = set_click_through(app, ignore);
+            }
+        })?;
+    Ok(())
+}
+
+/// Enregistre `Ctrl+Shift+H` → montre/masque la fenêtre principale, y compris quand
+/// Valorant a le focus (raccourci OS global, pas une chaîne de touches captée par la
+/// fenêtre). Best-effort comme `register_toggle_shortcut` : un échec (raccourci déjà pris
+/// par une autre appli) ne doit pas empêcher l'app de démarrer.
+pub fn register_main_window_shortcut(app_handle: &AppHandle) -> anyhow::Result<()> {
+    app_handle
+        .global_shortcut()
+        .on_shortcut(MAIN_WINDOW_TOGGLE_SHORTCUT, |app, _shortcut, event| {
+            if event.state() != ShortcutState::Pressed {
+                return;
+            }
+            let Some(window) = app.get_webview_window("main") else {
+                return;
+            };
+            let is_visible = window.is_visible().unwrap_or(true);
+            let is_focused = window.is_focused().unwrap_or(false);
+            if is_visible && is_focused {
+                let _ = window.hide();
+            } else {
+                let _ = window.show();
+                let _ = window.set_focus();
             }
         })?;
     Ok(())
