@@ -8,7 +8,8 @@
     "updateIn": "MAJ dans {{time}}",
     "refreshAvailable": "Actualisation disponible",
     "refresh": "Actualiser",
-    "copyRiotId": "Copier le Riot ID"
+    "copyRiotId": "Copier le Riot ID",
+    "exportCard": "Carte de visite"
   },
   "overview": {
     "title": "Vue d'ensemble",

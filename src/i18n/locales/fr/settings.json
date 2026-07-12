@@ -38,6 +38,12 @@
       "cyan": "Cyan",
       "violet": "Violet",
       "amber": "Ambre"
+    },
+    "densityLabel": "Densité d'affichage",
+    "densityHint": "Réduit légèrement les espacements et la taille du texte dans toute l'app (pas que l'overlay en jeu) — utile sur une fenêtre plus petite.",
+    "density": {
+      "comfortable": "Confortable (défaut)",
+      "compact": "Compact"
     }
   },
   "language": {
@@ -144,6 +150,7 @@
     "description": "Liste centralisée de tous les raccourcis clavier de l'app. D'autres pourront s'y ajouter au fil des futures versions.",
     "ctrlShiftV": "Bascule l'overlay en jeu entre mode click-through (affichage seul) et mode interactif (déplaçable à la souris).",
     "ctrlShiftH": "Montre ou masque la fenêtre principale — fonctionne même quand Valorant a le focus.",
+    "ctrlShiftF": "Bascule le mode focus (masque titlebar/nav/bandeaux pour un partage d'écran propre). Fenêtre principale uniquement.",
     "ctrlK": "Ouvre la palette de commande (Rechercher un joueur, aller à un écran, sauter vers un joueur récent/favori). Fenêtre principale uniquement."
   },
   "health": {

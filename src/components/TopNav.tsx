@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { useActivePlayerStore } from "../store/activePlayerStore";
+import { useTabOrderStore, resolveTabOrder } from "../store/tabOrderStore";
 import { useAccount, useMmr } from "../hooks/usePlayer";
 import { playerCardIconUrl, rankGlowColor, rankInfo } from "../lib/format";
 import DetectionStatusBadge from "./DetectionStatusBadge";
@@ -26,6 +27,8 @@ const TABS = [
   { to: "/duo", key: "duo", end: true },
 ] as const;
 
+const DEFAULT_TAB_KEYS = TABS.map((tab) => tab.key);
+
 /** Barre de navigation globale unique : logo, onglets du joueur actif (masqués tant
  * qu'aucun joueur n'est suivi), un menu "Plus" pour les sections hors-profil (backlog UI :
  * la fenêtre a une largeur fixe — 10 onglets + les badges de droite débordaient et
@@ -35,10 +38,23 @@ export default function TopNav() {
   const { t } = useTranslation("componentsCore");
   const { player, clear } = useActivePlayerStore();
   const navigate = useNavigate();
+  const tabOrder = useTabOrderStore((s) => s.order);
+  const reorderTabs = useTabOrderStore((s) => s.reorder);
+  const [draggedTabKey, setDraggedTabKey] = useState<string | null>(null);
 
   const account = useAccount(player?.name, player?.tag);
   const puuid = account.data?.data.puuid;
   const mmr = useMmr({ puuid, region: player?.region, name: player?.name, tag: player?.tag });
+
+  // Backlog #64 : ordre des onglets réordonnable par drag & drop, persisté en localStorage
+  // (préférence purement locale, voir tabOrderStore.ts). `resolveTabOrder` retombe sur
+  // DEFAULT_TAB_KEYS tant que rien n'a encore été glissé cette session.
+  const orderedTabs = useMemo(() => {
+    const order = tabOrder.length > 0 ? tabOrder : resolveTabOrder(DEFAULT_TAB_KEYS);
+    return order
+      .map((key) => TABS.find((tab) => tab.key === key))
+      .filter((tab): tab is (typeof TABS)[number] => Boolean(tab));
+  }, [tabOrder]);
 
   return (
     <nav className="flex h-11 shrink-0 items-stretch border-b border-line bg-base px-3">
@@ -53,17 +69,24 @@ export default function TopNav() {
 
       {player && (
         <div className="flex items-stretch">
-          {TABS.map((tab) => (
+          {orderedTabs.map((tab) => (
             <NavLink
               key={tab.key}
               to={`/joueur/${player.region}/${player.name}/${player.tag}${tab.to}`}
               end={tab.end}
+              draggable
+              onDragStart={() => setDraggedTabKey(tab.key)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => {
+                if (draggedTabKey) reorderTabs(DEFAULT_TAB_KEYS, draggedTabKey, tab.key);
+              }}
+              onDragEnd={() => setDraggedTabKey(null)}
               className={({ isActive }) =>
-                `flex items-center border-b-2 px-3 font-display text-[13px] font-semibold uppercase tracking-hud transition-colors ${
+                `flex cursor-grab items-center border-b-2 px-3 font-display text-[13px] font-semibold uppercase tracking-hud transition-colors active:cursor-grabbing ${
                   isActive
                     ? "border-accent text-hi"
                     : "border-transparent text-lo hover:text-hi"
-                }`
+                } ${draggedTabKey === tab.key ? "opacity-40" : ""}`
               }
             >
               {t(`topNav.tabs.${tab.key}`)}

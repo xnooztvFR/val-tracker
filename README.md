@@ -33,10 +33,19 @@ automatique de partie avec un petit overlay affichant le rank de ton lobby.
 - Rich Presence Discord (montre ce que tu fais dans l'app comme statut Discord)
 
 **Confort**
-- Favoris et historique de recherche, réorganisables par glisser-déposer
+- Favoris et historique de recherche, réorganisables par glisser-déposer ; onglets de
+  navigation du profil réordonnables de la même façon
 - Palette de commande (Ctrl+K) pour naviguer rapidement
 - Alertes configurables (série de défaites, rappel d'inactivité, changement de rank)
-- Thème clair/sombre et couleur d'accent personnalisable
+- Filtres par résultat/agent/carte dans l'historique de matchs ; tooltips "?" sur les stats
+  avancées (ADR, HS%, économie...)
+- Copier le Riot ID en un clic ; export d'une "carte de visite" du profil (image PNG,
+  partageable Discord) en plus du récap de match existant
+- Thème clair/sombre, couleur d'accent et densité d'affichage (confortable/compacte)
+  personnalisables
+- Démarrage automatique avec Windows ; raccourcis clavier globaux (afficher/masquer la
+  fenêtre principale, mode focus pour un partage d'écran propre)
+- Changelog "Quoi de neuf" affiché automatiquement après une mise à jour
 - Mise à jour automatique signée, classement compétitif, mode Premier, actualités esport (VLR)
 
 ## Installation

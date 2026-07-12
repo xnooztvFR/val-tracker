@@ -8,7 +8,8 @@
     "updateIn": "Update in {{time}}",
     "refreshAvailable": "Refresh available",
     "refresh": "Refresh",
-    "copyRiotId": "Copy Riot ID"
+    "copyRiotId": "Copy Riot ID",
+    "exportCard": "Profile card"
   },
   "overview": {
     "title": "Overview",

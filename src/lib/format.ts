@@ -40,6 +40,14 @@ export function agentIconUrl(agentId: string): string {
   return `https://media.valorant-api.com/agents/${agentId}/displayicon.png`;
 }
 
+/** Portrait officiel (buste) d'agent — backlog #60 : même CDN publique que `agentIconUrl`
+ * (media.valorant-api.com, pas besoin de clé API ni de passer par Henrik/v1/content), juste
+ * une variante d'asset plus grande pour les emplacements où un simple carré d'icône est
+ * trop petit pour être identifiable (widget agent principal en avant sur Home). */
+export function agentPortraitUrl(agentId: string): string {
+  return `https://media.valorant-api.com/agents/${agentId}/bustportrait.png`;
+}
+
 /** Splash art d'une carte depuis son UUID Henrik (NamedRef.id) — même CDN que les rangs.
  * Backlog #62 : widget "dernière carte jouée". */
 export function mapSplashUrl(mapId: string): string {

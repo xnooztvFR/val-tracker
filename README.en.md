@@ -32,10 +32,19 @@ with a small overlay showing your lobby's ranks.
 - Discord Rich Presence (shows what you're doing in the app as your Discord status)
 
 **Quality of life**
-- Favorites and search history, reorderable by drag & drop
+- Favorites and search history, reorderable by drag & drop; profile navigation tabs are
+  reorderable the same way
 - Command palette (Ctrl+K) for quick navigation
 - Configurable alerts (loss streak, inactivity reminder, rank change)
-- Light/dark theme and customizable accent color
+- Result/agent/map filters in match history; "?" tooltips on advanced stats (ADR, HS%,
+  economy...)
+- One-click Riot ID copy; profile "card" export (shareable PNG image for Discord) on top
+  of the existing match recap
+- Light/dark theme, customizable accent color, and adjustable display density
+  (comfortable/compact)
+- Auto-start with Windows; global keyboard shortcuts (show/hide the main window, focus mode
+  for clean screen sharing)
+- "What's new" changelog shown automatically after an update
 - Signed auto-update, competitive leaderboard, Premier mode, esports news (VLR)
 
 ## Installation

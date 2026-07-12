@@ -38,6 +38,12 @@
       "cyan": "Cyan",
       "violet": "Violet",
       "amber": "Amber"
+    },
+    "densityLabel": "Display density",
+    "densityHint": "Slightly reduces spacing and text size throughout the app (not just the in-game overlay) — useful on a smaller window.",
+    "density": {
+      "comfortable": "Comfortable (default)",
+      "compact": "Compact"
     }
   },
   "language": {
@@ -144,6 +150,7 @@
     "description": "Centralized list of all the app's keyboard shortcuts. More may be added in future versions.",
     "ctrlShiftV": "Toggles the in-game overlay between click-through mode (display only) and interactive mode (movable with the mouse).",
     "ctrlShiftH": "Shows or hides the main window — works even when Valorant has focus.",
+    "ctrlShiftF": "Toggles focus mode (hides titlebar/nav/banners for a clean screen share). Main window only.",
     "ctrlK": "Opens the command palette (search a player, jump to a screen, jump to a recent/favorite player). Main window only."
   },
   "health": {

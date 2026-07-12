@@ -11,6 +11,7 @@ import CopyButton from "../components/CopyButton";
 import StatCard from "../components/StatCard";
 import SampleSizeSwitch, { SAMPLE_SIZES } from "../components/SampleSizeSwitch";
 import Panel from "../components/Panel";
+import ProfileCardModal from "../components/ProfileCardModal";
 import RankBadge from "../components/RankBadge";
 import RankHistoryChart from "../components/RankHistoryChart";
 import QueueStatusStrip from "../components/QueueStatusStrip";
@@ -20,7 +21,7 @@ import PlayerNotesPanel from "../components/PlayerNotesPanel";
 import ProgressionGoalPanel from "../components/ProgressionGoalPanel";
 import { tauriApi, type MatchEntry } from "../lib/tauriApi";
 import {
-  agentIconUrl,
+  agentPortraitUrl,
   formatKdRatio,
   formatPercent,
   mapSplashUrl,
@@ -28,6 +29,7 @@ import {
   rankGlowColor,
 } from "../lib/format";
 import { computeOverview } from "../lib/stats";
+import { buildProfileCardData } from "../lib/profileCard";
 
 const MMR_TTL_SECONDS = 600;
 
@@ -37,6 +39,7 @@ export default function Home() {
   const [sampleSize, setSampleSize] = useState<(typeof SAMPLE_SIZES)[number]>(20);
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
+  const [showProfileCard, setShowProfileCard] = useState(false);
 
   const account = useAccount(name, tag);
   const puuid = account.data?.data.puuid;
@@ -96,6 +99,20 @@ export default function Home() {
   const accountData = account.data?.data;
   const current = mmr.data?.data.current_data;
   const glow = rankGlowColor(current?.currenttier);
+
+  // Backlog #74 : export "carte de visite" du profil, réutilise le pipeline canvas de
+  // RecapCardModal.tsx — ne dépend que de données déjà chargées ici (aucun appel réseau).
+  const profileCardData =
+    region && name && tag
+      ? buildProfileCardData({
+          name,
+          tag,
+          region,
+          currentTier: current?.currenttier,
+          rr: current?.ranking_in_tier,
+          overview,
+        })
+      : null;
 
   return (
     <div className="scanline-once space-y-6">
@@ -167,17 +184,32 @@ export default function Home() {
               ? t("statusBar.updateIn", { time: formatCountdown(remaining) })
               : t("statusBar.refreshAvailable")}
           </span>
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={refreshing || !puuid}
-            className="flex items-center gap-1.5 border border-line px-2.5 py-1 font-display text-[11px] font-semibold uppercase tracking-hud text-hi transition-colors hover:border-accent hover:text-accent disabled:opacity-40"
-          >
-            <RefreshIcon spinning={refreshing} />
-            {t("statusBar.refresh")}
-          </button>
+          <div className="flex items-center gap-1.5">
+            {profileCardData && (
+              <button
+                type="button"
+                onClick={() => setShowProfileCard(true)}
+                className="flex items-center gap-1.5 border border-line px-2.5 py-1 font-display text-[11px] font-semibold uppercase tracking-hud text-hi transition-colors hover:border-accent hover:text-accent"
+              >
+                {t("statusBar.exportCard")}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleRefresh}
+              disabled={refreshing || !puuid}
+              className="flex items-center gap-1.5 border border-line px-2.5 py-1 font-display text-[11px] font-semibold uppercase tracking-hud text-hi transition-colors hover:border-accent hover:text-accent disabled:opacity-40"
+            >
+              <RefreshIcon spinning={refreshing} />
+              {t("statusBar.refresh")}
+            </button>
+          </div>
         </div>
       </Panel>
+
+      {showProfileCard && profileCardData && (
+        <ProfileCardModal data={profileCardData} onClose={() => setShowProfileCard(false)} />
+      )}
 
       {puuid && (
         <div className="grid gap-3 sm:grid-cols-2">
@@ -253,9 +285,9 @@ export default function Home() {
               {overview.topAgent ? (
                 <div className="flex items-center gap-4">
                   <img
-                    src={agentIconUrl(overview.topAgent.id)}
+                    src={agentPortraitUrl(overview.topAgent.id)}
                     alt={overview.topAgent.name}
-                    className="h-12 w-12 border border-line object-cover"
+                    className="h-16 w-16 border border-line object-cover object-top"
                     onError={(e) => {
                       (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
                     }}

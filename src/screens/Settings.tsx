@@ -36,6 +36,7 @@ export default function Settings() {
     setUiTheme,
     setUiAccent,
     setUiLanguage,
+    setUiDensity,
     setOverlayDensity,
     setLossStreakAlertEnabled,
     setLossStreakAlertCount,
@@ -87,8 +88,10 @@ export default function Settings() {
             <AppearanceSection
               theme={settings?.ui_theme ?? "dark"}
               accent={settings?.ui_accent ?? "red"}
+              density={settings?.ui_density ?? "comfortable"}
               onChangeTheme={setUiTheme}
               onChangeAccent={setUiAccent}
+              onChangeDensity={setUiDensity}
             />
             <SectionDivider />
             <LanguageSection
@@ -290,16 +293,22 @@ const ACCENTS: Array<{ id: string; swatch: string }> = [
   { id: "amber", swatch: "#D4AF37" },
 ];
 
+const DENSITY_IDS = ["comfortable", "compact"] as const;
+
 function AppearanceSection({
   theme,
   accent,
+  density,
   onChangeTheme,
   onChangeAccent,
+  onChangeDensity,
 }: {
   theme: string;
   accent: string;
+  density: string;
   onChangeTheme: (theme: string) => Promise<void>;
   onChangeAccent: (accent: string) => Promise<void>;
+  onChangeDensity: (density: string) => Promise<void>;
 }) {
   const { t } = useTranslation("settings");
   return (
@@ -344,6 +353,27 @@ function AppearanceSection({
                 style={{ backgroundColor: a.swatch }}
               />
               {t(`appearance.accent.${a.id}`)}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="hud-label">{t("appearance.densityLabel")}</h2>
+        <p className="text-xs text-lo">{t("appearance.densityHint")}</p>
+        <div className="flex gap-2">
+          {DENSITY_IDS.map((id) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onChangeDensity(id)}
+              className={`border px-4 py-2 text-sm transition-colors ${
+                density === id
+                  ? "border-accent text-hi"
+                  : "border-line text-lo hover:border-line hover:text-hi"
+              }`}
+            >
+              {t(`appearance.density.${id}`)}
             </button>
           ))}
         </div>
@@ -951,10 +981,11 @@ function DataSection() {
   );
 }
 
-const SHORTCUT_KEYS = ["Ctrl+Shift+V", "Ctrl+Shift+H", "Ctrl+K"] as const;
+const SHORTCUT_KEYS = ["Ctrl+Shift+V", "Ctrl+Shift+H", "Ctrl+Shift+F", "Ctrl+K"] as const;
 const SHORTCUT_DESCRIPTION_KEYS: Record<(typeof SHORTCUT_KEYS)[number], string> = {
   "Ctrl+Shift+V": "shortcuts.ctrlShiftV",
   "Ctrl+Shift+H": "shortcuts.ctrlShiftH",
+  "Ctrl+Shift+F": "shortcuts.ctrlShiftF",
   "Ctrl+K": "shortcuts.ctrlK",
 };
 

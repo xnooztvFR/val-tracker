@@ -226,6 +226,18 @@ pub async fn save_ui_language(
     Ok(())
 }
 
+/// Backlog #66 : `"comfortable"` | `"compact"`.
+#[tauri::command]
+pub async fn save_ui_density(
+    state: State<'_, AppState>,
+    density: String,
+) -> Result<(), CommandError> {
+    ensure_one_of(&density, &["comfortable", "compact"], "density")?;
+    let conn = state.db.lock().await;
+    crate::settings::set_ui_density(&conn, &density)?;
+    Ok(())
+}
+
 /// Backlog #31 : `"compact"` | `"detailed"`.
 #[tauri::command]
 pub async fn save_overlay_density(

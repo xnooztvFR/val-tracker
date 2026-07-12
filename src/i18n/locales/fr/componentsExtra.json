@@ -90,6 +90,17 @@
     "copyUnsupported": "Copie non supportée ici — utilise « Télécharger » à la place.",
     "copyError": "Échec de la copie, réessaie."
   },
+  "profileCardModal": {
+    "stats": {
+      "winrate": "Winrate",
+      "kd": "K/D",
+      "headshotPercent": "HS%",
+      "acs": "ACS"
+    },
+    "record": "{{wins}}V – {{losses}}D ({{played}} parties)",
+    "topAgent": "Agent principal : {{agent}}",
+    "footer": "Carte de visite générée par Valorant Tracker"
+  },
   "rankHistoryChart": {
     "limitedHistoryTitle": "Historique limité",
     "limitedHistoryBody": "Reviens consulter ce profil après quelques parties pour voir la courbe de progression du rank se dessiner.",

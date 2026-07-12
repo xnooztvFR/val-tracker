@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useTranslation } from "react-i18next";
 import i18n from "./i18n";
 
 import Titlebar from "./components/Titlebar";
@@ -43,10 +44,13 @@ const Compare = lazy(() => import("./screens/Compare"));
 
 export default function App() {
   const compact = useUiStore((s) => s.compact);
+  const focus = useUiStore((s) => s.focus);
+  const toggleFocus = useUiStore((s) => s.toggleFocus);
   const refreshSettings = useSettingsStore((s) => s.refresh);
   const uiTheme = useSettingsStore((s) => s.settings?.ui_theme);
   const uiAccent = useSettingsStore((s) => s.settings?.ui_accent);
   const uiLanguage = useSettingsStore((s) => s.settings?.ui_language);
+  const uiDensity = useSettingsStore((s) => s.settings?.ui_density);
   const [paletteOpen, setPaletteOpen] = useState(false);
 
   useEffect(() => {
@@ -56,16 +60,21 @@ export default function App() {
   // Backlog #25 : Ctrl+K ouvre la palette de commande — écouteur frontend simple, cette
   // fenêtre doit juste avoir le focus (contrairement à Ctrl+Shift+V qui est un raccourci
   // global côté Rust pour marcher jeu au premier plan, voir overlay/window.rs).
+  // Backlog #63 : Ctrl+Shift+F bascule le mode focus (même portée que Ctrl+K, fenêtre
+  // principale focus — pas un raccourci global côté Rust, contrairement à Ctrl+Shift+V/H).
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.ctrlKey && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setPaletteOpen((open) => !open);
+      } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        toggleFocus();
       }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [toggleFocus]);
 
   // Backlog #33/#38 : reflète le thème/accent choisis en Paramètres sur `<html>` — les
   // variables CSS `--color-*` de `index.css` en dépendent (`[data-theme]`/`[data-accent]`).
@@ -85,6 +94,20 @@ export default function App() {
     }
   }, [uiTheme, uiAccent]);
 
+  // Backlog #66 : densité globale — `[data-density="compact"]` réduit `font-size` sur
+  // `<html>` (voir index.css), ce qui rétrécit proportionnellement tout le reste de l'app
+  // basé sur les unités `rem` de Tailwind (spacing/text par défaut), sans refactor
+  // composant par composant. Chaque fenêtre Tauri a son propre document (voir l'effet
+  // thème/accent ci-dessus), donc cet effet doit rester avant l'early-return overlay.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (uiDensity === "compact") {
+      root.setAttribute("data-density", "compact");
+    } else {
+      root.removeAttribute("data-density");
+    }
+  }, [uiDensity]);
+
   // Système multilangue : reflète la préférence enregistrée (défaut "fr") sur l'instance
   // i18next partagée par toutes les fenêtres Tauri (dont l'overlay V2, qui a son propre
   // document mais importe le même singleton `i18n`).
@@ -103,15 +126,20 @@ export default function App() {
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
-      <Titlebar />
+      {!focus && <Titlebar />}
+      {focus && <FocusModeExitButton onExit={toggleFocus} />}
       {compact ? (
         <MiniOverlay />
       ) : (
         <>
-          <TopNav />
-          <UpdateBanner />
-          <ChangelogModal />
-          <StatusBanner />
+          {!focus && (
+            <>
+              <TopNav />
+              <UpdateBanner />
+              <ChangelogModal />
+              <StatusBanner />
+            </>
+          )}
           <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <Suspense fallback={<RouteFallback />}>
               <RouteTransition>
@@ -166,4 +194,21 @@ function PageScroll({ children }: { children: React.ReactNode }) {
 
 function RouteFallback() {
   return <SkeletonScreen className="p-6" />;
+}
+
+/** Backlog #63 : en mode focus, `Titlebar` (donc le drag/minimize/close de la fenêtre) est
+ * masqué avec le reste du chrome — ce bouton discret (opacité au survol) reste l'unique
+ * façon de sortir sans mémoriser Ctrl+Shift+F. */
+function FocusModeExitButton({ onExit }: { onExit: () => void }) {
+  const { t } = useTranslation("componentsCore");
+  return (
+    <button
+      type="button"
+      onClick={onExit}
+      title="Ctrl+Shift+F"
+      className="fixed right-3 top-3 z-50 border border-line bg-base/60 px-2 py-1 font-display text-[10px] font-semibold uppercase tracking-hud text-lo opacity-20 transition-opacity hover:opacity-100 hover:text-accent"
+    >
+      {t("focusMode.exit")}
+    </button>
+  );
 }

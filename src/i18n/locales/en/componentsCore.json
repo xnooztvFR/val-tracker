@@ -28,6 +28,9 @@
     "minimize": "Minimize",
     "close": "Close"
   },
+  "focusMode": {
+    "exit": "Focus"
+  },
   "topNav": {
     "tabs": {
       "leaderboard": "Leaderboard",

@@ -27,6 +27,7 @@ const KEY_USAGE_METRICS_ENABLED: &str = "usage_metrics_enabled";
 const KEY_UI_THEME: &str = "ui_theme";
 const KEY_UI_ACCENT: &str = "ui_accent";
 const KEY_UI_LANGUAGE: &str = "ui_language";
+const KEY_UI_DENSITY: &str = "ui_density";
 const KEY_OVERLAY_DENSITY: &str = "overlay_density";
 const KEY_LOSS_STREAK_ALERT_ENABLED: &str = "loss_streak_alert_enabled";
 const KEY_LOSS_STREAK_ALERT_COUNT: &str = "loss_streak_alert_count";
@@ -42,6 +43,7 @@ const KEY_NOTES_PIN: &str = "notes_pin";
 const DEFAULT_UI_THEME: &str = "dark";
 const DEFAULT_UI_ACCENT: &str = "red";
 const DEFAULT_UI_LANGUAGE: &str = "fr";
+const DEFAULT_UI_DENSITY: &str = "comfortable";
 const DEFAULT_OVERLAY_DENSITY: &str = "detailed";
 const DEFAULT_LOSS_STREAK_ALERT_COUNT: i64 = 3;
 const DEFAULT_INACTIVITY_REMINDER_DAYS: i64 = 3;
@@ -106,6 +108,12 @@ pub struct AppSettings {
     /// Système multilangue : `"fr"` (défaut) | `"en"`. Le frontend (react-i18next) applique
     /// cette valeur au démarrage puis à chaque changement via Paramètres.
     pub ui_language: String,
+    /// Backlog #66 : densité d'affichage globale de l'app (pas que l'overlay, cf
+    /// `overlay_density`) — `"comfortable"` (défaut) ou `"compact"`. Appliquée côté frontend
+    /// via un attribut `data-density` sur `<html>` qui réduit `font-size`, ce qui rétrécit
+    /// proportionnellement tout le reste de l'app basé sur les unités `rem` de Tailwind (pas
+    /// de refactor composant par composant nécessaire).
+    pub ui_density: String,
     /// Backlog #31 : densité d'info affichée dans l'overlay en jeu — `"compact"` (juste le
     /// badge de rank) ou `"detailed"` (défaut, ajoute le nom du rank + le RR).
     pub overlay_density: String,
@@ -144,6 +152,7 @@ impl fmt::Debug for AppSettings {
             .field("ui_theme", &self.ui_theme)
             .field("ui_accent", &self.ui_accent)
             .field("ui_language", &self.ui_language)
+            .field("ui_density", &self.ui_density)
             .field("overlay_density", &self.overlay_density)
             .field("loss_streak_alert_enabled", &self.loss_streak_alert_enabled)
             .field("loss_streak_alert_count", &self.loss_streak_alert_count)
@@ -256,6 +265,8 @@ pub fn load_settings(conn: &Connection) -> rusqlite::Result<AppSettings> {
         get_raw(conn, KEY_UI_ACCENT)?.unwrap_or_else(|| DEFAULT_UI_ACCENT.to_string());
     let ui_language =
         get_raw(conn, KEY_UI_LANGUAGE)?.unwrap_or_else(|| DEFAULT_UI_LANGUAGE.to_string());
+    let ui_density =
+        get_raw(conn, KEY_UI_DENSITY)?.unwrap_or_else(|| DEFAULT_UI_DENSITY.to_string());
     let overlay_density = get_raw(conn, KEY_OVERLAY_DENSITY)?
         .unwrap_or_else(|| DEFAULT_OVERLAY_DENSITY.to_string());
     let loss_streak_alert_enabled = get_raw(conn, KEY_LOSS_STREAK_ALERT_ENABLED)?
@@ -287,6 +298,7 @@ pub fn load_settings(conn: &Connection) -> rusqlite::Result<AppSettings> {
         ui_theme,
         ui_accent,
         ui_language,
+        ui_density,
         overlay_density,
         loss_streak_alert_enabled,
         loss_streak_alert_count,
@@ -383,6 +395,11 @@ pub fn set_ui_accent(conn: &Connection, accent: &str) -> rusqlite::Result<()> {
 /// Système multilangue : `"fr"` | `"en"`.
 pub fn set_ui_language(conn: &Connection, language: &str) -> rusqlite::Result<()> {
     set_raw(conn, KEY_UI_LANGUAGE, language)
+}
+
+/// Backlog #66 : `"comfortable"` | `"compact"`.
+pub fn set_ui_density(conn: &Connection, density: &str) -> rusqlite::Result<()> {
+    set_raw(conn, KEY_UI_DENSITY, density)
 }
 
 /// Backlog #31 : `"compact"` | `"detailed"`.
@@ -622,6 +639,15 @@ mod tests {
         let settings = load_settings(&conn).unwrap();
         assert_eq!(settings.ui_theme, "light");
         assert_eq!(settings.ui_accent, "cyan");
+    }
+
+    #[test]
+    fn ui_density_default_then_round_trip() {
+        let conn = memory_conn();
+        assert_eq!(load_settings(&conn).unwrap().ui_density, "comfortable");
+
+        set_ui_density(&conn, "compact").unwrap();
+        assert_eq!(load_settings(&conn).unwrap().ui_density, "compact");
     }
 
     #[test]

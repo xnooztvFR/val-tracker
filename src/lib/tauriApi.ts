@@ -714,6 +714,8 @@ export interface AppSettings {
   ui_accent: string;
   /** Système multilangue : `"fr"` (défaut) | `"en"`. */
   ui_language: string;
+  /** Backlog #66 : `"comfortable"` (défaut) | `"compact"` — densité globale de l'app. */
+  ui_density: string;
   /** Backlog #31 : `"compact"` | `"detailed"` (défaut). */
   overlay_density: string;
   /** Backlog #24 : alerte "N défaites d'affilée" (comptes "à soi" uniquement). */
@@ -831,6 +833,7 @@ export const tauriApi = {
   saveUiTheme: (theme: string) => invoke<void>("save_ui_theme", { theme }),
   saveUiAccent: (accent: string) => invoke<void>("save_ui_accent", { accent }),
   saveUiLanguage: (language: string) => invoke<void>("save_ui_language", { language }),
+  saveUiDensity: (density: string) => invoke<void>("save_ui_density", { density }),
   saveOverlayDensity: (density: string) =>
     invoke<void>("save_overlay_density", { density }),
   saveLossStreakAlertEnabled: (enabled: boolean) =>

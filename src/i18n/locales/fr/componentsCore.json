@@ -28,6 +28,9 @@
     "minimize": "Réduire",
     "close": "Fermer"
   },
+  "focusMode": {
+    "exit": "Focus"
+  },
   "topNav": {
     "tabs": {
       "leaderboard": "Classement",

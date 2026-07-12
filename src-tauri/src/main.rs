@@ -132,6 +132,7 @@ fn main() {
             commands::save_ui_theme,
             commands::save_ui_accent,
             commands::save_ui_language,
+            commands::save_ui_density,
             commands::save_overlay_density,
             commands::save_loss_streak_alert_enabled,
             commands::save_loss_streak_alert_count,

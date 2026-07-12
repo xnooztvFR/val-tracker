@@ -57,6 +57,14 @@
     --color-accent-dim: 140 114 34;
   }
 
+  /* Backlog #66 : densité globale — les classes Tailwind par défaut (spacing, text-*) sont
+     en `rem`, donc réduire `font-size` sur `<html>` rétrécit proportionnellement tout le
+     reste de l'app sans devoir retoucher chaque composant. Volontairement modeste (~87.5%)
+     pour rester lisible ; posé/retiré par App.tsx selon `settings.ui_density`. */
+  :root[data-density="compact"] {
+    font-size: 87.5%;
+  }
+
   html,
   body,
   #root {
