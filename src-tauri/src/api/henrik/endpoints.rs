@@ -139,15 +139,19 @@ pub(crate) async fn fetch_with_cache<T: DeserializeOwned>(
                 cache::get_stale(&conn, path)?
             };
             match stale {
-                Some((payload, expires_at)) => {
-                    let envelope: HenrikEnvelope<T> = serde_json::from_str(&payload)?;
-                    Ok(Fetched {
+                // Si le payload périmé ne parse plus (schéma Henrik changé depuis sa mise
+                // en cache), on renvoie l'erreur réseau/API d'origine plutôt qu'une erreur
+                // Serde trompeuse — l'UI doit afficher "panne réseau", pas "réponse
+                // inattendue".
+                Some((payload, expires_at)) => match serde_json::from_str::<HenrikEnvelope<T>>(&payload) {
+                    Ok(envelope) => Ok(Fetched {
                         data: envelope.data,
                         stale: true,
                         from_network: false,
                         cached_at: Some(expires_at - ttl.0),
-                    })
-                }
+                    }),
+                    Err(_) => Err(err),
+                },
                 None => Err(err),
             }
         }

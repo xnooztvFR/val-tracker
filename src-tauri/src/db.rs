@@ -347,13 +347,16 @@ pub fn list_favorite_players(conn: &Connection) -> rusqlite::Result<Vec<TrackedP
 /// Réassigne `sort_order` selon l'ordre de `ordered_puuids` (index = nouvel ordre) — la
 /// liste complète des favoris dans leur nouvel ordre après un drag & drop, pas un delta.
 pub fn reorder_favorites(conn: &Connection, ordered_puuids: &[String]) -> rusqlite::Result<()> {
+    // Transaction : un échec au milieu de la boucle ne doit pas laisser un ordre à moitié
+    // réassigné (mélange ancien/nouveau ordre).
+    let tx = conn.unchecked_transaction()?;
     for (index, puuid) in ordered_puuids.iter().enumerate() {
-        conn.execute(
+        tx.execute(
             "UPDATE tracked_players SET sort_order = ?2 WHERE puuid = ?1",
             (puuid, index as i64),
         )?;
     }
-    Ok(())
+    tx.commit()
 }
 
 #[derive(Debug, Clone, Serialize)]

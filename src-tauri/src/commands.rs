@@ -93,11 +93,27 @@ pub async fn save_henrik_api_key(
     Ok(())
 }
 
+/// Rejette une valeur hors de la liste attendue — les settings énumérés sont contraints
+/// côté frontend (boutons radio), mais la commande reste la seule porte d'entrée vers le
+/// stockage et ne doit pas faire confiance à la webview pour ça.
+fn ensure_one_of(value: &str, allowed: &[&str], field: &str) -> Result<(), CommandError> {
+    if allowed.contains(&value) {
+        Ok(())
+    } else {
+        Err(CommandError::Unknown {
+            message: format!("{field} invalide: attendu l'un de {allowed:?}"),
+        })
+    }
+}
+
 #[tauri::command]
 pub async fn save_default_region(
     state: State<'_, AppState>,
     region: String,
 ) -> Result<(), CommandError> {
+    // Superset des régions proposées par le frontend (REGIONS de lib/format.ts) : les
+    // régions Henrik valides restent acceptées même si l'UI n'en liste que 4.
+    ensure_one_of(&region, &["eu", "na", "ap", "kr", "latam", "br"], "region")?;
     let conn = state.db.lock().await;
     crate::settings::set_default_region(&conn, &region)?;
     Ok(())
@@ -180,6 +196,7 @@ pub async fn save_usage_metrics_enabled(
 /// Backlog #33 : `"dark"` | `"light"`.
 #[tauri::command]
 pub async fn save_ui_theme(state: State<'_, AppState>, theme: String) -> Result<(), CommandError> {
+    ensure_one_of(&theme, &["dark", "light"], "theme")?;
     let conn = state.db.lock().await;
     crate::settings::set_ui_theme(&conn, &theme)?;
     Ok(())
@@ -191,6 +208,7 @@ pub async fn save_ui_accent(
     state: State<'_, AppState>,
     accent: String,
 ) -> Result<(), CommandError> {
+    ensure_one_of(&accent, &["red", "cyan", "violet", "amber"], "accent")?;
     let conn = state.db.lock().await;
     crate::settings::set_ui_accent(&conn, &accent)?;
     Ok(())
@@ -202,6 +220,7 @@ pub async fn save_overlay_density(
     state: State<'_, AppState>,
     density: String,
 ) -> Result<(), CommandError> {
+    ensure_one_of(&density, &["compact", "detailed"], "density")?;
     let conn = state.db.lock().await;
     crate::settings::set_overlay_density(&conn, &density)?;
     Ok(())

@@ -419,9 +419,19 @@ pub fn clear_notes_pin(conn: &Connection) -> rusqlite::Result<()> {
 
 /// Compare `pin` au PIN enregistré. `false` si aucun PIN n'est configuré (le verrou ne
 /// devrait alors pas être affiché côté frontend — `notes_pin_enabled` sert de garde).
+/// Comparaison en temps constant : le temps de réponse ne doit pas dépendre du nombre de
+/// caractères corrects (timing attack, même si le modèle de menace local la rend théorique).
 pub fn verify_notes_pin(conn: &Connection, pin: &str) -> rusqlite::Result<bool> {
     let stored = get_encrypted(conn, KEY_NOTES_PIN)?;
-    Ok(stored.is_some_and(|s| s == pin))
+    Ok(stored.is_some_and(|s| constant_time_eq(s.as_bytes(), pin.as_bytes())))
+}
+
+fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
+    let mut diff = a.len() ^ b.len();
+    for i in 0..a.len().min(b.len()) {
+        diff |= (a[i] ^ b[i]) as usize;
+    }
+    diff == 0
 }
 
 const KEY_LAST_INACTIVITY_REMINDER_SENT: &str = "last_inactivity_reminder_sent_at";
