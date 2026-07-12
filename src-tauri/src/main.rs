@@ -85,6 +85,22 @@ fn main() {
             };
             app.manage(overlay::window::ShortcutStatus::registered(shortcut_registered));
 
+            // La fenêtre overlay (V2) est créée à la demande puis seulement masquée, jamais
+            // détruite (voir `overlay::window::hide_overlay`) — elle reste donc « ouverte »
+            // aux yeux de Tauri même invisible. Sans ce handler, fermer la fenêtre "main"
+            // laisse ce hidden window (+ les tâches de fond : poller, Discord RPC, watchers)
+            // tourner indéfiniment en arrière-plan (bug constaté en session : le process
+            // survit dans le Gestionnaire des tâches après fermeture de l'app). On force
+            // donc la sortie complète du process dès que la fenêtre principale se ferme.
+            if let Some(main_window) = app.get_webview_window("main") {
+                let handle = app.handle().clone();
+                main_window.on_window_event(move |event| {
+                    if let tauri::WindowEvent::CloseRequested { .. } = event {
+                        handle.exit(0);
+                    }
+                });
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

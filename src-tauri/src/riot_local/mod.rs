@@ -18,6 +18,18 @@ use std::sync::Mutex;
 
 use serde::Serialize;
 
+/// Un joueur détecté dans la partie en cours, avec son équipe relative au joueur local.
+/// En pregame, le Riot Client n'expose que l'équipe alliée (voir
+/// `client::fetch_pregame_player_puuids`) — tous les joueurs y sont donc `"ally"`. En
+/// in-game, `team` est déduit du `TeamID` Riot renvoyé par le core-game (voir
+/// `client::CoreGamePlayer`), comparé à celui du joueur local.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct LivePlayer {
+    pub puuid: String,
+    /// "ally" | "enemy"
+    pub team: String,
+}
+
 /// Instantané de l'état de partie détecté, partagé entre le poller (écriture), la
 /// commande `get_live_state` (lecture au montage de l'overlay) et l'event Tauri
 /// `riot-local://state` (poussé à chaque changement).
@@ -25,8 +37,8 @@ use serde::Serialize;
 pub struct LiveSnapshot {
     /// "hors_jeu" | "menu" | "pregame" | "in_game" | "post_game" | "desactive"
     pub state: String,
-    /// PUUID des joueurs détectés dans la partie en cours (vide hors partie).
-    pub players: Vec<String>,
+    /// Joueurs détectés dans la partie en cours (vide hors partie).
+    pub players: Vec<LivePlayer>,
     /// Région de déploiement détectée (sinon la région par défaut des réglages).
     pub region: Option<String>,
 }

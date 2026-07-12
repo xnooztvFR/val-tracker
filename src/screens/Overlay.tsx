@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { listen } from "@tauri-apps/api/event";
 
-import { tauriApi } from "../lib/tauriApi";
+import { tauriApi, type Fetched, type LivePlayer, type MmrData } from "../lib/tauriApi";
 import { useLiveDetectionState } from "../hooks/useLiveState";
 import { useSettingsStore } from "../store/settingsStore";
 import { rankInfo } from "../lib/format";
@@ -47,13 +47,20 @@ export default function Overlay() {
   const players = snapshot?.players ?? [];
 
   const mmrQueries = useQueries({
-    queries: players.map((puuid) => ({
+    queries: players.map(({ puuid }) => ({
       queryKey: ["overlay-mmr", puuid, region],
       queryFn: () => tauriApi.fetchMmrByPuuid(puuid, region),
       staleTime: 10 * 60_000,
       retry: false,
     })),
   });
+
+  const allies = players
+    .map((player, index) => ({ player, query: mmrQueries[index] }))
+    .filter(({ player }) => player.team === "ally");
+  const enemies = players
+    .map((player, index) => ({ player, query: mmrQueries[index] }))
+    .filter(({ player }) => player.team !== "ally");
 
   // Backlog #22 : recommandation d'agent perso pendant la sélection — juste "quels sont mes
   // agents les plus performants", pas une analyse de la comp adverse/alliée (non fiable
@@ -117,42 +124,12 @@ export default function Overlay() {
                 : "Lance une partie pour voir le rank du lobby ici."}
             </p>
           ) : (
-            <ul className="space-y-1">
-              {players.map((puuid, index) => {
-                const query = mmrQueries[index];
-                const data = query?.data?.data;
-                const info = rankInfo(data?.current_data?.currenttier);
-                return (
-                  <li key={puuid} className="flex items-center gap-2 border border-line/60 bg-base/60 px-2 py-1.5">
-                    <img src={info.iconUrl} alt="" className="h-5 w-5 object-contain" />
-                    <span className="min-w-0 flex-1 truncate text-xs">
-                      {query?.isLoading ? (
-                        <span className="text-lo">Identification…</span>
-                      ) : data?.name ? (
-                        <>
-                          {data.name}
-                          <span className="text-lo">#{data.tag}</span>
-                        </>
-                      ) : (
-                        <span className="text-lo">Joueur inconnu</span>
-                      )}
-                    </span>
-                    {density === "detailed" && (
-                      <span className={`font-display text-[10px] font-semibold uppercase tracking-hud ${info.colorClass}`}>
-                        {info.name}
-                      </span>
-                    )}
-                    {density === "detailed" && (
-                      <span className="stat-value w-12 text-right text-[10px] text-lo">
-                        {data?.current_data?.ranking_in_tier != null
-                          ? `${data.current_data.ranking_in_tier} RR`
-                          : "—"}
-                      </span>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
+            <div className="space-y-2">
+              <PlayerGroup label="Équipe" entries={allies} density={density} />
+              {enemies.length > 0 && (
+                <PlayerGroup label="Adversaires" entries={enemies} density={density} accentClass="text-crit" />
+              )}
+            </div>
           )}
         </div>
 
@@ -178,6 +155,64 @@ export default function Overlay() {
           </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+interface PlayerGroupEntry {
+  player: LivePlayer;
+  query: UseQueryResult<Fetched<MmrData>> | undefined;
+}
+
+/** Une section (alliés ou adversaires) de la liste de joueurs de l'overlay — factorisé pour
+ * éviter de dupliquer le rendu de chaque ligne entre les deux équipes. */
+function PlayerGroup({
+  label,
+  entries,
+  density,
+  accentClass = "",
+}: {
+  label: string;
+  entries: PlayerGroupEntry[];
+  density: string;
+  accentClass?: string;
+}) {
+  return (
+    <div>
+      <p className={`hud-label pointer-events-none mb-1 px-1 text-[9px] ${accentClass || "text-lo"}`}>{label}</p>
+      <ul className="space-y-1">
+        {entries.map(({ player, query }) => {
+          const data = query?.data?.data;
+          const info = rankInfo(data?.current_data?.currenttier);
+          return (
+            <li key={player.puuid} className="flex items-center gap-2 border border-line/60 bg-base/60 px-2 py-1.5">
+              <img src={info.iconUrl} alt="" className="h-5 w-5 object-contain" />
+              <span className="min-w-0 flex-1 truncate text-xs">
+                {query?.isLoading ? (
+                  <span className="text-lo">Identification…</span>
+                ) : data?.name ? (
+                  <>
+                    {data.name}
+                    <span className="text-lo">#{data.tag}</span>
+                  </>
+                ) : (
+                  <span className="text-lo">Joueur inconnu</span>
+                )}
+              </span>
+              {density === "detailed" && (
+                <span className={`font-display text-[10px] font-semibold uppercase tracking-hud ${info.colorClass}`}>
+                  {info.name}
+                </span>
+              )}
+              {density === "detailed" && (
+                <span className="stat-value w-12 text-right text-[10px] text-lo">
+                  {data?.current_data?.ranking_in_tier != null ? `${data.current_data.ranking_in_tier} RR` : "—"}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

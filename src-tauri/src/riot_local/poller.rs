@@ -22,12 +22,15 @@ use tokio::sync::watch;
 
 use super::client::{self, GameState};
 use super::lockfile::{self, LockfileInfo};
-use super::{LiveSnapshot, LiveState};
+use super::{LivePlayer, LiveSnapshot, LiveState};
 use crate::AppState;
 
 const ACTIVE_INTERVAL: Duration = Duration::from_millis(2500);
 const IDLE_INTERVAL: Duration = Duration::from_millis(8000);
 const MAX_LOCAL_FAILURES: u32 = 3;
+/// Durée d'affichage de l'overlay une fois la manche lancée, le temps de lire le roster
+/// ennemi (voir `on_state_changed`) avant de se masquer pour ne pas gêner la visée.
+const IN_GAME_OVERLAY_DURATION: Duration = Duration::from_secs(12);
 pub const STATE_EVENT: &str = "riot-local://state";
 
 pub struct PollerHandle {
@@ -95,7 +98,7 @@ struct PollContext {
     /// ne change pas une fois connu pour cette phase, pas besoin de refaire
     /// entitlements + 2 requêtes GLZ à chaque tick tant qu'on y est encore.
     roster_state: Option<GameState>,
-    roster: Vec<String>,
+    roster: Vec<LivePlayer>,
 }
 
 impl PollContext {
@@ -207,15 +210,49 @@ async fn tick(app: &AppHandle, ctx: &mut PollContext) {
                 ctx.roster.clone()
             } else if let Some(client_version) = ctx.client_version.clone() {
                 let fetched = match state {
-                    GameState::Pregame => {
-                        client::fetch_pregame_player_puuids(&http, &lockfile, &local_puuid, &region, &client_version)
-                            .await
-                            .unwrap_or_default()
-                    }
+                    GameState::Pregame => client::fetch_pregame_player_puuids(
+                        &http,
+                        &lockfile,
+                        &local_puuid,
+                        &region,
+                        &client_version,
+                    )
+                    .await
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|puuid| LivePlayer {
+                        puuid,
+                        team: "ally".to_string(),
+                    })
+                    .collect::<Vec<_>>(),
                     GameState::InGame => {
-                        client::fetch_coregame_player_puuids(&http, &lockfile, &local_puuid, &region, &client_version)
-                            .await
-                            .unwrap_or_default()
+                        let core_players = client::fetch_coregame_player_puuids(
+                            &http,
+                            &lockfile,
+                            &local_puuid,
+                            &region,
+                            &client_version,
+                        )
+                        .await
+                        .unwrap_or_default();
+                        let own_team_id = core_players
+                            .iter()
+                            .find(|p| p.puuid == local_puuid)
+                            .map(|p| p.team_id.clone());
+                        core_players
+                            .into_iter()
+                            .map(|p| LivePlayer {
+                                team: match &own_team_id {
+                                    Some(own) if *own == p.team_id => "ally".to_string(),
+                                    Some(_) => "enemy".to_string(),
+                                    // Équipe locale inconnue (endpoint /players sans notre
+                                    // propre entrée) : mieux vaut ne pas deviner que
+                                    // d'étiqueter à tort un ennemi comme allié.
+                                    None => "inconnu".to_string(),
+                                },
+                                puuid: p.puuid,
+                            })
+                            .collect()
                     }
                     _ => unreachable!(),
                 };
@@ -284,13 +321,27 @@ async fn on_local_api_failure(app: &AppHandle, ctx: &mut PollContext, settings: 
 }
 
 /// Réagit aux transitions : affiche/masque l'overlay, notifie la fin de partie. L'overlay
-/// ne s'affiche qu'en pregame (sélection d'agents) — une fois la manche lancée (`InGame`),
-/// il se masque : il peut sinon gêner le focus/la visée pendant l'action (retour
-/// utilisateur : kills loupés à cause de l'overlay affiché pendant le combat).
+/// s'affiche en pregame (sélection d'agents, roster allié uniquement) et reste affiché
+/// `IN_GAME_OVERLAY_DURATION` après le lancement de la manche (`InGame`) — le temps de
+/// lire le roster ennemi, indisponible avant ce moment (voir `client::fetch_coregame_player_puuids`)
+/// — avant de se masquer automatiquement : il peut sinon gêner le focus/la visée pendant
+/// l'action (retour utilisateur : kills loupés à cause de l'overlay affiché pendant le
+/// combat).
 async fn on_state_changed(app: &AppHandle, previous: Option<GameState>, current: GameState) {
     match current {
         GameState::Pregame => {
             crate::overlay::window::show_overlay(app).await;
+        }
+        GameState::InGame if previous != Some(GameState::InGame) => {
+            crate::overlay::window::show_overlay(app).await;
+            let app = app.clone();
+            tauri::async_runtime::spawn(async move {
+                tokio::time::sleep(IN_GAME_OVERLAY_DURATION).await;
+                crate::overlay::window::hide_overlay(&app);
+            });
+        }
+        GameState::InGame => {
+            // Déjà en cours (ex: reconnexion de session) — ne relance pas le minuteur.
         }
         _ => {
             crate::overlay::window::hide_overlay(app);

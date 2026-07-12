@@ -324,14 +324,24 @@ pub async fn fetch_pregame_player_puuids(
     Ok(puuids)
 }
 
-/// PUUID des 10 joueurs de la partie en cours (core-game).
+/// Un joueur de la partie core-game, avec son `TeamID` Riot ("Blue"/"Red") — nécessaire
+/// pour distinguer alliés et ennemis (contrairement au pregame, le core-game expose les
+/// deux équipes, voir `fetch_coregame_player_puuids`).
+pub struct CoreGamePlayer {
+    pub puuid: String,
+    pub team_id: String,
+}
+
+/// Les 10 joueurs (deux équipes) de la partie en cours (core-game). Contrairement au
+/// pregame, cet endpoint expose l'équipe adverse — chaque joueur porte son `TeamID`,
+/// l'appelant (poller) le compare au `TeamID` du joueur local pour déduire allié/ennemi.
 pub async fn fetch_coregame_player_puuids(
     client: &reqwest::Client,
     lockfile: &LockfileInfo,
     local_puuid: &str,
     region: &str,
     client_version: &str,
-) -> anyhow::Result<Vec<String>> {
+) -> anyhow::Result<Vec<CoreGamePlayer>> {
     let entitlements = fetch_entitlements(client, lockfile).await?;
     let base = glz_base(region);
 
@@ -356,15 +366,20 @@ pub async fn fetch_coregame_player_puuids(
     )
     .await?;
 
-    let mut puuids = Vec::new();
-    if let Some(players) = game.get("Players").and_then(|p| p.as_array()) {
-        for p in players {
-            if let Some(subject) = p.get("Subject").and_then(|s| s.as_str()) {
-                puuids.push(subject.to_string());
+    let mut players = Vec::new();
+    if let Some(raw_players) = game.get("Players").and_then(|p| p.as_array()) {
+        for p in raw_players {
+            let subject = p.get("Subject").and_then(|s| s.as_str());
+            let team_id = p.get("TeamID").and_then(|t| t.as_str());
+            if let (Some(subject), Some(team_id)) = (subject, team_id) {
+                players.push(CoreGamePlayer {
+                    puuid: subject.to_string(),
+                    team_id: team_id.to_string(),
+                });
             }
         }
     }
-    Ok(puuids)
+    Ok(players)
 }
 
 #[cfg(test)]

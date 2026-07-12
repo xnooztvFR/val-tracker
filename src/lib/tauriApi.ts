@@ -36,11 +36,19 @@ export interface MmrData {
   tag?: string | null;
 }
 
+/** Joueur détecté dans la partie en cours. En pregame, le Riot Client n'expose que
+ * l'équipe alliée donc `team` vaut toujours "ally" ; en in-game les deux équipes sont
+ * connues via leur TeamID Riot. */
+export interface LivePlayer {
+  puuid: string;
+  team: "ally" | "enemy" | "inconnu";
+}
+
 /** Instantané de la détection de partie V2 (commande get_live_state + event
  * `riot-local://state`). */
 export interface LiveSnapshot {
   state: "hors_jeu" | "menu" | "pregame" | "in_game" | "post_game" | "desactive";
-  players: string[];
+  players: LivePlayer[];
   region: string | null;
 }
 
