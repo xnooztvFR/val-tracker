@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   CartesianGrid,
   Line,
@@ -37,7 +38,7 @@ const MONO = '"JetBrains Mono", Consolas, monospace';
  * même partie vue depuis les deux sources (snapshot local + historique serveur). */
 const DEDUPE_WINDOW_MS = 2 * 60_000;
 
-function mergeHistory(snapshots: RankSnapshot[], serverHistory: MmrHistoryEntry[]): Point[] {
+function mergeHistory(snapshots: RankSnapshot[], serverHistory: MmrHistoryEntry[], unknownLabel: string): Point[] {
   const fromServer: Point[] = serverHistory
     .map((entry) => {
       const ts = entry.date ? new Date(entry.date).getTime() : NaN;
@@ -45,7 +46,7 @@ function mergeHistory(snapshots: RankSnapshot[], serverHistory: MmrHistoryEntry[
       return {
         timestampMs: ts,
         tier: entry.tier.id ?? 0,
-        label: entry.tier.name ?? "Inconnu",
+        label: entry.tier.name ?? unknownLabel,
         rr: entry.rr,
         map: entry.map?.name ?? null,
         change: entry.last_change,
@@ -77,15 +78,18 @@ function mergeHistory(snapshots: RankSnapshot[], serverHistory: MmrHistoryEntry[
 }
 
 export default function RankHistoryChart({ snapshots, serverHistory = [] }: RankHistoryChartProps) {
-  const points = useMemo(() => mergeHistory(snapshots, serverHistory), [snapshots, serverHistory]);
+  const { t } = useTranslation("componentsExtra");
+  const points = useMemo(
+    () => mergeHistory(snapshots, serverHistory, t("rankHistoryChart.unknownTier")),
+    [snapshots, serverHistory, t],
+  );
 
   if (points.length < MIN_POINTS_FOR_CHART) {
     return (
       <div className="flex h-48 flex-col items-center justify-center border border-dashed border-line text-center text-sm text-lo">
-        <p className="hud-label">Historique limité</p>
+        <p className="hud-label">{t("rankHistoryChart.limitedHistoryTitle")}</p>
         <p className="mt-2 max-w-xs text-xs">
-          Reviens consulter ce profil après quelques parties pour voir la courbe de
-          progression du rank se dessiner.
+          {t("rankHistoryChart.limitedHistoryBody")}
         </p>
       </div>
     );
@@ -131,7 +135,7 @@ export default function RankHistoryChart({ snapshots, serverHistory = [] }: Rank
               `${item.payload.label} — ${item.payload.rr ?? "?"} RR${
                 item.payload.change != null ? ` (${item.payload.change >= 0 ? "+" : ""}${item.payload.change})` : ""
               }${item.payload.map ? ` · ${item.payload.map}` : ""}`,
-              "Rank",
+              t("rankHistoryChart.tooltipLabel"),
             ]) as never}
             labelFormatter={(label) => label}
           />

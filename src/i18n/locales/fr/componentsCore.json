@@ -1,0 +1,65 @@
+{
+  "errorState": {
+    "alertLabel": "Alerte",
+    "missingApiKey": "Aucune clé API Henrik configurée.",
+    "notFound": "Joueur introuvable, vérifie le pseudo#tag et la région.",
+    "rateLimitedWithDelay": "Trop de requêtes, réessaie dans {{seconds}}s.",
+    "rateLimited": "Trop de requêtes, réessaie dans quelques instants.",
+    "circuitOpen": "Trop d'échecs récents vers l'API Henrik, réessaie dans quelques instants.",
+    "network": "Panne réseau — impossible de contacter l'API Henrik.",
+    "api": "Erreur API Henrik ({{status}}).",
+    "unknown": "Une erreur inattendue est survenue.",
+    "goToSettings": "Aller aux paramètres"
+  },
+  "staleDataBanner": {
+    "label": "Cache",
+    "message": "Données en cache, dernière mise à jour le {{date}}."
+  },
+  "statusBanner": {
+    "defaultIncidentTitle": "Incident en cours",
+    "maintenance": "Maintenance",
+    "incident": "Incident",
+    "moreOthers": "+{{count}} autre(s)",
+    "dismiss": "Masquer"
+  },
+  "titlebar": {
+    "exitMiniMode": "Quitter le mode mini",
+    "miniMode": "Mode mini (overlay)",
+    "minimize": "Réduire",
+    "close": "Fermer"
+  },
+  "topNav": {
+    "tabs": {
+      "leaderboard": "Classement",
+      "premier": "Premier",
+      "esports": "Esport",
+      "vs": "VS",
+      "home": "Accueil",
+      "history": "Historique",
+      "trends": "Tendances",
+      "agents": "Agents",
+      "maps": "Cartes",
+      "duo": "Duo"
+    },
+    "home": "Accueil",
+    "more": "Plus",
+    "close": "Fermer",
+    "changePlayer": "Changer de joueur",
+    "settings": "Paramètres"
+  },
+  "apiStatusBadge": {
+    "ok": "API OK",
+    "rateLimited": "Rate limit",
+    "circuitOpen": "API en pause",
+    "network": "Hors ligne"
+  },
+  "detectionStatusBadge": {
+    "disabled": "Détection désactivée",
+    "active": "Détection active",
+    "detected": "Partie détectée",
+    "tooltip": "{{label}} — voir les paramètres"
+  },
+  "queueStatusStrip": {
+    "label": "Files d'attente"
+  }
+}

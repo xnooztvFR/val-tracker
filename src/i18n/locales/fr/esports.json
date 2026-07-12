@@ -1,0 +1,106 @@
+{
+  "esports": {
+    "title": "Calendrier esport (VCT)",
+    "browseLink": "Parcourir les événements, équipes et joueurs pro →",
+    "allLeagues": "Toutes les ligues",
+    "empty": {
+      "title": "Aucun match programmé",
+      "detail": "Rien à afficher pour le moment."
+    },
+    "teamTbd": "À déterminer",
+    "state": {
+      "completed": "Terminé",
+      "ongoing": "En cours",
+      "unstarted": "À venir"
+    }
+  },
+  "vlrEvents": {
+    "backLink": "← Calendrier",
+    "title": "Événements esport",
+    "typeAll": "Tous",
+    "typeUpcoming": "À venir",
+    "typeCompleted": "Terminés",
+    "regions": {
+      "all": "Toutes régions",
+      "north_america": "Amérique du Nord",
+      "europe": "Europe",
+      "brazil": "Brésil",
+      "asia_pacific": "Asie-Pacifique",
+      "korea": "Corée",
+      "japan": "Japon",
+      "latin_america": "Amérique Latine",
+      "oceania": "Océanie",
+      "mena": "MENA",
+      "gc": "Game Changers",
+      "collegiate": "Universitaire"
+    },
+    "status": {
+      "completed": "Terminé",
+      "ongoing": "En cours",
+      "upcoming": "À venir",
+      "unknown": "?"
+    },
+    "empty": {
+      "title": "Aucun événement"
+    },
+    "pagination": {
+      "previous": "Précédent",
+      "page": "Page {{page}}",
+      "next": "Suivant"
+    }
+  },
+  "vlrEventDetail": {
+    "backLink": "← Événements",
+    "fallbackTitle": "Matchs de l'événement",
+    "empty": {
+      "title": "Aucun match"
+    },
+    "vs": "vs"
+  },
+  "vlrMatchDetail": {
+    "backLink": "← Calendrier esport",
+    "notFound": "Match introuvable.",
+    "mapHeader": "Map {{index}} — {{map}}",
+    "patch": "Patch {{patch}}",
+    "columns": {
+      "agent": "Agent",
+      "rating": "Rating",
+      "acs": "ACS",
+      "kda": "K/D/A",
+      "adr": "ADR",
+      "kast": "KAST",
+      "hsPct": "HS%"
+    }
+  },
+  "vlrTeamDetail": {
+    "backLink": "← Esport",
+    "notFound": "Équipe introuvable.",
+    "totalWinnings": "Gains totaux",
+    "roster": "Roster",
+    "rosterEmpty": "Roster non communiqué.",
+    "achievements": "Palmarès",
+    "recentMatches": "Derniers matchs"
+  },
+  "vlrPlayerDetail": {
+    "backLink": "← Esport",
+    "notFound": "Joueur introuvable.",
+    "timespans": {
+      "30d": "30 jours",
+      "60d": "60 jours",
+      "90d": "90 jours",
+      "all": "Carrière"
+    },
+    "statsByAgent": "Stats par agent",
+    "columns": {
+      "agent": "Agent",
+      "usage": "Usage",
+      "rating": "Rating",
+      "acs": "ACS",
+      "kd": "K/D",
+      "adr": "ADR",
+      "kast": "KAST"
+    },
+    "noStats": "Pas de statistiques sur cette période.",
+    "recentMatches": "Derniers matchs"
+  }
+}

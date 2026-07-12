@@ -1,0 +1,171 @@
+{
+  "nav": {
+    "title": "Settings",
+    "general": "General",
+    "game": "In-game",
+    "alerts": "Alerts & privacy",
+    "updates": "Updates",
+    "data": "Data & diagnostics",
+    "about": "About"
+  },
+  "general": {
+    "title": "General",
+    "apiKeySet": "Henrik API key configured.",
+    "apiKeyNotSet": "No Henrik API key configured.",
+    "apiKeyLabel": "Henrik API key",
+    "apiKeyPlaceholder": "Paste your Henrik API key here",
+    "verify": "Verify",
+    "verifying": "Verifying…",
+    "save": "Save",
+    "keyValid": "Valid key.",
+    "keyInvalid": "Invalid key — check that it's correct.",
+    "keyVerifyError": "Couldn't verify the key (network issue?).",
+    "keySaved": "Key saved.",
+    "apiKeyHint": "Get a key on the Henrik Dev Discord. It's never sent anywhere other than the Henrik API and stays stored only on this machine.",
+    "regionLabel": "Default region"
+  },
+  "appearance": {
+    "title": "Appearance",
+    "themeLabel": "Theme",
+    "theme": {
+      "dark": "Dark (default)",
+      "light": "Light"
+    },
+    "accentLabel": "Accent color",
+    "accentHint": "Default HUD identity is red — a few variants available without breaking the rest of the design (clipped corners, typography, contrasts).",
+    "accent": {
+      "red": "Red (default)",
+      "cyan": "Cyan",
+      "violet": "Violet",
+      "amber": "Amber"
+    }
+  },
+  "language": {
+    "title": "Language",
+    "hint": "Changes the language for the whole interface, including the in-game overlay.",
+    "fr": "French",
+    "en": "English"
+  },
+  "overlay": {
+    "title": "In-game overlay",
+    "description": "Automatically detects an ongoing match via the Riot Client's local API and displays an always-on-top overlay with the lobby players' rank. No game injection: just an overlay window. Works in \"borderless fullscreen\" (exclusive fullscreen may hide the overlay).",
+    "enableLabel": "Enable automatic match detection and the overlay",
+    "densityLabel": "Display density",
+    "density": {
+      "compact": "Compact",
+      "detailed": "Detailed (default)"
+    },
+    "densityHint": "\"Compact\" only shows detected players' rank badge; \"Detailed\" (default) adds the rank name and RR.",
+    "shortcutConflictTitle": "Shortcut unavailable",
+    "shortcutConflictBody": "<shortcut>Ctrl+Shift+V</shortcut> is already used by another application on this machine (often a \"paste without formatting\" shortcut). The overlay stays click-through, but it can't be moved until this conflict is resolved — free the shortcut elsewhere then restart the app.",
+    "shortcutLabel": "Shortcut",
+    "shortcutHint": "<shortcut>Ctrl+Shift+V</shortcut> — toggles the overlay between click-through (display only) and interactive (movable). Its position is remembered across sessions.",
+    "apiWarning": "This detection relies on an unofficial local Riot API: if it becomes unavailable (including mid-match, e.g. a Riot client crash), the app silently falls back to manual lookup mode."
+  },
+  "discord": {
+    "title": "Discord Rich Presence",
+    "description": "Automatically shows what you're doing in the tracker (ongoing match, agent select, region) as your Discord status. Purely local: a direct IPC connection to your Discord desktop client, no data sent over the network.",
+    "enableLabel": "Enable Discord Rich Presence",
+    "clientIdLabel": "Discord application Client ID",
+    "clientIdPlaceholder": "123456789012345678",
+    "save": "Save",
+    "saved": "Client ID saved.",
+    "clientIdHint": "Create a (free) application on the <portal>Discord Developer Portal</portal> and paste its \"Application ID\" here — no secret or token, just a public identifier.",
+    "bestEffort": "Best-effort, like match detection: if Discord isn't running or the client_id is invalid, Rich Presence simply stays inactive, with no blocking error."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "rankChangeTitle": "Rank change",
+    "rankChangeBody": "Always active: a native notification appears as soon as a rank up/down is detected while viewing a profile (promotion, derank). No setting needed — it triggers no extra network call, it just observes what the app already fetches.",
+    "statusTitle": "Server status & queue",
+    "statusLabel": "Notify me of incidents and queue changes in my default region",
+    "statusHint": "The only setting (along with the inactivity reminder below) that triggers a periodic network call even when you're not looking at the app (every ~3 min, respects the existing cache/rate limiter) — disabled by default, enable it if you want background alerts.",
+    "lossStreakTitle": "Loss streak",
+    "lossStreakLabel": "Notify me after several losses in a row",
+    "lossStreakUnit": "losses in a row",
+    "lossStreakHint": "Checked on your accounts marked \"self\" (see TopNav) each time you view match history — no dedicated network call.",
+    "inactivityTitle": "Inactivity reminder",
+    "inactivityLabel": "Remind me if I haven't checked my stats in a while",
+    "inactivityAfter": "After",
+    "inactivityUnit": "days without checking a \"self\" account",
+    "inactivityHint": "Gentle reminder, never more than once a day — requires at least one account marked \"self\" (see TopNav → account switcher)."
+  },
+  "updates": {
+    "title": "Updates",
+    "autoCheckLabel": "Automatically check for updates on startup",
+    "checkNow": "Check now",
+    "checking": "Checking…",
+    "upToDate": "Current version is up to date.",
+    "installVersion": "Install version {{version}}",
+    "downloading": "Downloading…",
+    "error": "Error: {{error}}",
+    "distributionNote": "Updates are distributed via GitHub Releases and signed (updater + Authenticode). Without a paid code-signing certificate, Windows SmartScreen may still show a warning at install despite the signature."
+  },
+  "crosshair": {
+    "title": "Crosshair preview",
+    "description": "Paste a Valorant crosshair code (copied from the game or a shared video/config) to preview its render without launching the game.",
+    "placeholder": "0;s;1;P;c;1;o;1;...",
+    "preview": "Preview",
+    "generating": "Generating…",
+    "error": "Couldn't generate the preview — check the code and your API key.",
+    "previewAlt": "Crosshair preview"
+  },
+  "privacy": {
+    "title": "Privacy",
+    "description": "Locks the display of personal notes (\"smurf\"/\"toxic\"/\"regular duo\" tags...) behind a PIN — handy while streaming or on a shared screen. The lock is asked for again on every profile switch or app restart.",
+    "lockActive": "PIN lock active.",
+    "disableLock": "Disable lock",
+    "confirmDisable": "Disable the personal notes PIN lock?",
+    "newPin": "New PIN",
+    "confirmPin": "Confirm",
+    "activateLock": "Enable lock",
+    "mismatch": "The two PINs don't match.",
+    "saveError": "Failed to save the PIN.",
+    "lockActivated": "Lock enabled."
+  },
+  "data": {
+    "title": "Local data",
+    "description": "The app keeps a local copy (SQLite cache) of your searches, the API cache, and rank progression history to stay fast and work offline as a fallback.",
+    "resetTitle": "Clear local cache and history",
+    "resetDescription": "Deletes the API cache, rank progression history, and search history. Your API key and preferences are kept.",
+    "resetConfirm": "Clear the local cache, rank history, and search history? This action is irreversible (settings are kept).",
+    "delete": "Delete",
+    "deleting": "Deleting…",
+    "deleted": "Data cleared.",
+    "deleteError": "Failed to delete."
+  },
+  "shortcuts": {
+    "title": "Keyboard shortcuts",
+    "description": "Centralized list of all the app's keyboard shortcuts. More may be added in future versions.",
+    "ctrlShiftV": "Toggles the in-game overlay between click-through mode (display only) and interactive mode (movable with the mouse).",
+    "ctrlK": "Opens the command palette (search a player, jump to a screen, jump to a recent/favorite player). Main window only."
+  },
+  "health": {
+    "title": "App health",
+    "description": "100% local dashboard (cache hit rate, API errors over the last 7 days) — nothing is ever sent anywhere, it stays in your local SQLite database.",
+    "accumulateLabel": "Accumulate these metrics locally",
+    "accumulateHint": "Disabled by default: adds a small SQLite write on each Henrik call to count events, enable only if you want this tracking.",
+    "refresh": "Refresh",
+    "refreshing": "Refreshing…",
+    "cacheHitRate": "Cache hit rate (7d)",
+    "cacheHitHint": "{{hits}} / {{total}} requests served from cache",
+    "networkCalls": "Network calls (7d)",
+    "networkCallsHint": "Cache missed or stale, Henrik request made",
+    "apiErrors": "API errors (7d)",
+    "apiErrorsHint": "Rate limit, circuit breaker, network failure..."
+  },
+  "logs": {
+    "title": "Logs",
+    "description": "Latest entries from the app's local log file — useful for support/debugging without having to dig through %APPDATA% by hand.",
+    "refresh": "Refresh",
+    "refreshing": "Refreshing…",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "empty": "No logs yet."
+  },
+  "about": {
+    "title": "About",
+    "version": "Valorant Tracker v{{version}} — Tauri 2.x build",
+    "disclaimer": "Rank and match data provided by the Henrik Dev API. Not developed or endorsed by Riot Games."
+  }
+}

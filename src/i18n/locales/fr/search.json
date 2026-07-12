@@ -1,0 +1,23 @@
+{
+  "title": {
+    "prefix": "Traque ton",
+    "highlight": "rank"
+  },
+  "subtitle": "Entre un Riot ID complet pour consulter son rank et ses parties récentes.",
+  "form": {
+    "placeholder": "pseudo#tag",
+    "submit": "Chercher"
+  },
+  "formError": "Format attendu : pseudo#tag (ex. Sentinelle#EU1)",
+  "favorites": {
+    "title": "Favoris",
+    "hint": "Glisse-dépose pour réordonner."
+  },
+  "recent": {
+    "title": "Recherches récentes",
+    "toggleFavorite": "Basculer favori"
+  },
+  "hoverPreview": {
+    "loading": "Chargement…"
+  }
+}

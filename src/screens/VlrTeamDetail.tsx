@@ -1,4 +1,5 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { SkeletonScreen } from "../components/Skeleton";
 
 import { useVlrTeam, useVlrTeamMatches } from "../hooks/useVlr";
@@ -7,6 +8,7 @@ import Panel from "../components/Panel";
 import ExternalImage from "../components/ExternalImage";
 
 export default function VlrTeamDetail() {
+  const { t } = useTranslation("esports");
   const { teamId } = useParams<{ teamId: string }>();
   const navigate = useNavigate();
   const id = teamId ? Number(teamId) : undefined;
@@ -17,12 +19,12 @@ export default function VlrTeamDetail() {
   if (team.isLoading) return <SkeletonScreen className="p-6" />;
 
   const data = team.data?.data;
-  if (!data) return <p className="text-sm text-lo">Équipe introuvable.</p>;
+  if (!data) return <p className="text-sm text-lo">{t("vlrTeamDetail.notFound")}</p>;
 
   return (
     <div className="space-y-4">
       <Link to="/esport" className="text-sm text-accent hover:underline">
-        ← Esport
+        {t("vlrTeamDetail.backLink")}
       </Link>
 
       <Panel className="flex flex-wrap items-center gap-4 px-5 py-4">
@@ -35,14 +37,14 @@ export default function VlrTeamDetail() {
         </div>
         {data.total_winnings && (
           <div className="ml-auto text-right">
-            <p className="hud-label text-[10px]">Gains totaux</p>
+            <p className="hud-label text-[10px]">{t("vlrTeamDetail.totalWinnings")}</p>
             <p className="stat-value text-sm text-accent">{data.total_winnings}</p>
           </div>
         )}
       </Panel>
 
       <Panel className="p-4">
-        <p className="hud-label mb-3">Roster</p>
+        <p className="hud-label mb-3">{t("vlrTeamDetail.roster")}</p>
         <div className="flex flex-wrap gap-2">
           {data.roster.map((m) => (
             <span key={m.id} className="panel-clip-sm flex items-center gap-2 px-3 py-1.5 text-sm text-hi">
@@ -51,13 +53,13 @@ export default function VlrTeamDetail() {
               {m.is_captain && <span className="text-[10px] text-accent">(C)</span>}
             </span>
           ))}
-          {data.roster.length === 0 && <p className="text-sm text-lo">Roster non communiqué.</p>}
+          {data.roster.length === 0 && <p className="text-sm text-lo">{t("vlrTeamDetail.rosterEmpty")}</p>}
         </div>
       </Panel>
 
       {data.event_placements.length > 0 && (
         <Panel className="p-4">
-          <p className="hud-label mb-3">Palmarès</p>
+          <p className="hud-label mb-3">{t("vlrTeamDetail.achievements")}</p>
           <div className="space-y-1.5">
             {data.event_placements.slice(0, 10).map((p, i) => (
               <div key={i} className="flex items-center justify-between border-b border-line/40 py-1.5 text-sm">
@@ -75,7 +77,7 @@ export default function VlrTeamDetail() {
 
       {(matches.data?.data.length ?? 0) > 0 && (
         <Panel className="p-4">
-          <p className="hud-label mb-3">Derniers matchs</p>
+          <p className="hud-label mb-3">{t("vlrTeamDetail.recentMatches")}</p>
           <div className="space-y-1.5">
             {matches.data!.data.map((m) => (
               <button

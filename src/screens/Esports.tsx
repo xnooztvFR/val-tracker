@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Skeleton } from "../components/Skeleton";
 import { Link } from "react-router-dom";
 
@@ -8,12 +9,6 @@ import Panel from "../components/Panel";
 import EmptyState from "../components/EmptyState";
 import ExternalImage from "../components/ExternalImage";
 import type { EsportsMatchTeam, EsportsScheduleEntry } from "../lib/tauriApi";
-
-const STATE_LABELS: Record<string, string> = {
-  completed: "Terminé",
-  ongoing: "En cours",
-  unstarted: "À venir",
-};
 
 function groupByDate(entries: EsportsScheduleEntry[]) {
   const groups = new Map<string, EsportsScheduleEntry[]>();
@@ -32,6 +27,7 @@ function groupByDate(entries: EsportsScheduleEntry[]) {
 }
 
 export default function Esports() {
+  const { t } = useTranslation("esports");
   const [league, setLeague] = useState<string>("");
   const schedule = useEsportsSchedule({ league: league || undefined });
 
@@ -50,9 +46,9 @@ export default function Esports() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="hud-label text-sm">Calendrier esport (VCT)</h1>
+          <h1 className="hud-label text-sm">{t("esports.title")}</h1>
           <Link to="/esport/evenements" className="text-xs text-accent hover:underline">
-            Parcourir les événements, équipes et joueurs pro →
+            {t("esports.browseLink")}
           </Link>
         </div>
         <select
@@ -60,7 +56,7 @@ export default function Esports() {
           onChange={(e) => setLeague(e.target.value)}
           className="border border-line bg-surface px-3 py-1.5 text-sm text-hi focus:border-accent focus:outline-none"
         >
-          <option value="">Toutes les ligues</option>
+          <option value="">{t("esports.allLeagues")}</option>
           {leagues.map((l) => (
             <option key={l} value={l}>
               {l}
@@ -72,7 +68,7 @@ export default function Esports() {
       {schedule.isError && <ErrorState error={schedule.error} />}
       {schedule.isLoading && <Skeleton className="h-32 w-full" />}
       {schedule.data && entries.length === 0 && (
-        <EmptyState icon="match" title="Aucun match programmé" detail="Rien à afficher pour le moment." />
+        <EmptyState icon="match" title={t("esports.empty.title")} detail={t("esports.empty.detail")} />
       )}
 
       {grouped.map(([day, dayEntries]) => (
@@ -90,9 +86,12 @@ export default function Esports() {
 }
 
 function MatchRow({ entry }: { entry: EsportsScheduleEntry }) {
+  const { t } = useTranslation("esports");
   const teams = entry.match_?.teams ?? [];
   const [teamA, teamB] = teams;
-  const stateLabel = entry.state ? STATE_LABELS[entry.state] ?? entry.state : "?";
+  const stateLabel = entry.state
+    ? t(`esports.state.${entry.state}`, { defaultValue: entry.state })
+    : "?";
   const time = entry.date
     ? new Date(entry.date).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
     : "—";
@@ -125,8 +124,9 @@ function MatchRow({ entry }: { entry: EsportsScheduleEntry }) {
 }
 
 function TeamChip({ team, reverse }: { team?: EsportsMatchTeam; reverse?: boolean }) {
+  const { t } = useTranslation("esports");
   if (!team) {
-    return <span className="w-28 text-center text-sm text-lo">À déterminer</span>;
+    return <span className="w-28 text-center text-sm text-lo">{t("esports.teamTbd")}</span>;
   }
   const content = (
     <>

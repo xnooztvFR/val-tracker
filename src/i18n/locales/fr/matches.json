@@ -1,0 +1,119 @@
+{
+  "history": {
+    "title": "Historique · {{count}} derniers engagements",
+    "exportCsv": "Exporter CSV",
+    "exportJson": "Exporter JSON",
+    "empty": {
+      "title": "Aucun match compétitif trouvé",
+      "detail": "Ce profil n'a pas d'historique compétitif sur cet échantillon."
+    },
+    "session": {
+      "matchCount_one": "{{count}} match",
+      "matchCount_other": "{{count}} matchs",
+      "record": "{{wins}}V - {{losses}}D"
+    },
+    "csv": {
+      "header": {
+        "date": "date",
+        "map": "carte",
+        "agent": "agent",
+        "result": "resultat",
+        "kills": "kills",
+        "deaths": "deaths",
+        "assists": "assists",
+        "score": "score"
+      },
+      "result": {
+        "win": "victoire",
+        "loss": "defaite",
+        "empty": ""
+      }
+    }
+  },
+  "detail": {
+    "endType": {
+      "elimination": "Élimination",
+      "bomb": "Spike",
+      "defuse": "Désamorçage",
+      "roundTimerExpired": "Temps écoulé",
+      "surrendered": "Abandon"
+    },
+    "backToHistory": "← Retour à l'historique",
+    "notFound": "Match introuvable.",
+    "unknownMap": "Carte inconnue",
+    "reportButton": "Rapport de match",
+    "roundTimeline": {
+      "title": "Déroulé de la partie ({{count}} rounds) — clique un round pour le détail",
+      "roundTooltip": "Round {{number}} — {{endType}}"
+    },
+    "table": {
+      "player": "Joueur",
+      "team": "Équipe",
+      "kda": "KDA",
+      "kd": "K/D",
+      "score": "Score",
+      "acs": "ACS",
+      "headshotPercent": "HS%",
+      "damageDealtReceived": "Dégâts inf./reçus",
+      "avgEconomy": "Éco moy."
+    },
+    "roundDetail": {
+      "title": "Round {{number}} — {{endType}}",
+      "bombPlanted": " · Spike posé",
+      "bombDefused": " · Spike désamorcé",
+      "table": {
+        "player": "Joueur",
+        "kills": "Kills",
+        "damage": "Dégâts",
+        "weapon": "Arme",
+        "loadout": "Loadout"
+      }
+    },
+    "economy": {
+      "title": "Ton économie",
+      "spent": "Dépenses totales : {{spent}} crédits · {{average}} / round en moyenne",
+      "avgLoadout": "Valeur de loadout moyenne : {{value}}"
+    }
+  },
+  "report": {
+    "tier": {
+      "eco": "Éco",
+      "force": "Force-buy",
+      "full": "Full-buy"
+    },
+    "backToDetail": "← Retour au détail du match",
+    "title": "Rapport de match",
+    "recapButton": "Carte de recap",
+    "notEnoughData": "Pas assez de données pour générer un rapport sur ce match.",
+    "economyTimeline": {
+      "title": "Déroulé économique ({{count}} rounds)",
+      "tooltip": "Round {{index}} — {{status}} — {{tier}} ({{avgLoadout}} cr. moy.)",
+      "won": "gagné",
+      "lost": "perdu"
+    },
+    "winrateByBuyType": {
+      "title": "Winrate par type d'achat",
+      "ratio": "{{won}}/{{played}} ({{percent}}%)",
+      "note": "Estimé à partir de la valeur de loadout moyenne de ton équipe sur chaque round — pas un calcul officiel Riot, juste un repère."
+    },
+    "bestRound": {
+      "title": "Meilleur round",
+      "label": "Round {{index}}",
+      "detail": "{{kills}} kill(s) · {{damage}} dégâts"
+    },
+    "worstRound": {
+      "title": "Round le plus discret",
+      "label": "Round {{index}}",
+      "detail": "{{kills}} kill(s) · {{damage}} dégâts"
+    },
+    "afk": {
+      "title": "AFK détecté",
+      "rounds_one": "Round {{list}}",
+      "rounds_other": "Rounds {{list}}"
+    }
+  },
+  "recap": {
+    "unknownMap": "Carte inconnue",
+    "defaultMode": "Compétitif"
+  }
+}

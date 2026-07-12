@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { MatchRecapData } from "../lib/recapCard";
+import i18n from "../i18n";
 
 const WIDTH = 900;
 const HEIGHT = 506;
@@ -61,7 +63,9 @@ async function draw(canvas: HTMLCanvasElement, data: MatchRecapData) {
 
   ctx.font = '700 20px "Chakra Petch", sans-serif';
   ctx.fillStyle = resultColor;
-  const resultLabel = data.won ? "VICTOIRE" : "DÉFAITE";
+  const resultLabel = data.won
+    ? i18n.t("componentsExtra:recapCardModal.victory")
+    : i18n.t("componentsExtra:recapCardModal.defeat");
   const resultWidth = ctx.measureText(resultLabel).width;
   ctx.fillText(resultLabel, WIDTH - pad - resultWidth, 64);
 
@@ -127,6 +131,7 @@ interface RecapCardModalProps {
  * copier dans le presse-papiers (pour coller directement dans Discord) ou de la
  * télécharger en PNG. */
 export default function RecapCardModal({ data, onClose }: RecapCardModalProps) {
+  const { t } = useTranslation("componentsExtra");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "unsupported" | "error">("idle");
 
@@ -189,35 +194,35 @@ export default function RecapCardModal({ data, onClose }: RecapCardModalProps) {
             onClick={handleCopy}
             className="btn-clip bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#FF5969]"
           >
-            Copier l'image
+            {t("recapCardModal.copyImage")}
           </button>
           <button
             type="button"
             onClick={handleDownload}
             className="border border-line px-4 py-2 font-display text-xs font-semibold uppercase tracking-hud text-hi transition-colors hover:border-accent hover:text-accent"
           >
-            Télécharger
+            {t("recapCardModal.download")}
           </button>
           <button
             type="button"
             onClick={onClose}
             className="px-4 py-2 font-display text-xs font-semibold uppercase tracking-hud text-lo transition-colors hover:text-hi"
           >
-            Fermer
+            {t("recapCardModal.close")}
           </button>
         </div>
         {copyState === "copied" && (
           <p className="text-center text-sm text-accent">
-            Copié — colle-la directement dans Discord (Ctrl+V).
+            {t("recapCardModal.copied")}
           </p>
         )}
         {copyState === "unsupported" && (
           <p className="text-center text-sm text-lo">
-            Copie non supportée ici — utilise « Télécharger » à la place.
+            {t("recapCardModal.copyUnsupported")}
           </p>
         )}
         {copyState === "error" && (
-          <p className="text-center text-sm text-crit">Échec de la copie, réessaie.</p>
+          <p className="text-center text-sm text-crit">{t("recapCardModal.copyError")}</p>
         )}
       </div>
     </div>

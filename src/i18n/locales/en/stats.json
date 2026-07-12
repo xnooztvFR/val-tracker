@@ -1,0 +1,112 @@
+{
+  "mapStats": {
+    "title": "Map stats",
+    "winratePanelTitle": "Winrate by map",
+    "tooltipWinrate": "Winrate",
+    "unknownMap": "Unknown map",
+    "table": {
+      "map": "Map",
+      "matches": "Matches",
+      "winrate": "Winrate",
+      "kd": "K/D"
+    },
+    "empty": {
+      "title": "No map data",
+      "detail": "No matches in this sample."
+    }
+  },
+  "trends": {
+    "title": "Trends",
+    "statCards": {
+      "recentMatches": "Last {{count}} matches",
+      "kdValue": "K/D {{kd}}",
+      "bestMatch": "Best match",
+      "bestMatchValue": "{{kills}} kills",
+      "bestMap": "Best map",
+      "bestMapWinrate": "{{percent}}% win rate"
+    },
+    "series": {
+      "kd": "K/D",
+      "kills": "Kills",
+      "deaths": "Deaths",
+      "assists": "Assists",
+      "headshots": "Headshots"
+    },
+    "heatmapTitle": "Performance by time slot (local time)",
+    "seasonComparison": {
+      "title": "Comparison by season",
+      "description": "Approximation by season (Henrik doesn't expose the exact patch per match without an extra network call per match) — based on the RR history already cached.",
+      "table": {
+        "season": "Season",
+        "games": "Ranked games",
+        "netRr": "Net RR",
+        "highestTier": "Highest tier"
+      }
+    }
+  },
+  "agents": {
+    "title": "Agent stats",
+    "unknownAgent": "Unknown agent",
+    "roleStats": "{{count}} matches · K/D {{kd}}",
+    "table": {
+      "agent": "Agent",
+      "time": "Time",
+      "matches": "Matches",
+      "winPercent": "Win %",
+      "kd": "K/D",
+      "hsPercent": "HS %",
+      "acs": "ACS",
+      "kills": "Kills",
+      "deaths": "Deaths",
+      "assists": "Assists",
+      "hoursValue": "{{hours}} h"
+    },
+    "empty": {
+      "title": "No agent data",
+      "detail": "No matches in this sample."
+    }
+  },
+  "compare": {
+    "title": "VS Comparison",
+    "form": {
+      "playerA": "Player A",
+      "playerB": "Player B",
+      "placeholder": "{{label}} — username#tag",
+      "submit": "Compare"
+    },
+    "error": {
+      "format": "Expected format for both players: username#tag"
+    },
+    "column": {
+      "noData": "No data."
+    },
+    "rows": {
+      "winrate": "Winrate",
+      "winrateValue": "{{percent}} ({{wins}}W-{{losses}}L)",
+      "kd": "K/D",
+      "kills": "Kills",
+      "deaths": "Deaths",
+      "assists": "Assists",
+      "hsPercent": "Headshot %",
+      "acs": "ACS",
+      "topAgent": "Most played agent"
+    }
+  },
+  "duo": {
+    "title": "Duo & Squad",
+    "description": "Winrate with your party teammates, computed as you browse matches in History — check more matches to refine these stats.",
+    "emptyMessage": "Not enough data yet — open a few matches in the History tab where you were in a party to see your teammates appear here.",
+    "statsLine": "{{wins}} wins / {{played}} matches together",
+    "squad": {
+      "title": "Squad (3 players)",
+      "description": "Matches where you and two specific teammates were in the same party at the same time."
+    }
+  },
+  "agentRoles": {
+    "duelist": "Duelist",
+    "controller": "Controller",
+    "initiator": "Initiator",
+    "sentinel": "Sentinel",
+    "unknown": "Unknown"
+  }
+}

@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 import { useActivePlayerStore } from "../store/activePlayerStore";
 import { useAccount, useMmr } from "../hooks/usePlayer";
 import { useMatches } from "../hooks/useMatches";
@@ -7,6 +9,7 @@ import { playerCardIconUrl, rankGlowColor, rankInfo } from "../lib/format";
  * du profil suivi, pensé pour rester visible en jeu sans masquer l'écran. Remplace tout
  * le shell routé tant que le mode mini est actif (voir App.tsx). */
 export default function MiniOverlay() {
+  const { t } = useTranslation("componentsExtra");
   const { player } = useActivePlayerStore();
 
   const account = useAccount(player?.name, player?.tag);
@@ -17,7 +20,7 @@ export default function MiniOverlay() {
   if (!player) {
     return (
       <div className="flex flex-1 items-center justify-center p-6 text-center text-sm text-lo">
-        Choisis un joueur avant de passer en mode mini.
+        {t("miniOverlay.choosePlayer")}
       </div>
     );
   }
@@ -63,7 +66,7 @@ export default function MiniOverlay() {
           <span className={`font-display text-sm font-semibold uppercase tracking-hud ${info.colorClass}`}>
             {info.name}
             {current?.ranking_in_tier !== undefined && current?.ranking_in_tier !== null
-              ? ` · ${current.ranking_in_tier} RR`
+              ? ` · ${t("miniOverlay.rrSuffix", { rr: current.ranking_in_tier })}`
               : ""}
           </span>
         </p>
@@ -75,7 +78,7 @@ export default function MiniOverlay() {
             {winPercent}% WR
           </span>
           <span className="text-lo">·</span>
-          <span className="tnum">{played} derniers matchs</span>
+          <span className="tnum">{t("miniOverlay.recentMatches", { count: played })}</span>
         </div>
       )}
     </div>

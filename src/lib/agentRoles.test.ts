@@ -18,7 +18,7 @@ describe("agentRole", () => {
 });
 
 describe("agentRoleLabel", () => {
-  it("returns a French label for each role", () => {
+  it("returns the (French, default language) label for each role", () => {
     expect(agentRoleLabel("Duelist")).toBe("Duelliste");
     expect(agentRoleLabel(null)).toBe("Inconnu");
   });

@@ -1,4 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Skeleton } from "../components/Skeleton";
 
 import { useAccount } from "../hooks/usePlayer";
@@ -8,6 +9,7 @@ import ErrorState from "../components/ErrorState";
 import StaleDataBanner from "../components/StaleDataBanner";
 import EmptyState from "../components/EmptyState";
 import { formatSessionHeader, groupMatchesIntoSessions } from "../lib/format";
+import i18n from "../i18n";
 import type { MatchEntry } from "../lib/tauriApi";
 
 const MATCH_HISTORY_SIZE = 20;
@@ -34,11 +36,25 @@ function exportMatches(matches: MatchEntry[], puuid: string, riotId: string, for
     return;
   }
 
-  const header = ["date", "carte", "agent", "resultat", "kills", "deaths", "assists", "score"];
+  const header = [
+    i18n.t("matches:history.csv.header.date"),
+    i18n.t("matches:history.csv.header.map"),
+    i18n.t("matches:history.csv.header.agent"),
+    i18n.t("matches:history.csv.header.result"),
+    i18n.t("matches:history.csv.header.kills"),
+    i18n.t("matches:history.csv.header.deaths"),
+    i18n.t("matches:history.csv.header.assists"),
+    i18n.t("matches:history.csv.header.score"),
+  ];
   const rows = matches.map((match) => {
     const player = match.players.find((p) => p.puuid === puuid);
     const team = match.teams.find((t) => t.team_id === player?.team_id);
-    const resultat = team?.won === true ? "victoire" : team?.won === false ? "defaite" : "";
+    const resultat =
+      team?.won === true
+        ? i18n.t("matches:history.csv.result.win")
+        : team?.won === false
+          ? i18n.t("matches:history.csv.result.loss")
+          : i18n.t("matches:history.csv.result.empty");
     const stats = player?.stats;
     return [
       match.metadata.started_at ?? "",
@@ -57,6 +73,7 @@ function exportMatches(matches: MatchEntry[], puuid: string, riotId: string, for
 }
 
 export default function MatchHistory() {
+  const { t } = useTranslation("matches");
   const { region, name, tag } = useParams<{ region: string; name: string; tag: string }>();
   const navigate = useNavigate();
 
@@ -70,7 +87,7 @@ export default function MatchHistory() {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="hud-label text-sm">
-          Historique · {MATCH_HISTORY_SIZE} derniers engagements
+          {t("history.title", { count: MATCH_HISTORY_SIZE })}
         </h1>
         {matches.data && puuid && matches.data.data.length > 0 && (
           <div className="flex shrink-0 gap-2">
@@ -79,14 +96,14 @@ export default function MatchHistory() {
               onClick={() => exportMatches(matches.data!.data, puuid, riotId, "csv")}
               className="hud-label border border-line px-2.5 py-1 text-[11px] text-lo transition-colors hover:border-accent hover:text-hi"
             >
-              Exporter CSV
+              {t("history.exportCsv")}
             </button>
             <button
               type="button"
               onClick={() => exportMatches(matches.data!.data, puuid, riotId, "json")}
               className="hud-label border border-line px-2.5 py-1 text-[11px] text-lo transition-colors hover:border-accent hover:text-hi"
             >
-              Exporter JSON
+              {t("history.exportJson")}
             </button>
           </div>
         )}
@@ -101,19 +118,19 @@ export default function MatchHistory() {
           {matches.data.data.length === 0 && (
             <EmptyState
               icon="match"
-              title="Aucun match compétitif trouvé"
-              detail="Ce profil n'a pas d'historique compétitif sur cet échantillon."
+              title={t("history.empty.title")}
+              detail={t("history.empty.detail")}
             />
           )}
           {groupMatchesIntoSessions(matches.data.data, puuid).map((session, index) => (
             <div key={session.matches[0]?.metadata.match_id ?? index} className="space-y-2">
               <div className="flex items-center justify-between">
                 <h2 className="hud-label text-[11px] text-lo">
-                  {formatSessionHeader(session.startedAt)} · {session.matches.length} match
-                  {session.matches.length > 1 ? "s" : ""}
+                  {formatSessionHeader(session.startedAt)} ·{" "}
+                  {t("history.session.matchCount", { count: session.matches.length })}
                 </h2>
                 <span className="stat-value text-[11px] text-lo">
-                  {session.wins}V - {session.losses}D
+                  {t("history.session.record", { wins: session.wins, losses: session.losses })}
                 </span>
               </div>
               {session.matches.map((match) => (

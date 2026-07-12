@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { useAccount } from "../hooks/usePlayer";
 import { useMatches } from "../hooks/useMatches";
@@ -7,7 +8,7 @@ import Panel from "../components/Panel";
 import ErrorState from "../components/ErrorState";
 import SampleSizeSwitch, { type SampleSize } from "../components/SampleSizeSwitch";
 import { computeOverview, type Overview } from "../lib/stats";
-import { formatPercent, REGIONS, splitRiotId } from "../lib/format";
+import { formatPercent, getRegions, splitRiotId } from "../lib/format";
 
 interface Side {
   region: string;
@@ -18,6 +19,7 @@ interface Side {
 /** Backlog #11 : comparaison côte à côte de deux Riot ID sur le même échantillon de
  * matchs — aucune donnée persistée, tout vit dans l'état local de cet écran. */
 export default function Compare() {
+  const { t } = useTranslation("stats");
   const [sampleSize, setSampleSize] = useState<SampleSize>(20);
   const [inputA, setInputA] = useState("");
   const [inputB, setInputB] = useState("");
@@ -32,7 +34,7 @@ export default function Compare() {
     const parsedA = splitRiotId(inputA);
     const parsedB = splitRiotId(inputB);
     if (!parsedA || !parsedB) {
-      setFormError("Format attendu pour les deux joueurs : pseudo#tag");
+      setFormError(t("compare.error.format"));
       return;
     }
     setFormError(null);
@@ -43,20 +45,20 @@ export default function Compare() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="hud-label text-sm">Comparaison VS</h1>
+        <h1 className="hud-label text-sm">{t("compare.title")}</h1>
         {(sideA || sideB) && <SampleSizeSwitch value={sampleSize} onChange={setSampleSize} />}
       </div>
 
       <form onSubmit={handleSubmit} className="grid gap-3 sm:grid-cols-2">
         <RiotIdField
-          label="Joueur A"
+          label={t("compare.form.playerA")}
           value={inputA}
           onChange={setInputA}
           region={regionA}
           onChangeRegion={setRegionA}
         />
         <RiotIdField
-          label="Joueur B"
+          label={t("compare.form.playerB")}
           value={inputB}
           onChange={setInputB}
           region={regionB}
@@ -66,7 +68,7 @@ export default function Compare() {
           type="submit"
           className="btn-clip col-span-full bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#FF5969]"
         >
-          Comparer
+          {t("compare.form.submit")}
         </button>
       </form>
 
@@ -95,12 +97,13 @@ function RiotIdField({
   region: string;
   onChangeRegion: (v: string) => void;
 }) {
+  const { t } = useTranslation("stats");
   return (
     <div className="flex gap-2">
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={`${label} — pseudo#tag`}
+        placeholder={t("compare.form.placeholder", { label })}
         className="flex-1 border border-line bg-surface px-3 py-2 font-mono text-sm text-hi placeholder:text-lo/60 focus:border-accent focus:outline-none"
       />
       <select
@@ -108,7 +111,7 @@ function RiotIdField({
         onChange={(e) => onChangeRegion(e.target.value)}
         className="shrink-0 border border-line bg-surface px-2 text-sm text-hi focus:border-accent focus:outline-none"
       >
-        {REGIONS.map((r) => (
+        {getRegions().map((r) => (
           <option key={r.value} value={r.value}>
             {r.label}
           </option>
@@ -119,6 +122,7 @@ function RiotIdField({
 }
 
 function PlayerColumn({ side, sampleSize }: { side: Side; sampleSize: SampleSize }) {
+  const { t } = useTranslation("stats");
   const account = useAccount(side.name, side.tag);
   const puuid = account.data?.data.puuid;
   const matches = useMatches({ region: side.region, name: side.name, tag: side.tag, size: sampleSize });
@@ -137,21 +141,33 @@ function PlayerColumn({ side, sampleSize }: { side: Side; sampleSize: SampleSize
         {side.name}
         <span className="text-lo">#{side.tag}</span>
       </p>
-      {overview ? <OverviewRows overview={overview} /> : <p className="text-sm text-lo">Aucune donnée.</p>}
+      {overview ? (
+        <OverviewRows overview={overview} />
+      ) : (
+        <p className="text-sm text-lo">{t("compare.column.noData")}</p>
+      )}
     </Panel>
   );
 }
 
 function OverviewRows({ overview }: { overview: Overview }) {
+  const { t } = useTranslation("stats");
   const rows: Array<[string, string]> = [
-    ["Winrate", `${formatPercent(overview.winPercent)} (${overview.wins}V-${overview.losses}D)`],
-    ["K/D", overview.kd],
-    ["Kills", String(overview.kills)],
-    ["Deaths", String(overview.deaths)],
-    ["Assists", String(overview.assists)],
-    ["Headshot %", formatPercent(overview.hsPercent)],
-    ["ACS", String(overview.acs)],
-    ["Agent le plus joué", overview.topAgent?.name ?? "—"],
+    [
+      t("compare.rows.winrate"),
+      t("compare.rows.winrateValue", {
+        percent: formatPercent(overview.winPercent),
+        wins: overview.wins,
+        losses: overview.losses,
+      }),
+    ],
+    [t("compare.rows.kd"), overview.kd],
+    [t("compare.rows.kills"), String(overview.kills)],
+    [t("compare.rows.deaths"), String(overview.deaths)],
+    [t("compare.rows.assists"), String(overview.assists)],
+    [t("compare.rows.hsPercent"), formatPercent(overview.hsPercent)],
+    [t("compare.rows.acs"), String(overview.acs)],
+    [t("compare.rows.topAgent"), overview.topAgent?.name ?? "—"],
   ];
   return (
     <div className="divide-y divide-line/60">

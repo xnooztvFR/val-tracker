@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Skeleton } from "../components/Skeleton";
 import { useNavigate } from "react-router-dom";
 
@@ -6,12 +7,13 @@ import { useLeaderboard } from "../hooks/useMeta";
 import ErrorState from "../components/ErrorState";
 import StaleDataBanner from "../components/StaleDataBanner";
 import Panel from "../components/Panel";
-import { playerCardIconUrl, rankIconUrl, rankInfo, REGIONS, splitRiotId } from "../lib/format";
+import { playerCardIconUrl, rankIconUrl, rankInfo, getRegions, splitRiotId } from "../lib/format";
 
 const PAGE_SIZE = 50;
 
 export default function Leaderboard() {
-  const [region, setRegion] = useState<(typeof REGIONS)[number]["value"]>("eu");
+  const { t } = useTranslation("competitive");
+  const [region, setRegion] = useState<string>("eu");
   const [page, setPage] = useState(0);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState<{ name: string; tag: string } | null>(null);
@@ -31,7 +33,7 @@ export default function Leaderboard() {
     if (parsed) setSearch(parsed);
   }
 
-  function handleRegionChange(value: (typeof REGIONS)[number]["value"]) {
+  function handleRegionChange(value: string) {
     setRegion(value);
     setPage(0);
     setSearch(null);
@@ -43,14 +45,14 @@ export default function Leaderboard() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="hud-label text-sm">Classement compétitif</h1>
+        <h1 className="hud-label text-sm">{t("leaderboard.title")}</h1>
         <div className="flex items-center gap-2">
           <select
             value={region}
-            onChange={(e) => handleRegionChange(e.target.value as (typeof REGIONS)[number]["value"])}
+            onChange={(e) => handleRegionChange(e.target.value)}
             className="border border-line bg-surface px-3 py-1.5 text-sm text-hi focus:border-accent focus:outline-none"
           >
-            {REGIONS.map((r) => (
+            {getRegions().map((r) => (
               <option key={r.value} value={r.value}>
                 {r.label}
               </option>
@@ -60,14 +62,14 @@ export default function Leaderboard() {
             <input
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Pseudo#Tag"
+              placeholder={t("leaderboard.searchPlaceholder")}
               className="w-40 border border-line bg-surface px-3 py-1.5 text-sm text-hi placeholder:text-lo/60 focus:border-accent focus:outline-none"
             />
             <button
               type="submit"
               className="border border-line px-3 py-1.5 font-display text-xs font-semibold uppercase tracking-hud text-hi transition-colors hover:border-accent hover:text-accent"
             >
-              Localiser
+              {t("leaderboard.locate")}
             </button>
             {search && (
               <button
@@ -78,7 +80,7 @@ export default function Leaderboard() {
                 }}
                 className="border border-line px-3 py-1.5 font-display text-xs font-semibold uppercase tracking-hud text-lo transition-colors hover:text-hi"
               >
-                Réinitialiser
+                {t("leaderboard.reset")}
               </button>
             )}
           </form>
@@ -91,7 +93,9 @@ export default function Leaderboard() {
 
       {leaderboard.data?.data.updated_at && (
         <p className="text-xs text-lo">
-          Mis à jour : {new Date(leaderboard.data.data.updated_at).toLocaleString("fr-FR")}
+          {t("leaderboard.updatedAt", {
+            date: new Date(leaderboard.data.data.updated_at).toLocaleString("fr-FR"),
+          })}
         </p>
       )}
 
@@ -100,11 +104,11 @@ export default function Leaderboard() {
           <table className="w-full text-sm">
             <thead className="border-b border-line text-left">
               <tr>
-                <th className="hud-label px-4 py-3 font-semibold">Rang</th>
-                <th className="hud-label px-4 py-3 font-semibold">Joueur</th>
-                <th className="hud-label px-4 py-3 font-semibold">Tier</th>
-                <th className="hud-label px-4 py-3 font-semibold">RR</th>
-                <th className="hud-label px-4 py-3 font-semibold">Victoires</th>
+                <th className="hud-label px-4 py-3 font-semibold">{t("leaderboard.columns.rank")}</th>
+                <th className="hud-label px-4 py-3 font-semibold">{t("leaderboard.columns.player")}</th>
+                <th className="hud-label px-4 py-3 font-semibold">{t("leaderboard.columns.tier")}</th>
+                <th className="hud-label px-4 py-3 font-semibold">{t("leaderboard.columns.rr")}</th>
+                <th className="hud-label px-4 py-3 font-semibold">{t("leaderboard.columns.wins")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line/60">
@@ -132,12 +136,12 @@ export default function Leaderboard() {
                           <div className="h-7 w-7 border border-line bg-base" />
                         )}
                         <span className="font-medium">
-                          {p.is_anonymized ? "Joueur anonyme" : p.name}
+                          {p.is_anonymized ? t("leaderboard.anonymousPlayer") : p.name}
                           {!p.is_anonymized && <span className="text-lo">#{p.tag}</span>}
                         </span>
                         {p.is_banned && (
                           <span className="border border-crit/40 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-crit">
-                            Banni
+                            {t("leaderboard.banned")}
                           </span>
                         )}
                       </div>
@@ -168,15 +172,15 @@ export default function Leaderboard() {
             disabled={page === 0}
             className="border border-line px-3 py-1.5 font-display text-xs font-semibold uppercase tracking-hud text-hi transition-colors hover:border-accent hover:text-accent disabled:opacity-40"
           >
-            Précédent
+            {t("leaderboard.previous")}
           </button>
-          <span className="stat-value text-xs text-lo">Page {page + 1}</span>
+          <span className="stat-value text-xs text-lo">{t("leaderboard.page", { page: page + 1 })}</span>
           <button
             type="button"
             onClick={() => setPage((p) => p + 1)}
             className="border border-line px-3 py-1.5 font-display text-xs font-semibold uppercase tracking-hud text-hi transition-colors hover:border-accent hover:text-accent"
           >
-            Suivant
+            {t("leaderboard.next")}
           </button>
         </div>
       )}

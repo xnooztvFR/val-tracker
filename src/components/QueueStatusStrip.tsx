@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 import { useQueueStatus } from "../hooks/useMeta";
 import Panel from "./Panel";
 
@@ -6,6 +8,7 @@ const KNOWN_MODES = ["competitive", "unrated", "swiftplay", "spikerush", "deathm
 /** Bandeau compact d'état des files d'attente Riot pour la région du joueur — utile pour
  * distinguer "je n'ai pas de partie" d'une file désactivée côté serveur. */
 export default function QueueStatusStrip({ region }: { region: string | undefined }) {
+  const { t } = useTranslation("componentsCore");
   const queueStatus = useQueueStatus(region);
   const entries = queueStatus.data?.data ?? [];
   const known = entries.filter((e) => e.mode_id && KNOWN_MODES.includes(e.mode_id));
@@ -14,7 +17,7 @@ export default function QueueStatusStrip({ region }: { region: string | undefine
 
   return (
     <Panel className="flex flex-wrap items-center gap-3 px-4 py-2.5">
-      <p className="hud-label shrink-0 text-[10px]">Files d'attente</p>
+      <p className="hud-label shrink-0 text-[10px]">{t("queueStatusStrip.label")}</p>
       {known.map((entry) => (
         <span key={entry.mode_id} className="flex items-center gap-1.5 text-xs">
           <span className={`h-1.5 w-1.5 rounded-full ${entry.enabled ? "bg-accent" : "bg-crit"}`} />

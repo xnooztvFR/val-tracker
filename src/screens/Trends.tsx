@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Skeleton } from "../components/Skeleton";
 import { useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   CartesianGrid,
   ComposedChart,
@@ -29,11 +30,11 @@ const MONO = '"JetBrains Mono", Consolas, monospace';
 // Séries cyan/rouge/gris selon la métrique : positif = cyan, négatif = rouge,
 // contexte = nuances de gris.
 const SERIES = [
-  { key: "kd", label: "K/D", color: "rgb(var(--color-accent))" },
-  { key: "kills", label: "Kills", color: "#A3333E" },
-  { key: "deaths", label: "Deaths", color: "#C4646E" },
-  { key: "assists", label: "Assists", color: "rgb(var(--color-lo))" },
-  { key: "headshots", label: "Headshots", color: "#C8D0D6" },
+  { key: "kd", color: "rgb(var(--color-accent))" },
+  { key: "kills", color: "#A3333E" },
+  { key: "deaths", color: "#C4646E" },
+  { key: "assists", color: "rgb(var(--color-lo))" },
+  { key: "headshots", color: "#C8D0D6" },
 ] as const;
 
 type SeriesKey = (typeof SERIES)[number]["key"];
@@ -85,6 +86,7 @@ function computeTrends(matches: MatchEntry[], puuid: string) {
 }
 
 export default function Trends() {
+  const { t } = useTranslation("stats");
   const { region, name, tag } = useParams<{ region: string; name: string; tag: string }>();
   const [sampleSize, setSampleSize] = useState<SampleSize>(20);
   const [hidden, setHidden] = useState<Set<SeriesKey>>(new Set(["deaths", "assists", "headshots"]));
@@ -119,7 +121,7 @@ export default function Trends() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="hud-label text-sm">Tendances</h1>
+        <h1 className="hud-label text-sm">{t("trends.title")}</h1>
         <SampleSizeSwitch value={sampleSize} onChange={setSampleSize} />
       </div>
 
@@ -130,18 +132,26 @@ export default function Trends() {
       {trends && (
         <>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <StatCard label={`${sampleSize} derniers matchs`} value={`K/D ${trends.overallKd}`} emphasis />
             <StatCard
-              label="Meilleur match"
-              value={trends.bestMatch ? `${trends.bestMatch.kills} kills` : "—"}
+              label={t("trends.statCards.recentMatches", { count: sampleSize })}
+              value={t("trends.statCards.kdValue", { kd: trends.overallKd })}
+              emphasis
+            />
+            <StatCard
+              label={t("trends.statCards.bestMatch")}
+              value={
+                trends.bestMatch
+                  ? t("trends.statCards.bestMatchValue", { kills: trends.bestMatch.kills })
+                  : "—"
+              }
               hint={trends.bestMatch?.map}
             />
             <StatCard
-              label="Meilleure carte"
+              label={t("trends.statCards.bestMap")}
               value={trends.bestMapName ?? "—"}
               hint={
                 trends.bestMapWinPercent !== null
-                  ? `${trends.bestMapWinPercent.toFixed(0)}% de victoires`
+                  ? t("trends.statCards.bestMapWinrate", { percent: trends.bestMapWinPercent.toFixed(0) })
                   : undefined
               }
             />
@@ -195,7 +205,7 @@ export default function Trends() {
                     key={s.key}
                     type="monotone"
                     dataKey={s.key}
-                    name={s.label}
+                    name={t(`trends.series.${s.key}`)}
                     stroke={s.color}
                     strokeWidth={s.key === "kd" ? 2 : 1.25}
                     dot={false}
@@ -209,7 +219,7 @@ export default function Trends() {
 
           {heatmapCells && (
             <div>
-              <h2 className="hud-label mb-2">Performance par créneau (heure locale)</h2>
+              <h2 className="hud-label mb-2">{t("trends.heatmapTitle")}</h2>
               <Panel className="p-4">
                 <PerformanceHeatmap cells={heatmapCells} />
               </Panel>
@@ -220,19 +230,16 @@ export default function Trends() {
 
       {seasonComparison.length > 0 && (
         <div>
-          <h2 className="hud-label mb-2">Comparaison par saison</h2>
-          <p className="mb-2 text-xs text-lo">
-            Approximation par saison (Henrik n'expose pas le patch exact par match sans
-            appel réseau supplémentaire par match) — basé sur l'historique RR déjà en cache.
-          </p>
+          <h2 className="hud-label mb-2">{t("trends.seasonComparison.title")}</h2>
+          <p className="mb-2 text-xs text-lo">{t("trends.seasonComparison.description")}</p>
           <Panel className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-b border-line text-left">
                 <tr>
-                  <th className="hud-label px-4 py-3 font-semibold">Saison</th>
-                  <th className="hud-label px-4 py-3 font-semibold">Parties classées</th>
-                  <th className="hud-label px-4 py-3 font-semibold">RR net</th>
-                  <th className="hud-label px-4 py-3 font-semibold">Meilleur tier</th>
+                  <th className="hud-label px-4 py-3 font-semibold">{t("trends.seasonComparison.table.season")}</th>
+                  <th className="hud-label px-4 py-3 font-semibold">{t("trends.seasonComparison.table.games")}</th>
+                  <th className="hud-label px-4 py-3 font-semibold">{t("trends.seasonComparison.table.netRr")}</th>
+                  <th className="hud-label px-4 py-3 font-semibold">{t("trends.seasonComparison.table.highestTier")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line/60">

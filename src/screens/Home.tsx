@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Skeleton, SkeletonScreen } from "../components/Skeleton";
 import { useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -23,6 +24,7 @@ import { computeOverview } from "../lib/stats";
 const MMR_TTL_SECONDS = 600;
 
 export default function Home() {
+  const { t } = useTranslation("home");
   const { region, name, tag } = useParams<{ region: string; name: string; tag: string }>();
   const [sampleSize, setSampleSize] = useState<(typeof SAMPLE_SIZES)[number]>(20);
   const queryClient = useQueryClient();
@@ -108,7 +110,7 @@ export default function Home() {
             <div className="h-14 w-14 border bg-raised" style={{ borderColor: glow }} />
           )}
           <div className="min-w-0">
-            <p className="hud-label text-[10px]">Opérateur · {region}</p>
+            <p className="hud-label text-[10px]">{t("statusBar.operator", { region })}</p>
             <p className="truncate font-display text-lg font-bold text-hi">
               {name}
               <span className="text-lo">#{tag}</span>
@@ -133,12 +135,15 @@ export default function Home() {
             <div className="hidden w-px self-stretch bg-line sm:block" />
             <div className="flex items-center">
               <div>
-                <p className="hud-label text-[10px]">Bilan · {sampleSize} derniers</p>
+                <p className="hud-label text-[10px]">{t("statusBar.summary", { n: sampleSize })}</p>
                 <p className="stat-value mt-1 text-sm">
-                  <span className="text-accent">{overview.wins}V</span>
+                  <span className="text-accent">{t("statusBar.wins", { n: overview.wins })}</span>
                   <span className="text-lo"> / </span>
-                  <span className="text-crit">{overview.losses}D</span>
-                  <span className="text-lo"> · {formatPercent(overview.winPercent)} WR</span>
+                  <span className="text-crit">{t("statusBar.losses", { n: overview.losses })}</span>
+                  <span className="text-lo">
+                    {" "}
+                    · {formatPercent(overview.winPercent)} {t("statusBar.winrateShort")}
+                  </span>
                 </p>
               </div>
             </div>
@@ -148,8 +153,8 @@ export default function Home() {
         <div className="ml-auto flex flex-col items-end justify-center gap-1.5">
           <span className="stat-value text-[11px] text-lo">
             {remaining !== null && remaining > 0
-              ? `MAJ dans ${formatCountdown(remaining)}`
-              : "Actualisation disponible"}
+              ? t("statusBar.updateIn", { time: formatCountdown(remaining) })
+              : t("statusBar.refreshAvailable")}
           </span>
           <button
             type="button"
@@ -158,7 +163,7 @@ export default function Home() {
             className="flex items-center gap-1.5 border border-line px-2.5 py-1 font-display text-[11px] font-semibold uppercase tracking-hud text-hi transition-colors hover:border-accent hover:text-accent disabled:opacity-40"
           >
             <RefreshIcon spinning={refreshing} />
-            Actualiser
+            {t("statusBar.refresh")}
           </button>
         </div>
       </Panel>
@@ -182,7 +187,7 @@ export default function Home() {
       )}
 
       <div className="flex items-center justify-between">
-        <h1 className="hud-label text-sm">Vue d'ensemble</h1>
+        <h1 className="hud-label text-sm">{t("overview.title")}</h1>
         <SampleSizeSwitch value={sampleSize} onChange={setSampleSize} />
       </div>
 
@@ -194,34 +199,39 @@ export default function Home() {
         <>
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
             <StatCard
-              label="Winrate"
+              label={t("overview.stats.winrate")}
               value={formatPercent(overview.winPercent)}
-              hint={`${overview.wins}V — ${overview.losses}D`}
+              hint={t("overview.winLossHint", { wins: overview.wins, losses: overview.losses })}
               gaugePercent={overview.winPercent}
               gaugeColor={overview.winPercent >= 50 ? "rgb(var(--color-accent))" : "rgb(var(--color-crit))"}
             />
-            <StatCard label="K/D" value={overview.kd} hint={`${overview.kills} kills`} icon={<KdIcon />} />
             <StatCard
-              label="Headshot %"
+              label={t("overview.stats.kd")}
+              value={overview.kd}
+              hint={t("overview.stats.kdHint", { n: overview.kills })}
+              icon={<KdIcon />}
+            />
+            <StatCard
+              label={t("overview.stats.headshotPercent")}
               value={formatPercent(overview.hsPercent)}
               gaugePercent={overview.hsPercent}
               gaugeColor="rgb(var(--color-accent))"
             />
-            <StatCard label="ACS" value={overview.acs.toString()} icon={<TargetIcon />} />
+            <StatCard label={t("overview.stats.acs")} value={overview.acs.toString()} icon={<TargetIcon />} />
           </div>
 
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-            <MiniStat label="Victoires" value={overview.wins} accent="text-accent" />
-            <MiniStat label="Défaites" value={overview.losses} accent="text-crit" />
-            <MiniStat label="Kills" value={overview.kills} />
-            <MiniStat label="Deaths" value={overview.deaths} />
-            <MiniStat label="Assists" value={overview.assists} />
-            <MiniStat label="Headshots" value={overview.headshots} />
+            <MiniStat label={t("overview.miniStats.wins")} value={overview.wins} accent="text-accent" />
+            <MiniStat label={t("overview.miniStats.losses")} value={overview.losses} accent="text-crit" />
+            <MiniStat label={t("overview.miniStats.kills")} value={overview.kills} />
+            <MiniStat label={t("overview.miniStats.deaths")} value={overview.deaths} />
+            <MiniStat label={t("overview.miniStats.assists")} value={overview.assists} />
+            <MiniStat label={t("overview.miniStats.headshots")} value={overview.headshots} />
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <Panel className="p-4">
-              <p className="hud-label mb-3">Agent le plus joué</p>
+              <p className="hud-label mb-3">{t("overview.topAgent.title")}</p>
               {overview.topAgent ? (
                 <div className="flex items-center gap-4">
                   <img
@@ -235,23 +245,35 @@ export default function Home() {
                   <div>
                     <p className="font-display font-semibold text-hi">{overview.topAgent.name}</p>
                     <p className="tnum text-xs text-lo">
-                      {overview.topAgent.matches} matchs ·{" "}
-                      {formatPercent((overview.topAgent.wins / overview.topAgent.matches) * 100)} de
-                      victoires · K/D {formatKdRatio(overview.topAgent.kills, overview.topAgent.deaths)}
+                      {t("overview.topAgent.stats", {
+                        matches: overview.topAgent.matches,
+                        winPercent: formatPercent(
+                          (overview.topAgent.wins / overview.topAgent.matches) * 100,
+                        ),
+                        kd: formatKdRatio(overview.topAgent.kills, overview.topAgent.deaths),
+                      })}
                     </p>
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-lo">Pas assez de données.</p>
+                <p className="text-sm text-lo">{t("overview.notEnoughData")}</p>
               )}
             </Panel>
 
             <Panel className="p-4">
-              <p className="hud-label mb-3">Précision (têtes / corps / jambes)</p>
+              <p className="hud-label mb-3">{t("overview.accuracy.title")}</p>
               <div className="space-y-2.5">
-                <AccuracyBar label="Tête" percent={overview.hsPercent} color="rgb(var(--color-accent))" />
-                <AccuracyBar label="Corps" percent={overview.bodyPercent} color="rgb(var(--color-lo))" />
-                <AccuracyBar label="Jambes" percent={overview.legPercent} color="#3A424B" />
+                <AccuracyBar
+                  label={t("overview.accuracy.head")}
+                  percent={overview.hsPercent}
+                  color="rgb(var(--color-accent))"
+                />
+                <AccuracyBar
+                  label={t("overview.accuracy.body")}
+                  percent={overview.bodyPercent}
+                  color="rgb(var(--color-lo))"
+                />
+                <AccuracyBar label={t("overview.accuracy.legs")} percent={overview.legPercent} color="#3A424B" />
               </div>
             </Panel>
           </div>
@@ -261,7 +283,7 @@ export default function Home() {
       <QueueStatusStrip region={region} />
 
       <div>
-        <h2 className="hud-label mb-2">Progression du rank</h2>
+        <h2 className="hud-label mb-2">{t("rankProgression")}</h2>
         <RankHistoryChart
           snapshots={snapshots.data ?? []}
           serverHistory={mmrHistory.data?.data.history ?? []}

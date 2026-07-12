@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
 import { useSelfAccountsStore } from "../store/selfAccountsStore";
 import { tauriApi } from "../lib/tauriApi";
@@ -18,6 +19,7 @@ interface CurrentPlayer {
  * suggestion best-effort basée sur le Riot ID détecté localement (lockfile du client
  * Riot) pour éviter d'avoir à le retaper. */
 export default function AccountSwitcher({ current }: { current?: CurrentPlayer }) {
+  const { t } = useTranslation("componentsExtra");
   const [open, setOpen] = useState(false);
   const { accounts, refresh, setSelf } = useSelfAccountsStore();
 
@@ -59,8 +61,8 @@ export default function AccountSwitcher({ current }: { current?: CurrentPlayer }
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label="Mes comptes"
-        title="Mes comptes"
+        aria-label={t("accountSwitcher.myAccounts")}
+        title={t("accountSwitcher.myAccounts")}
         className={`flex h-8 w-8 items-center justify-center transition-colors ${
           accounts.length > 0 ? "text-accent" : "text-hi/70 hover:text-accent"
         }`}
@@ -72,17 +74,16 @@ export default function AccountSwitcher({ current }: { current?: CurrentPlayer }
         <>
           <button
             type="button"
-            aria-label="Fermer"
+            aria-label={t("accountSwitcher.close")}
             className="fixed inset-0 z-10 cursor-default"
             onClick={() => setOpen(false)}
           />
           <div className="panel-clip-sm absolute right-0 top-full z-20 mt-1 w-72 border border-line bg-raised p-2 shadow-lg">
-            <p className="hud-label px-1 pb-1.5 text-[10px]">Mes comptes</p>
+            <p className="hud-label px-1 pb-1.5 text-[10px]">{t("accountSwitcher.myAccounts")}</p>
 
             {accounts.length === 0 && (
               <p className="px-1 py-1.5 text-xs text-lo">
-                Aucun compte lié. Marque un profil comme le tien ci-dessous, ou lie le compte
-                détecté si le client Riot est ouvert.
+                {t("accountSwitcher.noAccountLinked")}
               </p>
             )}
 
@@ -106,8 +107,8 @@ export default function AccountSwitcher({ current }: { current?: CurrentPlayer }
                   <button
                     type="button"
                     onClick={() => setSelf(a.puuid, false)}
-                    aria-label="Délier ce compte"
-                    title="Délier ce compte"
+                    aria-label={t("accountSwitcher.unlinkAccount")}
+                    title={t("accountSwitcher.unlinkAccount")}
                     className="shrink-0 text-lo/60 opacity-0 transition-opacity hover:text-crit group-hover:opacity-100"
                   >
                     <CrossIcon />
@@ -123,7 +124,7 @@ export default function AccountSwitcher({ current }: { current?: CurrentPlayer }
                 className="mt-1.5 flex w-full items-center gap-1.5 border-t border-line px-1 pt-1.5 text-left text-xs text-lo hover:text-accent"
               >
                 <StarIcon filled={false} />
-                Marquer {current.name}#{current.tag} comme mon compte
+                {t("accountSwitcher.markAsMine", { name: current.name, tag: current.tag })}
               </button>
             )}
 
@@ -134,7 +135,7 @@ export default function AccountSwitcher({ current }: { current?: CurrentPlayer }
                 className="mt-1.5 flex w-full items-center gap-1.5 border-t border-line px-1 pt-1.5 text-left text-xs text-lo hover:text-accent"
               >
                 <StarIcon filled={false} />
-                Compte détecté : {suggestion.name}#{suggestion.tag} — Lier
+                {t("accountSwitcher.detectedAccount", { name: suggestion.name, tag: suggestion.tag })}
               </button>
             )}
 
@@ -146,7 +147,7 @@ export default function AccountSwitcher({ current }: { current?: CurrentPlayer }
               }}
               className="mt-1.5 flex w-full items-center gap-1.5 border-t border-line px-1 pt-1.5 text-left text-xs text-lo hover:text-hi"
             >
-              + Chercher un profil à lier
+              {t("accountSwitcher.searchToLink")}
             </button>
           </div>
         </>

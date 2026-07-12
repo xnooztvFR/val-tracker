@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import Panel from "./Panel";
 import { tauriApi } from "../lib/tauriApi";
@@ -20,6 +21,7 @@ const SAVE_DEBOUNCE_MS = 800;
  * côté Home.tsx, ou fermeture/réouverture de l'app), pensé pour l'usage stream/écran
  * partagé plutôt que comme un vrai coffre-fort. */
 export default function PlayerNotesPanel({ puuid, initialNotes }: PlayerNotesPanelProps) {
+  const { t } = useTranslation("componentsExtra");
   const notesPinEnabled = useSettingsStore((s) => s.settings?.notes_pin_enabled ?? false);
   const [value, setValue] = useState(initialNotes ?? "");
   const [saved, setSaved] = useState(true);
@@ -59,8 +61,8 @@ export default function PlayerNotesPanel({ puuid, initialNotes }: PlayerNotesPan
     return (
       <Panel className="p-4">
         <div className="mb-3 flex items-center justify-between">
-          <p className="hud-label">Notes</p>
-          <span className="text-[10px] text-lo">Verrouillé</span>
+          <p className="hud-label">{t("playerNotesPanel.title")}</p>
+          <span className="text-[10px] text-lo">{t("playerNotesPanel.locked")}</span>
         </div>
         <div className="flex gap-2">
           <input
@@ -74,7 +76,7 @@ export default function PlayerNotesPanel({ puuid, initialNotes }: PlayerNotesPan
             onKeyDown={(e) => {
               if (e.key === "Enter") handleUnlock();
             }}
-            placeholder="PIN"
+            placeholder={t("playerNotesPanel.pinPlaceholder")}
             className="w-24 border border-line bg-base px-2.5 py-2 text-sm text-hi placeholder:text-lo/60 focus:border-accent focus:outline-none"
           />
           <button
@@ -82,10 +84,10 @@ export default function PlayerNotesPanel({ puuid, initialNotes }: PlayerNotesPan
             onClick={handleUnlock}
             className="border border-line px-3 py-2 text-sm text-hi transition-colors hover:border-accent"
           >
-            Déverrouiller
+            {t("playerNotesPanel.unlock")}
           </button>
         </div>
-        {pinError && <p className="mt-2 text-xs text-crit">PIN incorrect.</p>}
+        {pinError && <p className="mt-2 text-xs text-crit">{t("playerNotesPanel.pinIncorrect")}</p>}
       </Panel>
     );
   }
@@ -93,13 +95,13 @@ export default function PlayerNotesPanel({ puuid, initialNotes }: PlayerNotesPan
   return (
     <Panel className="p-4">
       <div className="mb-3 flex items-center justify-between">
-        <p className="hud-label">Notes</p>
-        <span className="text-[10px] text-lo">{saved ? "Enregistré" : "…"}</span>
+        <p className="hud-label">{t("playerNotesPanel.title")}</p>
+        <span className="text-[10px] text-lo">{saved ? t("playerNotesPanel.saved") : t("playerNotesPanel.saving")}</span>
       </div>
       <textarea
         value={value}
         onChange={(e) => handleChange(e.target.value)}
-        placeholder="Smurf, duo régulier, à re-jouer..."
+        placeholder={t("playerNotesPanel.notesPlaceholder")}
         rows={3}
         className="w-full resize-none border border-line bg-base px-2.5 py-2 text-sm text-hi placeholder:text-lo/60 focus:border-accent focus:outline-none"
       />

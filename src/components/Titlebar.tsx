@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { LogicalSize } from "@tauri-apps/api/dpi";
+import { useTranslation } from "react-i18next";
 
 import { useUiStore } from "../store/uiStore";
 
@@ -10,6 +11,7 @@ const MINI_SIZE = new LogicalSize(340, 460);
 /** Barre de titre custom (fenêtre sans decorations) : drag, mode mini/overlay, minimiser,
  * fermer. La navigation applicative (dont Paramètres) vit dans TopNav, pas ici. */
 export default function Titlebar() {
+  const { t } = useTranslation("componentsCore");
   const { compact, toggleCompact } = useUiStore();
   const previousSize = useRef<{ width: number; height: number } | null>(null);
 
@@ -44,8 +46,8 @@ export default function Titlebar() {
         <button
           type="button"
           onClick={handleToggleCompact}
-          aria-label={compact ? "Quitter le mode mini" : "Mode mini (overlay)"}
-          title={compact ? "Quitter le mode mini" : "Mode mini (overlay)"}
+          aria-label={compact ? t("titlebar.exitMiniMode") : t("titlebar.miniMode")}
+          title={compact ? t("titlebar.exitMiniMode") : t("titlebar.miniMode")}
           className={`flex h-7 w-8 items-center justify-center transition-colors ${
             compact ? "text-accent" : "text-lo hover:bg-raised hover:text-hi"
           }`}
@@ -55,7 +57,7 @@ export default function Titlebar() {
         <button
           type="button"
           onClick={() => appWindow.minimize()}
-          aria-label="Réduire"
+          aria-label={t("titlebar.minimize")}
           className="flex h-7 w-8 items-center justify-center text-lo transition-colors hover:bg-raised hover:text-hi"
         >
           <MinimizeIcon />
@@ -63,7 +65,7 @@ export default function Titlebar() {
         <button
           type="button"
           onClick={() => appWindow.close()}
-          aria-label="Fermer"
+          aria-label={t("titlebar.close")}
           className="flex h-7 w-8 items-center justify-center text-lo transition-colors hover:bg-crit hover:text-base"
         >
           <CloseIcon />

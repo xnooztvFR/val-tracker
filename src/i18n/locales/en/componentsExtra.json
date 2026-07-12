@@ -1,0 +1,125 @@
+{
+  "accountSwitcher": {
+    "myAccounts": "My accounts",
+    "close": "Close",
+    "noAccountLinked": "No account linked. Mark a profile as yours below, or link the detected account if the Riot client is open.",
+    "unlinkAccount": "Unlink this account",
+    "markAsMine": "Mark {{name}}#{{tag}} as my account",
+    "detectedAccount": "Detected account: {{name}}#{{tag}} — Link",
+    "searchToLink": "+ Search for a profile to link"
+  },
+  "commandPalette": {
+    "settings": "Settings",
+    "leaderboard": "Leaderboard",
+    "esport": "Esports",
+    "premier": "Premier",
+    "vsComparison": "VS comparison",
+    "search": "Search for a player",
+    "screenHint": "Screen",
+    "favoriteHint": "Favorite",
+    "recentHint": "Recent",
+    "placeholder": "Go to... (screen, recent/favorite player)",
+    "noResults": "No results."
+  },
+  "miniOverlay": {
+    "choosePlayer": "Choose a player before switching to mini mode.",
+    "rrSuffix": "{{rr}} RR",
+    "recentMatches": "last {{count}} matches"
+  },
+  "updateBanner": {
+    "title": "Update",
+    "versionAvailable": "Version {{version}} available",
+    "readyToInstall": "A new version of Val Tracker is ready to be installed.",
+    "later": "Later",
+    "installNow": "Install now",
+    "downloading": "Downloading…",
+    "installing": "Installing, restarting…",
+    "updateFailed": "Update failed",
+    "closeButton": "Close"
+  },
+  "playerNotesPanel": {
+    "title": "Notes",
+    "locked": "Locked",
+    "pinPlaceholder": "PIN",
+    "unlock": "Unlock",
+    "pinIncorrect": "Incorrect PIN.",
+    "saved": "Saved",
+    "saving": "…",
+    "notesPlaceholder": "Smurf, regular duo, worth replaying..."
+  },
+  "onboardingWizard": {
+    "step1": {
+      "title": "1. Henrik API key",
+      "description": "Needed to query the Henrik Dev API (rank, matches). Join the Henrik Dev Discord to get one (see the README).",
+      "placeholder": "Paste your Henrik API key here",
+      "invalid": "Invalid key.",
+      "networkError": "Could not verify (network issue?).",
+      "verifying": "Verifying…",
+      "verifyAndSave": "Verify and save",
+      "next": "Next"
+    },
+    "step2": {
+      "title": "2. Default region",
+      "description": "Used for searches and the leaderboard.",
+      "next": "Next"
+    },
+    "step3": {
+      "title": "3. Automatic match detection",
+      "checking": "Looking for the local Riot client…",
+      "found": "Riot client detected — the overlay and match detection will work automatically.",
+      "notFound": "Riot client not detected for now (no worries, the app falls back to manual search mode) — restart the Riot client then check Settings → Overlay if needed.",
+      "finish": "Done"
+    }
+  },
+  "recapCardModal": {
+    "victory": "VICTORY",
+    "defeat": "DEFEAT",
+    "copyImage": "Copy image",
+    "download": "Download",
+    "close": "Close",
+    "copied": "Copied — paste it directly into Discord (Ctrl+V).",
+    "copyUnsupported": "Copy not supported here — use \"Download\" instead.",
+    "copyError": "Copy failed, try again."
+  },
+  "rankHistoryChart": {
+    "limitedHistoryTitle": "Limited history",
+    "limitedHistoryBody": "Come back to this profile after a few games to see the rank progression curve take shape.",
+    "unknownTier": "Unknown",
+    "tooltipLabel": "Rank"
+  },
+  "performanceHeatmap": {
+    "days": {
+      "mon": "Mon",
+      "tue": "Tue",
+      "wed": "Wed",
+      "thu": "Thu",
+      "fri": "Fri",
+      "sat": "Sat",
+      "sun": "Sun"
+    },
+    "cellTooltip_one": "{{day}} {{hour}}h — {{count}} match, {{winPercent}}% wins",
+    "cellTooltip_other": "{{day}} {{hour}}h — {{count}} matches, {{winPercent}}% wins",
+    "cellTooltipEmpty": "{{day}} {{hour}}h — no matches"
+  },
+  "progressionGoalPanel": {
+    "title": "Progression goal",
+    "edit": "Edit",
+    "setGoal": "Set a goal",
+    "targetRr": "Target RR",
+    "save": "Save",
+    "cancel": "Cancel",
+    "reached": "Reached",
+    "removeGoal": "Remove goal",
+    "rrSuffix": "({{rr}} RR)"
+  },
+  "matchRow": {
+    "victory": "Victory",
+    "defeat": "Defeat",
+    "noResult": "—",
+    "unknownMap": "Unknown map",
+    "unknownAgent": "Unknown agent",
+    "kdLabel": "K/D {{ratio}}",
+    "acsLabel": "{{acs}} ACS",
+    "scoreLabel": "Score {{score}}"
+  }
+}

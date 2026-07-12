@@ -214,6 +214,18 @@ pub async fn save_ui_accent(
     Ok(())
 }
 
+/// Système multilangue : `"fr"` | `"en"`.
+#[tauri::command]
+pub async fn save_ui_language(
+    state: State<'_, AppState>,
+    language: String,
+) -> Result<(), CommandError> {
+    ensure_one_of(&language, &["fr", "en"], "language")?;
+    let conn = state.db.lock().await;
+    crate::settings::set_ui_language(&conn, &language)?;
+    Ok(())
+}
+
 /// Backlog #31 : `"compact"` | `"detailed"`.
 #[tauri::command]
 pub async fn save_overlay_density(

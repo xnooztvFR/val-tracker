@@ -1,4 +1,5 @@
 import { rankGlowColor, rankInfo } from "./format";
+import i18n from "../i18n";
 import type { MatchDetailData } from "./tauriApi";
 
 // Données d'une carte de recap partageable (V3) — dérivées de MatchDetailData déjà
@@ -31,8 +32,8 @@ export function buildMatchRecapData(data: MatchDetailData, puuid: string): Match
   const oppTeam = isBlue ? data.teams.red : data.teams.blue;
 
   return {
-    map: data.metadata.map ?? "Carte inconnue",
-    mode: data.metadata.mode ?? "Compétitif",
+    map: data.metadata.map ?? i18n.t("matches:recap.unknownMap"),
+    mode: data.metadata.mode ?? i18n.t("matches:recap.defaultMode"),
     playerName: me.name,
     playerTag: me.tag,
     won: myTeam?.has_won ?? false,

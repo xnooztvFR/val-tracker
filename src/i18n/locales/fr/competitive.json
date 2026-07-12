@@ -1,0 +1,64 @@
+{
+  "leaderboard": {
+    "title": "Classement compétitif",
+    "searchPlaceholder": "Pseudo#Tag",
+    "locate": "Localiser",
+    "reset": "Réinitialiser",
+    "updatedAt": "Mis à jour : {{date}}",
+    "columns": {
+      "rank": "Rang",
+      "player": "Joueur",
+      "tier": "Tier",
+      "rr": "RR",
+      "wins": "Victoires"
+    },
+    "anonymousPlayer": "Joueur anonyme",
+    "banned": "Banni",
+    "previous": "Précédent",
+    "page": "Page {{page}}",
+    "next": "Suivant"
+  },
+  "premier": {
+    "title": "Premier",
+    "teamNamePlaceholder": "Nom d'équipe",
+    "search": "Chercher",
+    "reset": "Réinitialiser",
+    "emptyTitle": "Aucune équipe trouvée",
+    "emptyDetail": "Essaie une autre recherche ou région.",
+    "teamCount_one": "{{count}} équipe · page {{page}}/{{pageCount}}",
+    "teamCount_other": "{{count}} équipes · page {{page}}/{{pageCount}}",
+    "columns": {
+      "rank": "Rang",
+      "team": "Équipe",
+      "conferenceDivision": "Conférence / Division",
+      "score": "Score",
+      "winsLosses": "V / D"
+    },
+    "division": "Div {{division}}",
+    "previous": "Précédent",
+    "pageOf": "Page {{page}} / {{pageCount}}",
+    "next": "Suivant"
+  },
+  "premierTeamDetail": {
+    "backToPremier": "← Retour à Premier",
+    "teamNotFound": "Équipe introuvable.",
+    "enrolled": "Inscrite à la saison en cours",
+    "notEnrolled": "Non inscrite",
+    "stats": {
+      "ranking": "Classement",
+      "conference": "Conférence",
+      "conferenceDivision": "{{conference}} · Div {{division}}",
+      "points": "Points",
+      "matches": "Matchs",
+      "wins": "Victoires",
+      "losses": "Défaites",
+      "roundsWonLost": "Rounds G/P"
+    },
+    "roster": "Roster ({{count}})",
+    "rosterEmpty": "Roster non communiqué.",
+    "seasonHistory": "Historique de saison",
+    "pointsTransition": "{{before}} → {{after}} pts",
+    "tournament": "Tournoi · {{count}} matchs",
+    "tournamentPlacement": "Place #{{placement}} · {{before}} → {{after}} pts"
+  }
+}

@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { Trans, useTranslation } from "react-i18next";
 
 import { useSettingsStore } from "../store/settingsStore";
 import { tauriApi, type UsageMetricsSummary } from "../lib/tauriApi";
-import { REGIONS } from "../lib/format";
+import { getRegions } from "../lib/format";
 import { useUpdater } from "../hooks/useUpdater";
 import StatCard from "../components/StatCard";
 
@@ -13,20 +14,14 @@ type VerifyState = "idle" | "checking" | "valid" | "invalid" | "error";
 // nav par réglage isolé.
 type Category = "general" | "game" | "alerts" | "updates" | "data" | "about";
 
-const CATEGORIES: Array<{ id: Category; label: string }> = [
-  { id: "general", label: "Général" },
-  { id: "game", label: "En jeu" },
-  { id: "alerts", label: "Alertes & confidentialité" },
-  { id: "updates", label: "Mises à jour" },
-  { id: "data", label: "Données & diagnostics" },
-  { id: "about", label: "À propos" },
-];
+const CATEGORY_IDS: Category[] = ["general", "game", "alerts", "updates", "data", "about"];
 
 function isCategory(value: string | null): value is Category {
-  return CATEGORIES.some((c) => c.id === value);
+  return CATEGORY_IDS.includes(value as Category);
 }
 
 export default function Settings() {
+  const { t } = useTranslation("settings");
   const {
     settings,
     refresh,
@@ -40,6 +35,7 @@ export default function Settings() {
     setUsageMetricsEnabled,
     setUiTheme,
     setUiAccent,
+    setUiLanguage,
     setOverlayDensity,
     setLossStreakAlertEnabled,
     setLossStreakAlertCount,
@@ -61,18 +57,18 @@ export default function Settings() {
   return (
     <div className="flex h-full">
       <nav className="w-52 shrink-0 border-r border-line bg-base p-4">
-        <p className="hud-label mb-3 px-3">Paramètres</p>
-        {CATEGORIES.map((c) => (
+        <p className="hud-label mb-3 px-3">{t("nav.title")}</p>
+        {CATEGORY_IDS.map((id) => (
           <button
-            key={c.id}
+            key={id}
             type="button"
-            onClick={() => setCategory(c.id)}
+            onClick={() => setCategory(id)}
             className={`relative block w-full px-3 py-2 text-left text-sm font-medium transition-colors ${
-              category === c.id ? "bg-surface text-hi" : "text-lo hover:bg-surface/60 hover:text-hi"
+              category === id ? "bg-surface text-hi" : "text-lo hover:bg-surface/60 hover:text-hi"
             }`}
           >
-            {category === c.id && <span className="absolute inset-y-0 left-0 w-[2px] bg-accent" />}
-            {c.label}
+            {category === id && <span className="absolute inset-y-0 left-0 w-[2px] bg-accent" />}
+            {t(`nav.${id}`)}
           </button>
         ))}
       </nav>
@@ -93,6 +89,11 @@ export default function Settings() {
               accent={settings?.ui_accent ?? "red"}
               onChangeTheme={setUiTheme}
               onChangeAccent={setUiAccent}
+            />
+            <SectionDivider />
+            <LanguageSection
+              language={settings?.ui_language ?? "fr"}
+              onChangeLanguage={setUiLanguage}
             />
           </div>
         )}
@@ -187,6 +188,7 @@ function GeneralSection({
   onSaveApiKey: (key: string) => Promise<void>;
   onSaveRegion: (region: string) => Promise<void>;
 }) {
+  const { t } = useTranslation("settings");
   const [apiKeyInput, setApiKeyInput] = useState(savedApiKey);
   const [verifyState, setVerifyState] = useState<VerifyState>("idle");
   const [saveState, setSaveState] = useState<"idle" | "saved">("idle");
@@ -215,14 +217,14 @@ function GeneralSection({
   return (
     <div className="max-w-xl space-y-8">
       <div>
-        <SectionTitle>Général</SectionTitle>
+        <SectionTitle>{t("general.title")}</SectionTitle>
         <p className="mt-1 text-sm text-lo">
-          {apiKeySet ? "Clé API Henrik configurée." : "Aucune clé API Henrik configurée."}
+          {apiKeySet ? t("general.apiKeySet") : t("general.apiKeyNotSet")}
         </p>
       </div>
 
       <section className="space-y-2">
-        <h2 className="hud-label">Clé API Henrik</h2>
+        <h2 className="hud-label">{t("general.apiKeyLabel")}</h2>
         <div className="flex gap-2">
           <input
             type="password"
@@ -231,7 +233,7 @@ function GeneralSection({
               setApiKeyInput(e.target.value);
               setVerifyState("idle");
             }}
-            placeholder="Colle ta clé API Henrik ici"
+            placeholder={t("general.apiKeyPlaceholder")}
             className={`flex-1 font-mono ${INPUT_CLASS}`}
           />
           <button
@@ -240,7 +242,7 @@ function GeneralSection({
             disabled={!apiKeyInput.trim() || verifyState === "checking"}
             className="border border-line px-4 py-2 font-display text-xs font-semibold uppercase tracking-hud text-hi transition-colors hover:border-accent hover:text-accent disabled:opacity-50"
           >
-            {verifyState === "checking" ? "Vérification…" : "Vérifier"}
+            {verifyState === "checking" ? t("general.verifying") : t("general.verify")}
           </button>
           <button
             type="button"
@@ -248,29 +250,26 @@ function GeneralSection({
             disabled={!apiKeyInput.trim()}
             className="btn-clip bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#FF5969] disabled:opacity-50"
           >
-            Enregistrer
+            {t("general.save")}
           </button>
         </div>
 
-        {verifyState === "valid" && <p className="text-sm text-accent">Clé valide.</p>}
+        {verifyState === "valid" && <p className="text-sm text-accent">{t("general.keyValid")}</p>}
         {verifyState === "invalid" && (
-          <p className="text-sm text-crit">Clé invalide — vérifie qu'elle est correcte.</p>
+          <p className="text-sm text-crit">{t("general.keyInvalid")}</p>
         )}
         {verifyState === "error" && (
-          <p className="text-sm text-crit">Impossible de vérifier la clé (panne réseau ?).</p>
+          <p className="text-sm text-crit">{t("general.keyVerifyError")}</p>
         )}
-        {saveState === "saved" && <p className="text-sm text-accent">Clé enregistrée.</p>}
+        {saveState === "saved" && <p className="text-sm text-accent">{t("general.keySaved")}</p>}
 
-        <p className="text-xs text-lo">
-          Obtiens une clé sur le Discord de Henrik Dev. Elle n'est jamais envoyée ailleurs qu'à
-          l'API Henrik et reste stockée uniquement sur cette machine.
-        </p>
+        <p className="text-xs text-lo">{t("general.apiKeyHint")}</p>
       </section>
 
       <section className="space-y-2">
-        <h2 className="hud-label">Région par défaut</h2>
+        <h2 className="hud-label">{t("general.regionLabel")}</h2>
         <select value={defaultRegion} onChange={(e) => onSaveRegion(e.target.value)} className={INPUT_CLASS}>
-          {REGIONS.map((r) => (
+          {getRegions().map((r) => (
             <option key={r.value} value={r.value}>
               {r.label}
             </option>
@@ -281,16 +280,12 @@ function GeneralSection({
   );
 }
 
-const THEMES: Array<{ id: string; label: string }> = [
-  { id: "dark", label: "Sombre (défaut)" },
-  { id: "light", label: "Clair" },
-];
-
-const ACCENTS: Array<{ id: string; label: string; swatch: string }> = [
-  { id: "red", label: "Rouge (défaut)", swatch: "#FF3B4E" },
-  { id: "cyan", label: "Cyan", swatch: "#7CE8D3" },
-  { id: "violet", label: "Violet", swatch: "#A672E0" },
-  { id: "amber", label: "Ambre", swatch: "#D4AF37" },
+const THEME_IDS = ["dark", "light"] as const;
+const ACCENTS: Array<{ id: string; swatch: string }> = [
+  { id: "red", swatch: "#FF3B4E" },
+  { id: "cyan", swatch: "#7CE8D3" },
+  { id: "violet", swatch: "#A672E0" },
+  { id: "amber", swatch: "#D4AF37" },
 ];
 
 function AppearanceSection({
@@ -304,36 +299,34 @@ function AppearanceSection({
   onChangeTheme: (theme: string) => Promise<void>;
   onChangeAccent: (accent: string) => Promise<void>;
 }) {
+  const { t } = useTranslation("settings");
   return (
     <div className="max-w-xl space-y-6">
-      <SectionTitle>Apparence</SectionTitle>
+      <SectionTitle>{t("appearance.title")}</SectionTitle>
 
       <section className="space-y-2">
-        <h2 className="hud-label">Thème</h2>
+        <h2 className="hud-label">{t("appearance.themeLabel")}</h2>
         <div className="flex gap-2">
-          {THEMES.map((t) => (
+          {THEME_IDS.map((id) => (
             <button
-              key={t.id}
+              key={id}
               type="button"
-              onClick={() => onChangeTheme(t.id)}
+              onClick={() => onChangeTheme(id)}
               className={`border px-4 py-2 text-sm transition-colors ${
-                theme === t.id
+                theme === id
                   ? "border-accent text-hi"
                   : "border-line text-lo hover:border-line hover:text-hi"
               }`}
             >
-              {t.label}
+              {t(`appearance.theme.${id}`)}
             </button>
           ))}
         </div>
       </section>
 
       <section className="space-y-2">
-        <h2 className="hud-label">Couleur d'accent</h2>
-        <p className="text-xs text-lo">
-          Identité HUD par défaut en rouge — quelques variantes disponibles sans casser le
-          reste du design (coins coupés, typographie, contrastes).
-        </p>
+        <h2 className="hud-label">{t("appearance.accentLabel")}</h2>
+        <p className="text-xs text-lo">{t("appearance.accentHint")}</p>
         <div className="flex gap-2">
           {ACCENTS.map((a) => (
             <button
@@ -348,11 +341,45 @@ function AppearanceSection({
                 className="h-3 w-3 shrink-0 rounded-full"
                 style={{ backgroundColor: a.swatch }}
               />
-              {a.label}
+              {t(`appearance.accent.${a.id}`)}
             </button>
           ))}
         </div>
       </section>
+    </div>
+  );
+}
+
+const LANGUAGE_IDS = ["fr", "en"] as const;
+
+function LanguageSection({
+  language,
+  onChangeLanguage,
+}: {
+  language: string;
+  onChangeLanguage: (language: string) => Promise<void>;
+}) {
+  const { t } = useTranslation("settings");
+  return (
+    <div className="max-w-xl space-y-2">
+      <SectionTitle>{t("language.title")}</SectionTitle>
+      <p className="text-xs text-lo">{t("language.hint")}</p>
+      <div className="flex gap-2">
+        {LANGUAGE_IDS.map((id) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => onChangeLanguage(id)}
+            className={`border px-4 py-2 text-sm transition-colors ${
+              language === id
+                ? "border-accent text-hi"
+                : "border-line text-lo hover:border-line hover:text-hi"
+            }`}
+          >
+            {t(`language.${id}`)}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -368,6 +395,7 @@ function OverlaySection({
   density: string;
   onChangeDensity: (density: string) => Promise<void>;
 }) {
+  const { t } = useTranslation("settings");
   const [shortcutRegistered, setShortcutRegistered] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -379,13 +407,8 @@ function OverlaySection({
 
   return (
     <div className="max-w-xl space-y-4">
-      <SectionTitle>Overlay en jeu</SectionTitle>
-      <p className="text-sm text-lo">
-        Détecte automatiquement une partie en cours via l'API locale du Riot Client et affiche
-        un overlay always-on-top avec le rank des joueurs du lobby. Aucune injection dans le
-        jeu : uniquement une fenêtre superposée. Fonctionne en « plein écran sans bordure »
-        (le plein écran exclusif peut masquer l'overlay).
-      </p>
+      <SectionTitle>{t("overlay.title")}</SectionTitle>
+      <p className="text-sm text-lo">{t("overlay.description")}</p>
 
       <label className="flex items-center gap-2.5 text-sm text-hi">
         <input
@@ -394,68 +417,60 @@ function OverlaySection({
           onChange={(e) => onChange(!e.target.checked)}
           className="h-4 w-4 border-line bg-surface accent-accent"
         />
-        Activer la détection automatique de partie et l'overlay
+        {t("overlay.enableLabel")}
       </label>
 
       <section className="space-y-2">
-        <h2 className="hud-label">Densité d'affichage</h2>
+        <h2 className="hud-label">{t("overlay.densityLabel")}</h2>
         <div className="flex gap-2">
-          {OVERLAY_DENSITIES.map((d) => (
+          {OVERLAY_DENSITY_IDS.map((id) => (
             <button
-              key={d.id}
+              key={id}
               type="button"
-              onClick={() => onChangeDensity(d.id)}
+              onClick={() => onChangeDensity(id)}
               className={`border px-4 py-2 text-sm transition-colors ${
-                density === d.id
+                density === id
                   ? "border-accent text-hi"
                   : "border-line text-lo hover:border-line hover:text-hi"
               }`}
             >
-              {d.label}
+              {t(`overlay.density.${id}`)}
             </button>
           ))}
         </div>
-        <p className="text-xs text-lo">
-          « Compact » n'affiche que le badge de rang des joueurs détectés ; « Détaillé »
-          (défaut) ajoute le nom du rang et le RR.
-        </p>
+        <p className="text-xs text-lo">{t("overlay.densityHint")}</p>
       </section>
 
       {shortcutRegistered === false && (
         <div className="relative border border-crit/30 bg-crit/5 py-2.5 pl-4 pr-3 text-xs text-hi">
           <span className="absolute inset-y-0 left-0 w-[3px] bg-crit" />
-          <p className="hud-label !text-crit">Raccourci indisponible</p>
+          <p className="hud-label !text-crit">{t("overlay.shortcutConflictTitle")}</p>
           <p className="mt-1 text-lo">
-            <span className="font-mono text-hi">Ctrl+Shift+V</span> est déjà utilisé par une
-            autre application sur cette machine (souvent un raccourci "coller sans
-            formatage"). L'overlay reste cliquable au travers, mais impossible de le
-            déplacer tant que ce conflit n'est pas résolu — libère le raccourci ailleurs puis
-            redémarre l'app.
+            <Trans
+              t={t}
+              i18nKey="overlay.shortcutConflictBody"
+              components={{ shortcut: <span className="font-mono text-hi" /> }}
+            />
           </p>
         </div>
       )}
 
       <div className="panel-clip-sm space-y-1.5 p-3 text-xs text-lo">
         <p>
-          <span className="hud-label mr-2 text-[10px]">Raccourci</span>
-          <span className="font-mono text-hi">Ctrl+Shift+V</span> — bascule l'overlay entre
-          click-through (transparent aux clics) et interactif (déplaçable). Sa position est
-          mémorisée d'une session à l'autre.
+          <span className="hud-label mr-2 text-[10px]">{t("overlay.shortcutLabel")}</span>
+          <Trans
+            t={t}
+            i18nKey="overlay.shortcutHint"
+            components={{ shortcut: <span className="font-mono text-hi" /> }}
+          />
         </p>
-        <p>
-          Cette détection s'appuie sur une API locale non officielle de Riot : si elle devient
-          indisponible (y compris en cours de partie, ex. plantage du client Riot), l'app
-          repasse silencieusement en mode recherche manuelle.
-        </p>
+        <p>{t("overlay.apiWarning")}</p>
       </div>
     </div>
   );
 }
 
-const OVERLAY_DENSITIES: Array<{ id: string; label: string }> = [
-  { id: "compact", label: "Compact" },
-  { id: "detailed", label: "Détaillé (défaut)" },
-];
+const OVERLAY_DENSITY_IDS = ["compact", "detailed"] as const;
 
 function DiscordSection({
   enabled,
@@ -468,6 +483,7 @@ function DiscordSection({
   onChangeEnabled: (enabled: boolean) => Promise<void>;
   onSaveClientId: (clientId: string) => Promise<void>;
 }) {
+  const { t } = useTranslation("settings");
   const [input, setInput] = useState(clientId);
   const [saveState, setSaveState] = useState<"idle" | "saved">("idle");
 
@@ -483,12 +499,8 @@ function DiscordSection({
 
   return (
     <div className="max-w-xl space-y-4">
-      <SectionTitle>Rich Presence Discord</SectionTitle>
-      <p className="text-sm text-lo">
-        Affiche automatiquement ce que tu fais dans le tracker (partie en cours, sélection
-        d'agents, région) comme statut Discord. Purement local : une connexion IPC directe
-        vers ton client Discord desktop, aucune donnée envoyée sur le réseau.
-      </p>
+      <SectionTitle>{t("discord.title")}</SectionTitle>
+      <p className="text-sm text-lo">{t("discord.description")}</p>
 
       <label className="flex items-center gap-2.5 text-sm text-hi">
         <input
@@ -497,16 +509,16 @@ function DiscordSection({
           onChange={(e) => onChangeEnabled(e.target.checked)}
           className="h-4 w-4 border-line bg-surface accent-accent"
         />
-        Activer la Rich Presence Discord
+        {t("discord.enableLabel")}
       </label>
 
       <section className="space-y-2">
-        <h2 className="hud-label">Client ID de l'application Discord</h2>
+        <h2 className="hud-label">{t("discord.clientIdLabel")}</h2>
         <div className="flex gap-2">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="123456789012345678"
+            placeholder={t("discord.clientIdPlaceholder")}
             className={`flex-1 font-mono ${INPUT_CLASS}`}
           />
           <button
@@ -515,23 +527,21 @@ function DiscordSection({
             disabled={!input.trim()}
             className="btn-clip bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#FF5969] disabled:opacity-50"
           >
-            Enregistrer
+            {t("discord.save")}
           </button>
         </div>
-        {saveState === "saved" && <p className="text-sm text-accent">Client ID enregistré.</p>}
+        {saveState === "saved" && <p className="text-sm text-accent">{t("discord.saved")}</p>}
         <p className="text-xs text-lo">
-          Crée une application (gratuite) sur le{" "}
-          <span className="font-mono text-hi">Discord Developer Portal</span> et colle son
-          « Application ID » ici — pas de secret ni de token, juste un identifiant public.
+          <Trans
+            t={t}
+            i18nKey="discord.clientIdHint"
+            components={{ portal: <span className="font-mono text-hi" /> }}
+          />
         </p>
       </section>
 
       <div className="panel-clip-sm space-y-1.5 p-3 text-xs text-lo">
-        <p>
-          Best-effort, comme la détection de partie : si Discord n'est pas lancé ou que le
-          client_id est invalide, la Rich Presence reste simplement inactive, sans erreur
-          bloquante.
-        </p>
+        <p>{t("discord.bestEffort")}</p>
       </div>
     </div>
   );
@@ -560,22 +570,18 @@ function NotificationsSection({
   onChangeInactivityReminderEnabled: (enabled: boolean) => Promise<void>;
   onChangeInactivityReminderDays: (days: number) => Promise<void>;
 }) {
+  const { t } = useTranslation("settings");
   return (
     <div className="max-w-xl space-y-4">
-      <SectionTitle>Notifications</SectionTitle>
+      <SectionTitle>{t("notifications.title")}</SectionTitle>
 
       <section className="space-y-2">
-        <h2 className="hud-label">Changement de rank</h2>
-        <p className="text-sm text-lo">
-          Toujours active : une notification native s'affiche dès qu'une montée/descente de
-          rank est détectée en consultant un profil (promotion, dérank). Aucun réglage
-          nécessaire — ça ne déclenche aucun appel réseau supplémentaire, ça observe juste ce
-          que l'app récupère déjà.
-        </p>
+        <h2 className="hud-label">{t("notifications.rankChangeTitle")}</h2>
+        <p className="text-sm text-lo">{t("notifications.rankChangeBody")}</p>
       </section>
 
       <section className="space-y-2">
-        <h2 className="hud-label">Statut serveur &amp; file d'attente</h2>
+        <h2 className="hud-label">{t("notifications.statusTitle")}</h2>
         <label className="flex items-center gap-2.5 text-sm text-hi">
           <input
             type="checkbox"
@@ -583,19 +589,13 @@ function NotificationsSection({
             onChange={(e) => onChangeStatusWatcher(e.target.checked)}
             className="h-4 w-4 border-line bg-surface accent-accent"
           />
-          Me notifier des incidents et changements de file d'attente sur ma région par
-          défaut
+          {t("notifications.statusLabel")}
         </label>
-        <p className="text-xs text-lo">
-          Seul réglage (avec le rappel d'inactivité ci-dessous) qui déclenche un appel réseau
-          périodique même quand tu ne regardes pas l'app (toutes les{" "}
-          {"~3 min, respecte le cache/rate limiter existant"}) — désactivé par défaut, à toi
-          de l'activer si tu veux être alerté en tâche de fond.
-        </p>
+        <p className="text-xs text-lo">{t("notifications.statusHint")}</p>
       </section>
 
       <section className="space-y-2">
-        <h2 className="hud-label">Série de défaites</h2>
+        <h2 className="hud-label">{t("notifications.lossStreakTitle")}</h2>
         <label className="flex items-center gap-2.5 text-sm text-hi">
           <input
             type="checkbox"
@@ -603,7 +603,7 @@ function NotificationsSection({
             onChange={(e) => onChangeLossStreakAlertEnabled(e.target.checked)}
             className="h-4 w-4 border-line bg-surface accent-accent"
           />
-          Me notifier après plusieurs défaites d'affilée
+          {t("notifications.lossStreakLabel")}
         </label>
         <div className="flex items-center gap-2">
           <input
@@ -615,16 +615,13 @@ function NotificationsSection({
             disabled={!lossStreakAlertEnabled}
             className={`w-20 disabled:opacity-50 ${INPUT_CLASS}`}
           />
-          <span className="text-sm text-lo">défaites d'affilée</span>
+          <span className="text-sm text-lo">{t("notifications.lossStreakUnit")}</span>
         </div>
-        <p className="text-xs text-lo">
-          Vérifié sur tes comptes marqués « à soi » (voir TopNav) à chaque consultation de
-          l'historique de matchs — pas d'appel réseau dédié.
-        </p>
+        <p className="text-xs text-lo">{t("notifications.lossStreakHint")}</p>
       </section>
 
       <section className="space-y-2">
-        <h2 className="hud-label">Rappel d'inactivité</h2>
+        <h2 className="hud-label">{t("notifications.inactivityTitle")}</h2>
         <label className="flex items-center gap-2.5 text-sm text-hi">
           <input
             type="checkbox"
@@ -632,10 +629,10 @@ function NotificationsSection({
             onChange={(e) => onChangeInactivityReminderEnabled(e.target.checked)}
             className="h-4 w-4 border-line bg-surface accent-accent"
           />
-          Me rappeler si je n'ai pas consulté mes stats depuis un moment
+          {t("notifications.inactivityLabel")}
         </label>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-lo">Après</span>
+          <span className="text-sm text-lo">{t("notifications.inactivityAfter")}</span>
           <input
             type="number"
             min={1}
@@ -645,12 +642,9 @@ function NotificationsSection({
             disabled={!inactivityReminderEnabled}
             className={`w-20 disabled:opacity-50 ${INPUT_CLASS}`}
           />
-          <span className="text-sm text-lo">jours sans consulter un compte « à soi »</span>
+          <span className="text-sm text-lo">{t("notifications.inactivityUnit")}</span>
         </div>
-        <p className="text-xs text-lo">
-          Rappel doux, jamais plus d'une fois par jour — nécessite au moins un compte marqué
-          « à soi » (voir TopNav → sélecteur de comptes).
-        </p>
+        <p className="text-xs text-lo">{t("notifications.inactivityHint")}</p>
       </section>
     </div>
   );
@@ -663,11 +657,12 @@ function UpdatesSection({
   enabled: boolean;
   onChange: (enabled: boolean) => Promise<void>;
 }) {
+  const { t } = useTranslation("settings");
   const { status, version, error, checkNow, installNow } = useUpdater();
 
   return (
     <div className="max-w-xl space-y-4">
-      <SectionTitle>Mises à jour</SectionTitle>
+      <SectionTitle>{t("updates.title")}</SectionTitle>
       <label className="flex items-center gap-2.5 text-sm text-hi">
         <input
           type="checkbox"
@@ -675,7 +670,7 @@ function UpdatesSection({
           onChange={(e) => onChange(e.target.checked)}
           className="h-4 w-4 border-line bg-surface accent-accent"
         />
-        Vérifier automatiquement les mises à jour au démarrage
+        {t("updates.autoCheckLabel")}
       </label>
 
       <div className="flex items-center gap-3">
@@ -685,10 +680,10 @@ function UpdatesSection({
           disabled={status === "checking" || status === "downloading"}
           className="border border-line px-3 py-1.5 text-xs text-hi hover:bg-surface disabled:opacity-50"
         >
-          {status === "checking" ? "Vérification…" : "Vérifier maintenant"}
+          {status === "checking" ? t("updates.checking") : t("updates.checkNow")}
         </button>
         {status === "up-to-date" && (
-          <span className="text-xs text-lo">Version actuelle à jour.</span>
+          <span className="text-xs text-lo">{t("updates.upToDate")}</span>
         )}
         {status === "available" && (
           <button
@@ -696,25 +691,24 @@ function UpdatesSection({
             onClick={() => installNow()}
             className="border border-accent/50 px-3 py-1.5 text-xs text-accent hover:bg-accent/10"
           >
-            Installer la version {version}
+            {t("updates.installVersion", { version })}
           </button>
         )}
         {status === "downloading" && (
-          <span className="text-xs text-lo">Téléchargement en cours…</span>
+          <span className="text-xs text-lo">{t("updates.downloading")}</span>
         )}
-        {status === "error" && <span className="text-xs text-crit">Erreur : {error}</span>}
+        {status === "error" && (
+          <span className="text-xs text-crit">{t("updates.error", { error })}</span>
+        )}
       </div>
 
-      <p className="text-xs text-lo">
-        Les mises à jour sont distribuées via GitHub Releases et signées (updater +
-        Authenticode). Sans certificat de signature de code payant, Windows SmartScreen peut
-        afficher un avertissement à l'installation malgré la signature.
-      </p>
+      <p className="text-xs text-lo">{t("updates.distributionNote")}</p>
     </div>
   );
 }
 
 function CrosshairSection() {
+  const { t } = useTranslation("settings");
   const [code, setCode] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
   const [state, setState] = useState<"idle" | "loading" | "error">("idle");
@@ -735,17 +729,14 @@ function CrosshairSection() {
 
   return (
     <div className="max-w-xl space-y-4">
-      <SectionTitle>Aperçu de crosshair</SectionTitle>
-      <p className="text-sm text-lo">
-        Colle un code de crosshair Valorant (copié depuis le jeu ou une vidéo/config
-        partagée) pour prévisualiser son rendu sans lancer le jeu.
-      </p>
+      <SectionTitle>{t("crosshair.title")}</SectionTitle>
+      <p className="text-sm text-lo">{t("crosshair.description")}</p>
 
       <form onSubmit={handlePreview} className="flex gap-2">
         <input
           value={code}
           onChange={(e) => setCode(e.target.value)}
-          placeholder="0;s;1;P;c;1;o;1;..."
+          placeholder={t("crosshair.placeholder")}
           className={`flex-1 font-mono ${INPUT_CLASS}`}
         />
         <button
@@ -753,17 +744,17 @@ function CrosshairSection() {
           disabled={!code.trim() || state === "loading"}
           className="btn-clip bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#FF5969] disabled:opacity-50"
         >
-          {state === "loading" ? "Génération…" : "Prévisualiser"}
+          {state === "loading" ? t("crosshair.generating") : t("crosshair.preview")}
         </button>
       </form>
 
       {state === "error" && (
-        <p className="text-sm text-crit">Impossible de générer l'aperçu — vérifie le code et ta clé API.</p>
+        <p className="text-sm text-crit">{t("crosshair.error")}</p>
       )}
 
       {preview && (
         <div className="panel-clip flex items-center justify-center bg-[#0B0E11] p-8">
-          <img src={preview} alt="Aperçu du crosshair" className="max-h-40" />
+          <img src={preview} alt={t("crosshair.previewAlt")} className="max-h-40" />
         </div>
       )}
     </div>
@@ -782,6 +773,7 @@ function PrivacySection({
   onSavePin: (pin: string) => Promise<void>;
   onClearPin: () => Promise<void>;
 }) {
+  const { t } = useTranslation("settings");
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
   const [status, setStatus] = useState<"idle" | "saved" | "mismatch" | "error">("idle");
@@ -804,29 +796,25 @@ function PrivacySection({
   }
 
   async function handleClear() {
-    const confirmed = window.confirm("Désactiver le verrou PIN des notes perso ?");
+    const confirmed = window.confirm(t("privacy.confirmDisable"));
     if (!confirmed) return;
     await onClearPin();
   }
 
   return (
     <div className="max-w-xl space-y-4">
-      <SectionTitle>Confidentialité</SectionTitle>
-      <p className="text-sm text-lo">
-        Verrouille l'affichage des notes perso (tags "smurf"/"toxique"/"duo régulier"...)
-        derrière un PIN — pratique en stream ou sur un écran partagé. Le verrouillage se
-        redemande à chaque changement de profil ou redémarrage de l'app.
-      </p>
+      <SectionTitle>{t("privacy.title")}</SectionTitle>
+      <p className="text-sm text-lo">{t("privacy.description")}</p>
 
       {enabled ? (
         <div className="space-y-2">
-          <p className="text-sm text-hi">Verrou PIN actif.</p>
+          <p className="text-sm text-hi">{t("privacy.lockActive")}</p>
           <button
             type="button"
             onClick={handleClear}
             className="border border-crit/60 px-4 py-2 font-display text-xs font-semibold uppercase tracking-hud text-crit transition-colors hover:bg-crit/10"
           >
-            Désactiver le verrou
+            {t("privacy.disableLock")}
           </button>
         </div>
       ) : (
@@ -840,7 +828,7 @@ function PrivacySection({
                 setPin(e.target.value);
                 setStatus("idle");
               }}
-              placeholder="Nouveau PIN"
+              placeholder={t("privacy.newPin")}
               className={INPUT_CLASS}
             />
             <input
@@ -851,7 +839,7 @@ function PrivacySection({
                 setConfirmPin(e.target.value);
                 setStatus("idle");
               }}
-              placeholder="Confirmer"
+              placeholder={t("privacy.confirmPin")}
               className={INPUT_CLASS}
             />
           </div>
@@ -861,15 +849,15 @@ function PrivacySection({
             disabled={!pin.trim()}
             className="btn-clip bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#FF5969] disabled:opacity-50"
           >
-            Activer le verrou
+            {t("privacy.activateLock")}
           </button>
           {status === "mismatch" && (
-            <p className="text-xs text-crit">Les deux PIN ne correspondent pas.</p>
+            <p className="text-xs text-crit">{t("privacy.mismatch")}</p>
           )}
           {status === "error" && (
-            <p className="text-xs text-crit">Échec de l'enregistrement du PIN.</p>
+            <p className="text-xs text-crit">{t("privacy.saveError")}</p>
           )}
-          {status === "saved" && <p className="text-xs text-lo">Verrou activé.</p>}
+          {status === "saved" && <p className="text-xs text-lo">{t("privacy.lockActivated")}</p>}
         </div>
       )}
     </div>
@@ -877,12 +865,11 @@ function PrivacySection({
 }
 
 function DataSection() {
+  const { t } = useTranslation("settings");
   const [status, setStatus] = useState<"idle" | "working" | "done" | "error">("idle");
 
   async function handleReset() {
-    const confirmed = window.confirm(
-      "Effacer le cache local, l'historique de rank et l'historique de recherche ? Cette action est irréversible (les réglages sont conservés).",
-    );
+    const confirmed = window.confirm(t("data.resetConfirm"));
     if (!confirmed) return;
 
     setStatus("working");
@@ -897,64 +884,48 @@ function DataSection() {
 
   return (
     <div className="max-w-xl space-y-4">
-      <SectionTitle>Données locales</SectionTitle>
-      <p className="text-sm text-lo">
-        L'app garde une copie locale (cache SQLite) de tes recherches, du cache API et de
-        l'historique de progression de rank pour rester rapide et fonctionner hors-ligne en
-        repli.
-      </p>
+      <SectionTitle>{t("data.title")}</SectionTitle>
+      <p className="text-sm text-lo">{t("data.description")}</p>
 
       <div className="relative border border-crit/30 bg-crit/5 p-4">
         <span className="absolute inset-y-0 left-0 w-[3px] bg-crit" />
-        <h2 className="text-sm font-semibold text-hi">Effacer le cache et l'historique local</h2>
-        <p className="mt-1 text-xs text-lo">
-          Supprime le cache API, l'historique de progression de rank et l'historique de
-          recherche. Ta clé API et tes préférences sont conservées.
-        </p>
+        <h2 className="text-sm font-semibold text-hi">{t("data.resetTitle")}</h2>
+        <p className="mt-1 text-xs text-lo">{t("data.resetDescription")}</p>
         <button
           type="button"
           onClick={handleReset}
           disabled={status === "working"}
           className="mt-3 border border-crit/60 px-4 py-2 font-display text-xs font-semibold uppercase tracking-hud text-crit transition-colors hover:bg-crit/10 disabled:opacity-50"
         >
-          {status === "working" ? "Suppression…" : "Supprimer"}
+          {status === "working" ? t("data.deleting") : t("data.delete")}
         </button>
-        {status === "done" && <p className="mt-2 text-sm text-accent">Données effacées.</p>}
-        {status === "error" && <p className="mt-2 text-sm text-crit">Échec de la suppression.</p>}
+        {status === "done" && <p className="mt-2 text-sm text-accent">{t("data.deleted")}</p>}
+        {status === "error" && <p className="mt-2 text-sm text-crit">{t("data.deleteError")}</p>}
       </div>
     </div>
   );
 }
 
-const SHORTCUTS: Array<{ keys: string; description: string }> = [
-  {
-    keys: "Ctrl+Shift+V",
-    description:
-      "Bascule l'overlay en jeu entre mode click-through (affichage seul) et mode interactif (déplaçable à la souris).",
-  },
-  {
-    keys: "Ctrl+K",
-    description:
-      "Ouvre la palette de commande (Rechercher un joueur, aller à un écran, sauter vers un joueur récent/favori). Fenêtre principale uniquement.",
-  },
-];
+const SHORTCUT_KEYS = ["Ctrl+Shift+V", "Ctrl+K"] as const;
+const SHORTCUT_DESCRIPTION_KEYS: Record<(typeof SHORTCUT_KEYS)[number], string> = {
+  "Ctrl+Shift+V": "shortcuts.ctrlShiftV",
+  "Ctrl+K": "shortcuts.ctrlK",
+};
 
 function ShortcutsSection() {
+  const { t } = useTranslation("settings");
   return (
     <div className="max-w-xl space-y-4">
-      <SectionTitle>Raccourcis clavier</SectionTitle>
-      <p className="text-sm text-lo">
-        Liste centralisée de tous les raccourcis clavier de l'app. D'autres pourront s'y
-        ajouter au fil des futures versions.
-      </p>
+      <SectionTitle>{t("shortcuts.title")}</SectionTitle>
+      <p className="text-sm text-lo">{t("shortcuts.description")}</p>
 
       <div className="divide-y divide-line border border-line">
-        {SHORTCUTS.map((s) => (
-          <div key={s.keys} className="flex items-start gap-4 px-4 py-3">
+        {SHORTCUT_KEYS.map((keys) => (
+          <div key={keys} className="flex items-start gap-4 px-4 py-3">
             <span className="hud-label shrink-0 border border-line bg-surface px-2 py-1 font-mono text-[11px] text-hi">
-              {s.keys}
+              {keys}
             </span>
-            <p className="text-sm text-lo">{s.description}</p>
+            <p className="text-sm text-lo">{t(SHORTCUT_DESCRIPTION_KEYS[keys])}</p>
           </div>
         ))}
       </div>
@@ -969,6 +940,7 @@ function HealthSection({
   enabled: boolean;
   onChange: (enabled: boolean) => Promise<void>;
 }) {
+  const { t } = useTranslation("settings");
   const [summary, setSummary] = useState<UsageMetricsSummary | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -990,11 +962,8 @@ function HealthSection({
 
   return (
     <div className="max-w-3xl space-y-4">
-      <SectionTitle>Santé de l'app</SectionTitle>
-      <p className="text-sm text-lo">
-        Dashboard 100% local (taux de cache hit, erreurs API des 7 derniers jours) — rien
-        n'est jamais envoyé nulle part, ça reste dans ta base SQLite locale.
-      </p>
+      <SectionTitle>{t("health.title")}</SectionTitle>
+      <p className="text-sm text-lo">{t("health.description")}</p>
 
       <label className="flex items-center gap-2.5 text-sm text-hi">
         <input
@@ -1003,12 +972,9 @@ function HealthSection({
           onChange={(e) => onChange(e.target.checked)}
           className="h-4 w-4 border-line bg-surface accent-accent"
         />
-        Accumuler ces métriques localement
+        {t("health.accumulateLabel")}
       </label>
-      <p className="text-xs text-lo">
-        Désactivé par défaut : ajoute une petite écriture SQLite à chaque appel Henrik pour
-        compter les évènements, activable uniquement si tu veux ce suivi.
-      </p>
+      <p className="text-xs text-lo">{t("health.accumulateHint")}</p>
 
       {enabled && (
         <>
@@ -1019,27 +985,27 @@ function HealthSection({
               disabled={loading}
               className="border border-line px-4 py-2 font-display text-xs font-semibold uppercase tracking-hud text-hi transition-colors hover:bg-surface disabled:opacity-50"
             >
-              {loading ? "Actualisation…" : "Actualiser"}
+              {loading ? t("health.refreshing") : t("health.refresh")}
             </button>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             <StatCard
-              label="Taux de cache hit (7j)"
+              label={t("health.cacheHitRate")}
               value={`${hitRate}%`}
-              hint={`${summary?.cache_hits ?? 0} / ${totalRequests} requêtes servies depuis le cache`}
+              hint={t("health.cacheHitHint", { hits: summary?.cache_hits ?? 0, total: totalRequests })}
               gaugePercent={hitRate}
               gaugeColor="#7CE8D3"
             />
             <StatCard
-              label="Appels réseau (7j)"
+              label={t("health.networkCalls")}
               value={String(summary?.network_fetches ?? 0)}
-              hint="Cache manqué ou périmé, requête Henrik effectuée"
+              hint={t("health.networkCallsHint")}
             />
             <StatCard
-              label="Erreurs API (7j)"
+              label={t("health.apiErrors")}
               value={String(summary?.api_errors ?? 0)}
-              hint="Rate limit, circuit breaker, panne réseau..."
+              hint={t("health.apiErrorsHint")}
             />
           </div>
         </>
@@ -1049,6 +1015,7 @@ function HealthSection({
 }
 
 function LogsSection() {
+  const { t } = useTranslation("settings");
   const [snapshot, setSnapshot] = useState<{ path: string | null; content: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [copyState, setCopyState] = useState<"idle" | "copied">("idle");
@@ -1075,11 +1042,8 @@ function LogsSection() {
 
   return (
     <div className="max-w-3xl space-y-4">
-      <SectionTitle>Logs</SectionTitle>
-      <p className="text-sm text-lo">
-        Dernières entrées du fichier de log local de l'app — utile pour du support/debug
-        sans avoir à fouiller <span className="font-mono text-xs">%APPDATA%</span> à la main.
-      </p>
+      <SectionTitle>{t("logs.title")}</SectionTitle>
+      <p className="text-sm text-lo">{t("logs.description")}</p>
       {snapshot?.path && (
         <p className="font-mono text-xs text-lo/70 break-all">{snapshot.path}</p>
       )}
@@ -1091,7 +1055,7 @@ function LogsSection() {
           disabled={loading}
           className="border border-line px-4 py-2 font-display text-xs font-semibold uppercase tracking-hud text-hi transition-colors hover:bg-surface disabled:opacity-50"
         >
-          {loading ? "Actualisation…" : "Actualiser"}
+          {loading ? t("logs.refreshing") : t("logs.refresh")}
         </button>
         <button
           type="button"
@@ -1099,26 +1063,24 @@ function LogsSection() {
           disabled={!snapshot?.content}
           className="border border-line px-4 py-2 font-display text-xs font-semibold uppercase tracking-hud text-hi transition-colors hover:bg-surface disabled:opacity-50"
         >
-          {copyState === "copied" ? "Copié !" : "Copier"}
+          {copyState === "copied" ? t("logs.copied") : t("logs.copy")}
         </button>
       </div>
 
       <pre className="max-h-[60vh] overflow-auto border border-line bg-surface p-4 font-mono text-[11px] leading-relaxed text-lo">
-        {snapshot?.content ? snapshot.content : "Aucun log pour l'instant."}
+        {snapshot?.content ? snapshot.content : t("logs.empty")}
       </pre>
     </div>
   );
 }
 
 function AboutSection() {
+  const { t } = useTranslation("settings");
   return (
     <div className="max-w-xl space-y-2">
-      <SectionTitle>À propos</SectionTitle>
-      <p className="text-sm text-lo">Valorant Tracker v0.1.0 — build Tauri 2.x</p>
-      <p className="text-xs text-lo">
-        Données de rank et de matchs fournies par l'API Henrik Dev. N'est ni développé ni
-        approuvé par Riot Games.
-      </p>
+      <SectionTitle>{t("about.title")}</SectionTitle>
+      <p className="text-sm text-lo">{t("about.version", { version: "0.1.0" })}</p>
+      <p className="text-xs text-lo">{t("about.disclaimer")}</p>
     </div>
   );
 }

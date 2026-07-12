@@ -1,0 +1,18 @@
+{
+  "state": {
+    "pregame": "Sélection des agents",
+    "inGame": "Partie en cours",
+    "menu": "Dans le menu",
+    "disabled": "Détection désactivée",
+    "waiting": "En attente de partie"
+  },
+  "waitingHint": "Lance une partie pour voir le rank du lobby ici.",
+  "detectedHint": "Partie détectée — identification des joueurs…",
+  "team": "Équipe",
+  "opponents": "Adversaires",
+  "topAgents": "Tes agents les plus performants",
+  "shortcutInteractive": " — mode interactif : déplace la fenêtre puis rebascule.",
+  "shortcutStatic": " — déplacer l'overlay",
+  "identifying": "Identification…",
+  "unknownPlayer": "Joueur inconnu"
+}

@@ -1,12 +1,15 @@
 import { Fragment } from "react";
+import { useTranslation } from "react-i18next";
 
 import type { HeatmapCell } from "../lib/stats";
 
-const DAY_LABELS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+const DAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 
 /** Backlog #15 : grille jour x heure — l'opacité reflète le winrate, la présence de cellule
  * (vs. fond neutre) reflète juste qu'il y a eu au moins un match sur ce créneau. */
 export default function PerformanceHeatmap({ cells }: { cells: HeatmapCell[] }) {
+  const { t } = useTranslation("componentsExtra");
+  const dayLabels = DAY_KEYS.map((key) => t(`performanceHeatmap.days.${key}`));
   const maxMatches = Math.max(1, ...cells.map((c) => c.matches));
 
   return (
@@ -18,7 +21,7 @@ export default function PerformanceHeatmap({ cells }: { cells: HeatmapCell[] }) 
             {hour % 4 === 0 ? hour : ""}
           </div>
         ))}
-        {DAY_LABELS.map((label, day) => (
+        {dayLabels.map((label, day) => (
           <Fragment key={day}>
             <div className="flex items-center text-[10px] text-lo">{label}</div>
             {Array.from({ length: 24 }, (_, hour) => {
@@ -37,8 +40,13 @@ export default function PerformanceHeatmap({ cells }: { cells: HeatmapCell[] }) 
                   key={`${day}-${hour}`}
                   title={
                     matches > 0
-                      ? `${label} ${hour}h — ${matches} match${matches > 1 ? "s" : ""}, ${Math.round(winPercent ?? 0)}% de victoires`
-                      : `${label} ${hour}h — aucun match`
+                      ? t("performanceHeatmap.cellTooltip", {
+                          day: label,
+                          hour,
+                          count: matches,
+                          winPercent: Math.round(winPercent ?? 0),
+                        })
+                      : t("performanceHeatmap.cellTooltipEmpty", { day: label, hour })
                   }
                   className="h-3.5 w-3.5"
                   style={{ backgroundColor: color }}

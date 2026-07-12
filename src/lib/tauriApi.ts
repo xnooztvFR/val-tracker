@@ -712,6 +712,8 @@ export interface AppSettings {
   usage_metrics_enabled: boolean;
   ui_theme: string;
   ui_accent: string;
+  /** Système multilangue : `"fr"` (défaut) | `"en"`. */
+  ui_language: string;
   /** Backlog #31 : `"compact"` | `"detailed"` (défaut). */
   overlay_density: string;
   /** Backlog #24 : alerte "N défaites d'affilée" (comptes "à soi" uniquement). */
@@ -828,6 +830,7 @@ export const tauriApi = {
     invoke<UsageMetricsSummary>("get_usage_metrics_summary"),
   saveUiTheme: (theme: string) => invoke<void>("save_ui_theme", { theme }),
   saveUiAccent: (accent: string) => invoke<void>("save_ui_accent", { accent }),
+  saveUiLanguage: (language: string) => invoke<void>("save_ui_language", { language }),
   saveOverlayDensity: (density: string) =>
     invoke<void>("save_overlay_density", { density }),
   saveLossStreakAlertEnabled: (enabled: boolean) =>

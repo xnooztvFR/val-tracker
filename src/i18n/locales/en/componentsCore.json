@@ -1,0 +1,65 @@
+{
+  "errorState": {
+    "alertLabel": "Alert",
+    "missingApiKey": "No Henrik API key configured.",
+    "notFound": "Player not found, check the username#tag and region.",
+    "rateLimitedWithDelay": "Too many requests, try again in {{seconds}}s.",
+    "rateLimited": "Too many requests, try again in a moment.",
+    "circuitOpen": "Too many recent failures reaching the Henrik API, try again in a moment.",
+    "network": "Network outage — unable to reach the Henrik API.",
+    "api": "Henrik API error ({{status}}).",
+    "unknown": "An unexpected error occurred.",
+    "goToSettings": "Go to Settings"
+  },
+  "staleDataBanner": {
+    "label": "Cache",
+    "message": "Cached data, last updated on {{date}}."
+  },
+  "statusBanner": {
+    "defaultIncidentTitle": "Ongoing incident",
+    "maintenance": "Maintenance",
+    "incident": "Incident",
+    "moreOthers": "+{{count}} more",
+    "dismiss": "Dismiss"
+  },
+  "titlebar": {
+    "exitMiniMode": "Exit mini mode",
+    "miniMode": "Mini mode (overlay)",
+    "minimize": "Minimize",
+    "close": "Close"
+  },
+  "topNav": {
+    "tabs": {
+      "leaderboard": "Leaderboard",
+      "premier": "Premier",
+      "esports": "Esports",
+      "vs": "VS",
+      "home": "Home",
+      "history": "History",
+      "trends": "Trends",
+      "agents": "Agents",
+      "maps": "Maps",
+      "duo": "Duo"
+    },
+    "home": "Home",
+    "more": "More",
+    "close": "Close",
+    "changePlayer": "Change player",
+    "settings": "Settings"
+  },
+  "apiStatusBadge": {
+    "ok": "API OK",
+    "rateLimited": "Rate limit",
+    "circuitOpen": "API paused",
+    "network": "Offline"
+  },
+  "detectionStatusBadge": {
+    "disabled": "Detection disabled",
+    "active": "Detection active",
+    "detected": "Game detected",
+    "tooltip": "{{label}} — see settings"
+  },
+  "queueStatusStrip": {
+    "label": "Queues"
+  }
+}

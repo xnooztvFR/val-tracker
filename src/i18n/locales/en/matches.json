@@ -1,0 +1,119 @@
+{
+  "history": {
+    "title": "History · last {{count}} engagements",
+    "exportCsv": "Export CSV",
+    "exportJson": "Export JSON",
+    "empty": {
+      "title": "No competitive match found",
+      "detail": "This profile has no competitive history in this sample."
+    },
+    "session": {
+      "matchCount_one": "{{count}} match",
+      "matchCount_other": "{{count}} matches",
+      "record": "{{wins}}W - {{losses}}L"
+    },
+    "csv": {
+      "header": {
+        "date": "date",
+        "map": "map",
+        "agent": "agent",
+        "result": "result",
+        "kills": "kills",
+        "deaths": "deaths",
+        "assists": "assists",
+        "score": "score"
+      },
+      "result": {
+        "win": "win",
+        "loss": "loss",
+        "empty": ""
+      }
+    }
+  },
+  "detail": {
+    "endType": {
+      "elimination": "Elimination",
+      "bomb": "Spike",
+      "defuse": "Defuse",
+      "roundTimerExpired": "Time expired",
+      "surrendered": "Surrender"
+    },
+    "backToHistory": "← Back to history",
+    "notFound": "Match not found.",
+    "unknownMap": "Unknown map",
+    "reportButton": "Match report",
+    "roundTimeline": {
+      "title": "Round-by-round ({{count}} rounds) — click a round for details",
+      "roundTooltip": "Round {{number}} — {{endType}}"
+    },
+    "table": {
+      "player": "Player",
+      "team": "Team",
+      "kda": "KDA",
+      "kd": "K/D",
+      "score": "Score",
+      "acs": "ACS",
+      "headshotPercent": "HS%",
+      "damageDealtReceived": "Damage dealt/received",
+      "avgEconomy": "Avg. economy"
+    },
+    "roundDetail": {
+      "title": "Round {{number}} — {{endType}}",
+      "bombPlanted": " · Spike planted",
+      "bombDefused": " · Spike defused",
+      "table": {
+        "player": "Player",
+        "kills": "Kills",
+        "damage": "Damage",
+        "weapon": "Weapon",
+        "loadout": "Loadout"
+      }
+    },
+    "economy": {
+      "title": "Your economy",
+      "spent": "Total spent: {{spent}} credits · {{average}} avg. per round",
+      "avgLoadout": "Average loadout value: {{value}}"
+    }
+  },
+  "report": {
+    "tier": {
+      "eco": "Eco",
+      "force": "Force-buy",
+      "full": "Full-buy"
+    },
+    "backToDetail": "← Back to match detail",
+    "title": "Match report",
+    "recapButton": "Recap card",
+    "notEnoughData": "Not enough data to generate a report for this match.",
+    "economyTimeline": {
+      "title": "Economy timeline ({{count}} rounds)",
+      "tooltip": "Round {{index}} — {{status}} — {{tier}} ({{avgLoadout}} avg. cr.)",
+      "won": "won",
+      "lost": "lost"
+    },
+    "winrateByBuyType": {
+      "title": "Winrate by buy type",
+      "ratio": "{{won}}/{{played}} ({{percent}}%)",
+      "note": "Estimated from your team's average loadout value each round — not an official Riot calculation, just a rough guide."
+    },
+    "bestRound": {
+      "title": "Best round",
+      "label": "Round {{index}}",
+      "detail": "{{kills}} kill(s) · {{damage}} damage"
+    },
+    "worstRound": {
+      "title": "Quietest round",
+      "label": "Round {{index}}",
+      "detail": "{{kills}} kill(s) · {{damage}} damage"
+    },
+    "afk": {
+      "title": "AFK detected",
+      "rounds_one": "Round {{list}}",
+      "rounds_other": "Rounds {{list}}"
+    }
+  },
+  "recap": {
+    "unknownMap": "Unknown map",
+    "defaultMode": "Competitive"
+  }
+}

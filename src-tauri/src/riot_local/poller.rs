@@ -438,6 +438,7 @@ async fn read_settings(app: &AppHandle) -> crate::settings::AppSettings {
         usage_metrics_enabled: false,
         ui_theme: "dark".to_string(),
         ui_accent: "red".to_string(),
+        ui_language: "fr".to_string(),
         overlay_density: "detailed".to_string(),
         loss_streak_alert_enabled: false,
         loss_streak_alert_count: 3,

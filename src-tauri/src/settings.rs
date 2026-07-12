@@ -26,6 +26,7 @@ const KEY_STATUS_WATCHER_ENABLED: &str = "status_watcher_enabled";
 const KEY_USAGE_METRICS_ENABLED: &str = "usage_metrics_enabled";
 const KEY_UI_THEME: &str = "ui_theme";
 const KEY_UI_ACCENT: &str = "ui_accent";
+const KEY_UI_LANGUAGE: &str = "ui_language";
 const KEY_OVERLAY_DENSITY: &str = "overlay_density";
 const KEY_LOSS_STREAK_ALERT_ENABLED: &str = "loss_streak_alert_enabled";
 const KEY_LOSS_STREAK_ALERT_COUNT: &str = "loss_streak_alert_count";
@@ -40,6 +41,7 @@ const KEY_NOTES_PIN: &str = "notes_pin";
 
 const DEFAULT_UI_THEME: &str = "dark";
 const DEFAULT_UI_ACCENT: &str = "red";
+const DEFAULT_UI_LANGUAGE: &str = "fr";
 const DEFAULT_OVERLAY_DENSITY: &str = "detailed";
 const DEFAULT_LOSS_STREAK_ALERT_COUNT: i64 = 3;
 const DEFAULT_INACTIVITY_REMINDER_DAYS: i64 = 3;
@@ -101,6 +103,9 @@ pub struct AppSettings {
     /// Backlog #38 : `"red"` (défaut, identité HUD d'origine) | `"cyan"` | `"violet"` |
     /// `"amber"` — voir les variables CSS `--color-accent*` dans `index.css`.
     pub ui_accent: String,
+    /// Système multilangue : `"fr"` (défaut) | `"en"`. Le frontend (react-i18next) applique
+    /// cette valeur au démarrage puis à chaque changement via Paramètres.
+    pub ui_language: String,
     /// Backlog #31 : densité d'info affichée dans l'overlay en jeu — `"compact"` (juste le
     /// badge de rank) ou `"detailed"` (défaut, ajoute le nom du rank + le RR).
     pub overlay_density: String,
@@ -138,6 +143,7 @@ impl fmt::Debug for AppSettings {
             .field("usage_metrics_enabled", &self.usage_metrics_enabled)
             .field("ui_theme", &self.ui_theme)
             .field("ui_accent", &self.ui_accent)
+            .field("ui_language", &self.ui_language)
             .field("overlay_density", &self.overlay_density)
             .field("loss_streak_alert_enabled", &self.loss_streak_alert_enabled)
             .field("loss_streak_alert_count", &self.loss_streak_alert_count)
@@ -248,6 +254,8 @@ pub fn load_settings(conn: &Connection) -> rusqlite::Result<AppSettings> {
         get_raw(conn, KEY_UI_THEME)?.unwrap_or_else(|| DEFAULT_UI_THEME.to_string());
     let ui_accent =
         get_raw(conn, KEY_UI_ACCENT)?.unwrap_or_else(|| DEFAULT_UI_ACCENT.to_string());
+    let ui_language =
+        get_raw(conn, KEY_UI_LANGUAGE)?.unwrap_or_else(|| DEFAULT_UI_LANGUAGE.to_string());
     let overlay_density = get_raw(conn, KEY_OVERLAY_DENSITY)?
         .unwrap_or_else(|| DEFAULT_OVERLAY_DENSITY.to_string());
     let loss_streak_alert_enabled = get_raw(conn, KEY_LOSS_STREAK_ALERT_ENABLED)?
@@ -278,6 +286,7 @@ pub fn load_settings(conn: &Connection) -> rusqlite::Result<AppSettings> {
         usage_metrics_enabled,
         ui_theme,
         ui_accent,
+        ui_language,
         overlay_density,
         loss_streak_alert_enabled,
         loss_streak_alert_count,
@@ -369,6 +378,11 @@ pub fn set_ui_theme(conn: &Connection, theme: &str) -> rusqlite::Result<()> {
 
 pub fn set_ui_accent(conn: &Connection, accent: &str) -> rusqlite::Result<()> {
     set_raw(conn, KEY_UI_ACCENT, accent)
+}
+
+/// Système multilangue : `"fr"` | `"en"`.
+pub fn set_ui_language(conn: &Connection, language: &str) -> rusqlite::Result<()> {
+    set_raw(conn, KEY_UI_LANGUAGE, language)
 }
 
 /// Backlog #31 : `"compact"` | `"detailed"`.
@@ -608,6 +622,15 @@ mod tests {
         let settings = load_settings(&conn).unwrap();
         assert_eq!(settings.ui_theme, "light");
         assert_eq!(settings.ui_accent, "cyan");
+    }
+
+    #[test]
+    fn ui_language_default_then_round_trip() {
+        let conn = memory_conn();
+        assert_eq!(load_settings(&conn).unwrap().ui_language, "fr");
+
+        set_ui_language(&conn, "en").unwrap();
+        assert_eq!(load_settings(&conn).unwrap().ui_language, "en");
     }
 
     #[test]

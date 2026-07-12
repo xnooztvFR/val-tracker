@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { useActivePlayerStore } from "../store/activePlayerStore";
 import { useAccount, useMmr } from "../hooks/usePlayer";
@@ -10,19 +11,19 @@ import AccountSwitcher from "./AccountSwitcher";
 import logo from "../assets/logo.png";
 
 const GLOBAL_TABS = [
-  { to: "/classement", label: "Classement" },
-  { to: "/premier", label: "Premier" },
-  { to: "/esport", label: "Esport" },
-  { to: "/vs", label: "VS" },
+  { to: "/classement", key: "leaderboard" },
+  { to: "/premier", key: "premier" },
+  { to: "/esport", key: "esports" },
+  { to: "/vs", key: "vs" },
 ] as const;
 
 const TABS = [
-  { to: "", label: "Accueil", end: true },
-  { to: "/matchs", label: "Historique", end: false },
-  { to: "/tendances", label: "Tendances", end: true },
-  { to: "/agents", label: "Agents", end: true },
-  { to: "/cartes", label: "Cartes", end: true },
-  { to: "/duo", label: "Duo", end: true },
+  { to: "", key: "home", end: true },
+  { to: "/matchs", key: "history", end: false },
+  { to: "/tendances", key: "trends", end: true },
+  { to: "/agents", key: "agents", end: true },
+  { to: "/cartes", key: "maps", end: true },
+  { to: "/duo", key: "duo", end: true },
 ] as const;
 
 /** Barre de navigation globale unique : logo, onglets du joueur actif (masqués tant
@@ -31,6 +32,7 @@ const TABS = [
  * compressaient le chip de profil, d'où le regroupement des onglets globaux ici) et, à
  * droite, un chip de profil connecté. */
 export default function TopNav() {
+  const { t } = useTranslation("componentsCore");
   const { player, clear } = useActivePlayerStore();
   const navigate = useNavigate();
 
@@ -43,7 +45,7 @@ export default function TopNav() {
       <button
         type="button"
         onClick={() => navigate(player ? `/joueur/${player.region}/${player.name}/${player.tag}` : "/")}
-        aria-label="Accueil"
+        aria-label={t("topNav.home")}
         className="mr-3 flex shrink-0 items-center gap-2 self-center pr-2"
       >
         <img src={logo} alt="" className="h-6 w-6 object-contain" />
@@ -53,7 +55,7 @@ export default function TopNav() {
         <div className="flex items-stretch">
           {TABS.map((tab) => (
             <NavLink
-              key={tab.label}
+              key={tab.key}
               to={`/joueur/${player.region}/${player.name}/${player.tag}${tab.to}`}
               end={tab.end}
               className={({ isActive }) =>
@@ -64,7 +66,7 @@ export default function TopNav() {
                 }`
               }
             >
-              {tab.label}
+              {t(`topNav.tabs.${tab.key}`)}
             </NavLink>
           ))}
         </div>
@@ -86,8 +88,8 @@ export default function TopNav() {
             clear();
             navigate("/");
           }}
-          aria-label="Changer de joueur"
-          title="Changer de joueur"
+          aria-label={t("topNav.changePlayer")}
+          title={t("topNav.changePlayer")}
           className="flex h-8 w-8 shrink-0 items-center justify-center self-center text-lo transition-colors hover:bg-raised hover:text-hi"
         >
           <SearchIcon />
@@ -97,8 +99,8 @@ export default function TopNav() {
       <button
         type="button"
         onClick={() => navigate("/parametres")}
-        aria-label="Paramètres"
-        title="Paramètres"
+        aria-label={t("topNav.settings")}
+        title={t("topNav.settings")}
         className="flex h-8 w-8 shrink-0 items-center justify-center self-center text-hi/70 transition-colors hover:bg-raised hover:text-accent"
       >
         <GearIcon />
@@ -117,6 +119,7 @@ export default function TopNav() {
  * plutôt que 4 onglets fixes en permanence — voir la doc de TopNav pour le contexte
  * (débordement de la barre à largeur fixe). */
 function MoreMenu() {
+  const { t } = useTranslation("componentsCore");
   const [open, setOpen] = useState(false);
   const location = useLocation();
   const isActive = GLOBAL_TABS.some((tab) => location.pathname.startsWith(tab.to));
@@ -131,14 +134,14 @@ function MoreMenu() {
         }`}
       >
         <GridIcon />
-        Plus
+        {t("topNav.more")}
       </button>
 
       {open && (
         <>
           <button
             type="button"
-            aria-label="Fermer"
+            aria-label={t("topNav.close")}
             className="fixed inset-0 z-10 cursor-default"
             onClick={() => setOpen(false)}
           />
@@ -154,7 +157,7 @@ function MoreMenu() {
                   }`
                 }
               >
-                {tab.label}
+                {t(`topNav.tabs.${tab.key}`)}
               </NavLink>
             ))}
           </div>

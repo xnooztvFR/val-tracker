@@ -17,6 +17,7 @@ interface SettingsState {
   setUsageMetricsEnabled: (enabled: boolean) => Promise<void>;
   setUiTheme: (theme: string) => Promise<void>;
   setUiAccent: (accent: string) => Promise<void>;
+  setUiLanguage: (language: string) => Promise<void>;
   setOverlayDensity: (density: string) => Promise<void>;
   setLossStreakAlertEnabled: (enabled: boolean) => Promise<void>;
   setLossStreakAlertCount: (count: number) => Promise<void>;
@@ -88,6 +89,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   setUiAccent: async (accent: string) => {
     await tauriApi.saveUiAccent(accent);
+    await get().refresh();
+  },
+
+  setUiLanguage: async (language: string) => {
+    await tauriApi.saveUiLanguage(language);
     await get().refresh();
   },
 

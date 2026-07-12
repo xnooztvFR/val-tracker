@@ -1,0 +1,64 @@
+{
+  "leaderboard": {
+    "title": "Competitive leaderboard",
+    "searchPlaceholder": "Name#Tag",
+    "locate": "Locate",
+    "reset": "Reset",
+    "updatedAt": "Updated: {{date}}",
+    "columns": {
+      "rank": "Rank",
+      "player": "Player",
+      "tier": "Tier",
+      "rr": "RR",
+      "wins": "Wins"
+    },
+    "anonymousPlayer": "Anonymous player",
+    "banned": "Banned",
+    "previous": "Previous",
+    "page": "Page {{page}}",
+    "next": "Next"
+  },
+  "premier": {
+    "title": "Premier",
+    "teamNamePlaceholder": "Team name",
+    "search": "Search",
+    "reset": "Reset",
+    "emptyTitle": "No team found",
+    "emptyDetail": "Try another search or region.",
+    "teamCount_one": "{{count}} team · page {{page}}/{{pageCount}}",
+    "teamCount_other": "{{count}} teams · page {{page}}/{{pageCount}}",
+    "columns": {
+      "rank": "Rank",
+      "team": "Team",
+      "conferenceDivision": "Conference / Division",
+      "score": "Score",
+      "winsLosses": "W / L"
+    },
+    "division": "Div {{division}}",
+    "previous": "Previous",
+    "pageOf": "Page {{page}} / {{pageCount}}",
+    "next": "Next"
+  },
+  "premierTeamDetail": {
+    "backToPremier": "← Back to Premier",
+    "teamNotFound": "Team not found.",
+    "enrolled": "Enrolled in the current season",
+    "notEnrolled": "Not enrolled",
+    "stats": {
+      "ranking": "Ranking",
+      "conference": "Conference",
+      "conferenceDivision": "{{conference}} · Div {{division}}",
+      "points": "Points",
+      "matches": "Matches",
+      "wins": "Wins",
+      "losses": "Losses",
+      "roundsWonLost": "Rounds W/L"
+    },
+    "roster": "Roster ({{count}})",
+    "rosterEmpty": "Roster not reported.",
+    "seasonHistory": "Season history",
+    "pointsTransition": "{{before}} → {{after}} pts",
+    "tournament": "Tournament · {{count}} matches",
+    "tournamentPlacement": "Place #{{placement}} · {{before}} → {{after}} pts"
+  }
+}

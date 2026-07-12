@@ -1,0 +1,18 @@
+{
+  "state": {
+    "pregame": "Agent select",
+    "inGame": "Match in progress",
+    "menu": "In menu",
+    "disabled": "Detection disabled",
+    "waiting": "Waiting for a match"
+  },
+  "waitingHint": "Start a match to see the lobby's rank here.",
+  "detectedHint": "Match detected — identifying players…",
+  "team": "Team",
+  "opponents": "Opponents",
+  "topAgents": "Your best-performing agents",
+  "shortcutInteractive": " — interactive mode: move the window then toggle back.",
+  "shortcutStatic": " — move the overlay",
+  "identifying": "Identifying…",
+  "unknownPlayer": "Unknown player"
+}

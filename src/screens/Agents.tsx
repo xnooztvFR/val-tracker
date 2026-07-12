@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Skeleton } from "../components/Skeleton";
 import { useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { useAccount } from "../hooks/usePlayer";
 import { useMatches } from "../hooks/useMatches";
@@ -12,6 +13,7 @@ import SampleSizeSwitch, { type SampleSize } from "../components/SampleSizeSwitc
 import type { MatchEntry } from "../lib/tauriApi";
 import { agentIconUrl, formatKdRatio, formatPercent } from "../lib/format";
 import { AGENT_ROLE_ORDER, agentRole, agentRoleLabel, type AgentRole } from "../lib/agentRoles";
+import i18n from "../i18n";
 
 interface AgentStats {
   id: string;
@@ -41,7 +43,7 @@ function computeAgentStats(matches: MatchEntry[], puuid: string): AgentStats[] {
 
     const entry = byAgent.get(player.agent.id) ?? {
       id: player.agent.id,
-      name: player.agent.name ?? "Agent inconnu",
+      name: player.agent.name ?? i18n.t("stats:agents.unknownAgent"),
       matches: 0,
       wins: 0,
       kills: 0,
@@ -98,6 +100,7 @@ function computeRoleStats(rows: AgentStats[]): RoleStats[] {
 }
 
 export default function Agents() {
+  const { t } = useTranslation("stats");
   const { region, name, tag } = useParams<{ region: string; name: string; tag: string }>();
   const [sampleSize, setSampleSize] = useState<SampleSize>(20);
 
@@ -114,7 +117,7 @@ export default function Agents() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="hud-label text-sm">Stats par agent</h1>
+        <h1 className="hud-label text-sm">{t("agents.title")}</h1>
         <SampleSizeSwitch value={sampleSize} onChange={setSampleSize} />
       </div>
 
@@ -131,7 +134,7 @@ export default function Agents() {
                 {formatPercent((role.wins / role.matches) * 100)}
               </p>
               <p className="stat-value text-[11px] text-lo">
-                {role.matches} matchs · K/D {formatKdRatio(role.kills, role.deaths)}
+                {t("agents.roleStats", { count: role.matches, kd: formatKdRatio(role.kills, role.deaths) })}
               </p>
             </Panel>
           ))}
@@ -143,16 +146,16 @@ export default function Agents() {
           <table className="w-full text-sm">
             <thead className="border-b border-line text-left">
               <tr>
-                <th className="hud-label px-4 py-3 font-semibold">Agent</th>
-                <th className="hud-label px-4 py-3 font-semibold">Temps</th>
-                <th className="hud-label px-4 py-3 font-semibold">Matchs</th>
-                <th className="hud-label px-4 py-3 font-semibold">Win %</th>
-                <th className="hud-label px-4 py-3 font-semibold">K/D</th>
-                <th className="hud-label px-4 py-3 font-semibold">HS %</th>
-                <th className="hud-label px-4 py-3 font-semibold">ACS</th>
-                <th className="hud-label px-4 py-3 font-semibold">Kills</th>
-                <th className="hud-label px-4 py-3 font-semibold">Deaths</th>
-                <th className="hud-label px-4 py-3 font-semibold">Assists</th>
+                <th className="hud-label px-4 py-3 font-semibold">{t("agents.table.agent")}</th>
+                <th className="hud-label px-4 py-3 font-semibold">{t("agents.table.time")}</th>
+                <th className="hud-label px-4 py-3 font-semibold">{t("agents.table.matches")}</th>
+                <th className="hud-label px-4 py-3 font-semibold">{t("agents.table.winPercent")}</th>
+                <th className="hud-label px-4 py-3 font-semibold">{t("agents.table.kd")}</th>
+                <th className="hud-label px-4 py-3 font-semibold">{t("agents.table.hsPercent")}</th>
+                <th className="hud-label px-4 py-3 font-semibold">{t("agents.table.acs")}</th>
+                <th className="hud-label px-4 py-3 font-semibold">{t("agents.table.kills")}</th>
+                <th className="hud-label px-4 py-3 font-semibold">{t("agents.table.deaths")}</th>
+                <th className="hud-label px-4 py-3 font-semibold">{t("agents.table.assists")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line/60">
@@ -172,7 +175,7 @@ export default function Agents() {
                     </div>
                   </td>
                   <td className="stat-value px-4 py-2.5 text-lo">
-                    {(row.msPlayed / 3_600_000).toFixed(1)} h
+                    {t("agents.table.hoursValue", { hours: (row.msPlayed / 3_600_000).toFixed(1) })}
                   </td>
                   <td className="stat-value px-4 py-2.5">{row.matches}</td>
                   <td className="stat-value px-4 py-2.5">{formatPercent((row.wins / row.matches) * 100)}</td>
@@ -196,7 +199,11 @@ export default function Agents() {
       )}
 
       {matches.data && rows.length === 0 && (
-        <EmptyState icon="radar" title="Aucune donnée d'agent" detail="Aucun match sur cet échantillon." />
+        <EmptyState
+          icon="radar"
+          title={t("agents.empty.title")}
+          detail={t("agents.empty.detail")}
+        />
       )}
     </div>
   );

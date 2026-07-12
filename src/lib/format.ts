@@ -3,6 +3,7 @@
 // 9-11 Silver, 12-14 Gold, 15-17 Platinum, 18-20 Diamond, 21-23 Ascendant,
 // 24-26 Immortal, 27 Radiant.
 
+import i18n from "../i18n";
 import type { MatchEntry } from "./tauriApi";
 
 export interface RankInfo {
@@ -13,17 +14,21 @@ export interface RankInfo {
 
 const TIER_ICON_SET = "03621f52-342b-cf4e-4f86-9350a49c6d04";
 
-const RANK_NAMES: Array<[max: number, name: string, colorClass: string]> = [
-  [2, "Non classé", "text-lo"],
-  [5, "Fer", "text-rank-iron"],
-  [8, "Bronze", "text-rank-bronze"],
-  [11, "Argent", "text-rank-silver"],
-  [14, "Or", "text-rank-gold"],
-  [17, "Platine", "text-rank-platinum"],
-  [20, "Diamant", "text-rank-diamond"],
-  [23, "Ascendant", "text-rank-ascendant"],
-  [26, "Immortel", "text-rank-immortal"],
-  [27, "Radiant", "text-rank-radiant"],
+// Les composants appelants utilisent presque tous `useTranslation()` pour leur propre
+// texte, ce qui les abonne déjà à l'évènement `languageChanged` d'i18next et les fait
+// re-render au changement de langue — ces fonctions pures relisent alors `i18n.t()` avec
+// la langue à jour sans logique de souscription supplémentaire ici.
+const RANK_NAME_KEYS: Array<[max: number, key: string, colorClass: string]> = [
+  [2, "format:rank.unranked", "text-lo"],
+  [5, "format:rank.iron", "text-rank-iron"],
+  [8, "format:rank.bronze", "text-rank-bronze"],
+  [11, "format:rank.silver", "text-rank-silver"],
+  [14, "format:rank.gold", "text-rank-gold"],
+  [17, "format:rank.platinum", "text-rank-platinum"],
+  [20, "format:rank.diamond", "text-rank-diamond"],
+  [23, "format:rank.ascendant", "text-rank-ascendant"],
+  [26, "format:rank.immortal", "text-rank-immortal"],
+  [27, "format:rank.radiant", "text-rank-radiant"],
 ];
 
 export function rankIconUrl(tier: number): string {
@@ -45,9 +50,9 @@ export function rankInfo(tier: number | null | undefined): RankInfo {
   // Un tier au-delà de Radiant (27) ne devrait jamais arriver côté Henrik, mais mieux
   // vaut retomber sur le rang le plus haut connu que sur "Non classé" si ça arrive un
   // jour (nouveau rang ajouté par Riot avant mise à jour de cette table).
-  const [, name, colorClass] =
-    RANK_NAMES.find(([max]) => t <= max) ?? RANK_NAMES[RANK_NAMES.length - 1];
-  return { name, colorClass, iconUrl: rankIconUrl(t) };
+  const [, nameKey, colorClass] =
+    RANK_NAME_KEYS.find(([max]) => t <= max) ?? RANK_NAME_KEYS[RANK_NAME_KEYS.length - 1];
+  return { name: i18n.t(nameKey), colorClass, iconUrl: rankIconUrl(t) };
 }
 
 const RANK_GLOW_COLORS: Array<[max: number, hex: string]> = [
@@ -63,35 +68,44 @@ const RANK_GLOW_COLORS: Array<[max: number, hex: string]> = [
   [27, "#f4e285"],
 ];
 
-/** Backlog #13 : libellé complet (avec sous-rang) par tier Henrik, pour le sélecteur
- * d'objectif de progression — plus précis que les buckets de `RANK_NAMES` ci-dessus. */
-export const FULL_TIER_LABELS: Array<{ tier: number; label: string }> = [
-  { tier: 3, label: "Fer 1" },
-  { tier: 4, label: "Fer 2" },
-  { tier: 5, label: "Fer 3" },
-  { tier: 6, label: "Bronze 1" },
-  { tier: 7, label: "Bronze 2" },
-  { tier: 8, label: "Bronze 3" },
-  { tier: 9, label: "Argent 1" },
-  { tier: 10, label: "Argent 2" },
-  { tier: 11, label: "Argent 3" },
-  { tier: 12, label: "Or 1" },
-  { tier: 13, label: "Or 2" },
-  { tier: 14, label: "Or 3" },
-  { tier: 15, label: "Platine 1" },
-  { tier: 16, label: "Platine 2" },
-  { tier: 17, label: "Platine 3" },
-  { tier: 18, label: "Diamant 1" },
-  { tier: 19, label: "Diamant 2" },
-  { tier: 20, label: "Diamant 3" },
-  { tier: 21, label: "Ascendant 1" },
-  { tier: 22, label: "Ascendant 2" },
-  { tier: 23, label: "Ascendant 3" },
-  { tier: 24, label: "Immortel 1" },
-  { tier: 25, label: "Immortel 2" },
-  { tier: 26, label: "Immortel 3" },
-  { tier: 27, label: "Radiant" },
+const FULL_TIER_KEYS: Array<{ tier: number; rankKey: string; sub: number | null }> = [
+  { tier: 3, rankKey: "format:rank.iron", sub: 1 },
+  { tier: 4, rankKey: "format:rank.iron", sub: 2 },
+  { tier: 5, rankKey: "format:rank.iron", sub: 3 },
+  { tier: 6, rankKey: "format:rank.bronze", sub: 1 },
+  { tier: 7, rankKey: "format:rank.bronze", sub: 2 },
+  { tier: 8, rankKey: "format:rank.bronze", sub: 3 },
+  { tier: 9, rankKey: "format:rank.silver", sub: 1 },
+  { tier: 10, rankKey: "format:rank.silver", sub: 2 },
+  { tier: 11, rankKey: "format:rank.silver", sub: 3 },
+  { tier: 12, rankKey: "format:rank.gold", sub: 1 },
+  { tier: 13, rankKey: "format:rank.gold", sub: 2 },
+  { tier: 14, rankKey: "format:rank.gold", sub: 3 },
+  { tier: 15, rankKey: "format:rank.platinum", sub: 1 },
+  { tier: 16, rankKey: "format:rank.platinum", sub: 2 },
+  { tier: 17, rankKey: "format:rank.platinum", sub: 3 },
+  { tier: 18, rankKey: "format:rank.diamond", sub: 1 },
+  { tier: 19, rankKey: "format:rank.diamond", sub: 2 },
+  { tier: 20, rankKey: "format:rank.diamond", sub: 3 },
+  { tier: 21, rankKey: "format:rank.ascendant", sub: 1 },
+  { tier: 22, rankKey: "format:rank.ascendant", sub: 2 },
+  { tier: 23, rankKey: "format:rank.ascendant", sub: 3 },
+  { tier: 24, rankKey: "format:rank.immortal", sub: 1 },
+  { tier: 25, rankKey: "format:rank.immortal", sub: 2 },
+  { tier: 26, rankKey: "format:rank.immortal", sub: 3 },
+  { tier: 27, rankKey: "format:rank.radiant", sub: null },
 ];
+
+/** Backlog #13 : libellé complet (avec sous-rang) par tier Henrik, pour le sélecteur
+ * d'objectif de progression — plus précis que les buckets de `RANK_NAME_KEYS` ci-dessus.
+ * Recalculée à chaque appel (pas de const figée) pour rester à jour si la langue change
+ * pendant que le composant appelant reste monté. */
+export function getFullTierLabels(): Array<{ tier: number; label: string }> {
+  return FULL_TIER_KEYS.map(({ tier, rankKey, sub }) => ({
+    tier,
+    label: sub === null ? i18n.t(rankKey) : i18n.t("format:tier.sub", { rank: i18n.t(rankKey), sub }),
+  }));
+}
 
 export interface GoalProgress {
   percent: number;
@@ -144,48 +158,54 @@ export function formatPercent(value: number, digits = 0): string {
 }
 
 export function formatDurationMs(ms: number | null | undefined): string {
-  if (!ms || ms <= 0) return "—";
+  if (!ms || ms <= 0) return i18n.t("format:unknown");
   const totalSeconds = Math.floor(ms / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
-  return `${minutes}min ${seconds.toString().padStart(2, "0")}s`;
+  return i18n.t("format:duration.value", { minutes, seconds: seconds.toString().padStart(2, "0") });
 }
 
-/** "il y a 3h", "il y a 2j", etc. — pour les lignes de MatchHistory. */
+/** "il y a 3h" / "3h ago", etc. — pour les lignes de MatchHistory. */
 export function formatRelativeTime(isoOrUnix: string | number | null | undefined): string {
-  if (!isoOrUnix) return "—";
+  if (!isoOrUnix) return i18n.t("format:unknown");
   const date = typeof isoOrUnix === "number" ? new Date(isoOrUnix * 1000) : new Date(isoOrUnix);
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) return i18n.t("format:unknown");
 
   const diffMs = Date.now() - date.getTime();
   const diffMinutes = Math.floor(diffMs / 60_000);
-  if (diffMinutes < 1) return "à l'instant";
-  if (diffMinutes < 60) return `il y a ${diffMinutes}min`;
+  if (diffMinutes < 1) return i18n.t("format:relative.now");
+  if (diffMinutes < 60) return i18n.t("format:relative.minutes", { count: diffMinutes });
   const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `il y a ${diffHours}h`;
+  if (diffHours < 24) return i18n.t("format:relative.hours", { count: diffHours });
   const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 30) return `il y a ${diffDays}j`;
+  if (diffDays < 30) return i18n.t("format:relative.days", { count: diffDays });
   const diffMonths = Math.floor(diffDays / 30);
-  return `il y a ${diffMonths} mois`;
+  return i18n.t("format:relative.months", { count: diffMonths });
 }
 
-/** "10/07 à 14:32" — pour le bandeau "Données en cache" (README §6). */
+/** "10/07 à 14:32" / "10/07 at 14:32" — pour le bandeau "Données en cache" (README §6). */
 export function formatDateTimeShort(unixSeconds: number | null | undefined): string {
-  if (!unixSeconds) return "date inconnue";
+  if (!unixSeconds) return i18n.t("format:dateTimeShort.unknown");
   const date = new Date(unixSeconds * 1000);
   const day = date.getDate().toString().padStart(2, "0");
   const month = (date.getMonth() + 1).toString().padStart(2, "0");
   const hours = date.getHours().toString().padStart(2, "0");
   const minutes = date.getMinutes().toString().padStart(2, "0");
-  return `${day}/${month} à ${hours}:${minutes}`;
+  return i18n.t("format:dateTimeShort.value", { day, month, hours, minutes });
 }
 
-export const REGIONS = [
-  { value: "eu", label: "Europe" },
-  { value: "na", label: "Amérique du Nord" },
-  { value: "ap", label: "Asie-Pacifique" },
-  { value: "kr", label: "Corée" },
+const REGION_KEYS = [
+  { value: "eu", key: "format:region.eu" },
+  { value: "na", key: "format:region.na" },
+  { value: "ap", key: "format:region.ap" },
+  { value: "kr", key: "format:region.kr" },
 ] as const;
+
+/** Recalculée à chaque appel (pas de const figée) pour rester à jour au changement de
+ * langue tant qu'un composant appelant reste monté. */
+export function getRegions(): Array<{ value: string; label: string }> {
+  return REGION_KEYS.map(({ value, key }) => ({ value, label: i18n.t(key) }));
+}
 
 /** Découpe un Riot ID "pseudo#tag" saisi tel quel dans le champ de recherche. */
 export function splitRiotId(input: string): { name: string; tag: string } | null {
@@ -238,12 +258,12 @@ export function groupMatchesIntoSessions(matches: MatchEntry[], puuid: string): 
   return sessions;
 }
 
-/** "Session du 10/07" — pour l'en-tête de groupe dans MatchHistory.tsx. */
+/** "Session du 10/07" / "Session of 10/07" — pour l'en-tête de groupe dans MatchHistory.tsx. */
 export function formatSessionHeader(iso: string | null): string {
-  if (!iso) return "Session";
+  if (!iso) return i18n.t("format:session.label");
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "Session";
+  if (Number.isNaN(date.getTime())) return i18n.t("format:session.label");
   const day = date.getDate().toString().padStart(2, "0");
   const month = (date.getMonth() + 1).toString().padStart(2, "0");
-  return `Session du ${day}/${month}`;
+  return i18n.t("format:session.dated", { day, month });
 }

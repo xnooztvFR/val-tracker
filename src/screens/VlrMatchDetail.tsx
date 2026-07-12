@@ -1,4 +1,5 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { SkeletonScreen } from "../components/Skeleton";
 
 import { useVlrMatch } from "../hooks/useVlr";
@@ -8,6 +9,7 @@ import ExternalImage from "../components/ExternalImage";
 import type { VlrMatchGame } from "../lib/tauriApi";
 
 export default function VlrMatchDetail() {
+  const { t } = useTranslation("esports");
   const { matchId } = useParams<{ matchId: string }>();
   const navigate = useNavigate();
   const match = useVlrMatch(matchId ? Number(matchId) : undefined);
@@ -16,12 +18,12 @@ export default function VlrMatchDetail() {
   if (match.isLoading) return <SkeletonScreen className="p-6" />;
 
   const data = match.data?.data;
-  if (!data) return <p className="text-sm text-lo">Match introuvable.</p>;
+  if (!data) return <p className="text-sm text-lo">{t("vlrMatchDetail.notFound")}</p>;
 
   return (
     <div className="space-y-4">
       <Link to="/esport" className="text-sm text-accent hover:underline">
-        ← Calendrier esport
+        {t("vlrMatchDetail.backLink")}
       </Link>
 
       <Panel className="flex flex-wrap items-center gap-6 px-5 py-4">
@@ -43,7 +45,7 @@ export default function VlrMatchDetail() {
       </Panel>
 
       <p className="text-center text-xs text-lo">
-        {data.metadata.event?.title} · {data.metadata.format} · Patch {data.metadata.patch}
+        {data.metadata.event?.title} · {data.metadata.format} · {t("vlrMatchDetail.patch", { patch: data.metadata.patch })}
         {data.metadata.date && ` · ${new Date(data.metadata.date).toLocaleString("fr-FR")}`}
       </p>
 
@@ -63,11 +65,12 @@ function GamePanel({
   index: number;
   onPlayerClick: (id: number) => void;
 }) {
+  const { t } = useTranslation("esports");
   return (
     <Panel className="overflow-x-auto p-4">
       <div className="mb-3 flex items-center justify-between">
         <p className="hud-label">
-          Map {index + 1} — {game.map}
+          {t("vlrMatchDetail.mapHeader", { index: index + 1, map: game.map })}
         </p>
         <p className="stat-value text-sm text-lo">
           {game.teams.map((t) => `${t.name} ${t.score ?? "?"}`).join(" – ")}
@@ -80,13 +83,13 @@ function GamePanel({
               <th className={`px-2 py-1.5 font-semibold ${team.is_winner ? "text-accent" : "text-lo"}`}>
                 {team.name}
               </th>
-              <th className="hud-label px-2 py-1.5">Agent</th>
-              <th className="hud-label px-2 py-1.5">Rating</th>
-              <th className="hud-label px-2 py-1.5">ACS</th>
-              <th className="hud-label px-2 py-1.5">K/D/A</th>
-              <th className="hud-label px-2 py-1.5">ADR</th>
-              <th className="hud-label px-2 py-1.5">KAST</th>
-              <th className="hud-label px-2 py-1.5">HS%</th>
+              <th className="hud-label px-2 py-1.5">{t("vlrMatchDetail.columns.agent")}</th>
+              <th className="hud-label px-2 py-1.5">{t("vlrMatchDetail.columns.rating")}</th>
+              <th className="hud-label px-2 py-1.5">{t("vlrMatchDetail.columns.acs")}</th>
+              <th className="hud-label px-2 py-1.5">{t("vlrMatchDetail.columns.kda")}</th>
+              <th className="hud-label px-2 py-1.5">{t("vlrMatchDetail.columns.adr")}</th>
+              <th className="hud-label px-2 py-1.5">{t("vlrMatchDetail.columns.kast")}</th>
+              <th className="hud-label px-2 py-1.5">{t("vlrMatchDetail.columns.hsPct")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line/40">

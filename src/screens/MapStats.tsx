@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Skeleton } from "../components/Skeleton";
 import { useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import { useAccount } from "../hooks/usePlayer";
@@ -12,6 +13,7 @@ import EmptyState from "../components/EmptyState";
 import SampleSizeSwitch, { type SampleSize } from "../components/SampleSizeSwitch";
 import { formatKdRatio, formatPercent } from "../lib/format";
 import type { MatchEntry } from "../lib/tauriApi";
+import i18n from "../i18n";
 
 const MONO = '"JetBrains Mono", Consolas, monospace';
 
@@ -30,7 +32,7 @@ function aggregateByMap(matches: MatchEntry[], puuid: string): MapAggregate[] {
     const player = match.players.find((p) => p.puuid === puuid);
     if (!player) continue;
 
-    const mapName = match.metadata.map?.name ?? "Carte inconnue";
+    const mapName = match.metadata.map?.name ?? i18n.t("stats:mapStats.unknownMap");
     const team = match.teams.find((t) => t.team_id === player.team_id);
 
     const entry = byMap.get(mapName) ?? { map: mapName, played: 0, wins: 0, kills: 0, deaths: 0 };
@@ -45,6 +47,7 @@ function aggregateByMap(matches: MatchEntry[], puuid: string): MapAggregate[] {
 }
 
 export default function MapStats() {
+  const { t } = useTranslation("stats");
   const { region, name, tag } = useParams<{ region: string; name: string; tag: string }>();
   const [sampleSize, setSampleSize] = useState<SampleSize>(20);
 
@@ -65,7 +68,7 @@ export default function MapStats() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="hud-label text-sm">Stats par carte</h1>
+        <h1 className="hud-label text-sm">{t("mapStats.title")}</h1>
         <SampleSizeSwitch value={sampleSize} onChange={setSampleSize} />
       </div>
 
@@ -75,7 +78,7 @@ export default function MapStats() {
 
       {chartData.length > 0 && (
         <Panel className="h-56 p-4">
-          <p className="hud-label mb-2">Winrate par carte</p>
+          <p className="hud-label mb-2">{t("mapStats.winratePanelTitle")}</p>
           <ResponsiveContainer width="100%" height="90%">
             <BarChart data={chartData} margin={{ top: 4, right: 12, bottom: 0, left: 0 }} barCategoryGap="35%">
               <CartesianGrid stroke="rgb(var(--color-lo) / 0.15)" vertical={false} />
@@ -101,7 +104,7 @@ export default function MapStats() {
                   fontSize: 12,
                   fontFamily: MONO,
                 }}
-                formatter={(value: number) => [`${value}%`, "Winrate"]}
+                formatter={(value: number) => [`${value}%`, t("mapStats.tooltipWinrate")]}
               />
               <Bar dataKey="winPercent" fill="rgb(var(--color-accent))" fillOpacity={0.85} maxBarSize={22} />
             </BarChart>
@@ -114,10 +117,10 @@ export default function MapStats() {
           <table className="w-full text-sm">
             <thead className="border-b border-line text-left">
               <tr>
-                <th className="hud-label px-4 py-3 font-semibold">Carte</th>
-                <th className="hud-label px-4 py-3 font-semibold">Matchs</th>
-                <th className="hud-label px-4 py-3 font-semibold">Winrate</th>
-                <th className="hud-label px-4 py-3 font-semibold">K/D</th>
+                <th className="hud-label px-4 py-3 font-semibold">{t("mapStats.table.map")}</th>
+                <th className="hud-label px-4 py-3 font-semibold">{t("mapStats.table.matches")}</th>
+                <th className="hud-label px-4 py-3 font-semibold">{t("mapStats.table.winrate")}</th>
+                <th className="hud-label px-4 py-3 font-semibold">{t("mapStats.table.kd")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line/60">
@@ -135,7 +138,11 @@ export default function MapStats() {
       )}
 
       {matches.data && rows.length === 0 && (
-        <EmptyState icon="map" title="Aucune donnée de carte" detail="Aucun match sur cet échantillon." />
+        <EmptyState
+          icon="map"
+          title={t("mapStats.empty.title")}
+          detail={t("mapStats.empty.detail")}
+        />
       )}
     </div>
   );

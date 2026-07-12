@@ -1,0 +1,43 @@
+{
+  "statusBar": {
+    "operator": "Opérateur · {{region}}",
+    "summary": "Bilan · {{n}} derniers",
+    "wins": "{{n}}V",
+    "losses": "{{n}}D",
+    "winrateShort": "WR",
+    "updateIn": "MAJ dans {{time}}",
+    "refreshAvailable": "Actualisation disponible",
+    "refresh": "Actualiser"
+  },
+  "overview": {
+    "title": "Vue d'ensemble",
+    "notEnoughData": "Pas assez de données.",
+    "stats": {
+      "winrate": "Winrate",
+      "kd": "K/D",
+      "headshotPercent": "Headshot %",
+      "acs": "ACS",
+      "kdHint": "{{n}} kills"
+    },
+    "miniStats": {
+      "wins": "Victoires",
+      "losses": "Défaites",
+      "kills": "Kills",
+      "deaths": "Deaths",
+      "assists": "Assists",
+      "headshots": "Headshots"
+    },
+    "winLossHint": "{{wins}}V — {{losses}}D",
+    "topAgent": {
+      "title": "Agent le plus joué",
+      "stats": "{{matches}} matchs · {{winPercent}} de victoires · K/D {{kd}}"
+    },
+    "accuracy": {
+      "title": "Précision (têtes / corps / jambes)",
+      "head": "Tête",
+      "body": "Corps",
+      "legs": "Jambes"
+    }
+  },
+  "rankProgression": "Progression du rank"
+}

@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 import type { MatchEntry } from "../lib/tauriApi";
 import { agentIconUrl, formatDurationMs, formatKda, formatKdRatio, formatRelativeTime } from "../lib/format";
 
@@ -10,11 +12,13 @@ interface MatchRowProps {
 /** Ligne de la timeline d'engagements (Historique) : barre d'accent verticale fine
  * (cyan = victoire, rouge = défaite), fond neutre, colonnes numériques en mono. */
 export default function MatchRow({ match, puuid, onClick }: MatchRowProps) {
+  const { t } = useTranslation("componentsExtra");
   const player = match.players.find((p) => p.puuid === puuid);
   const team = match.teams.find((t) => t.team_id === player?.team_id);
   const won = team?.won;
 
-  const resultLabel = won === true ? "Victoire" : won === false ? "Défaite" : "—";
+  const resultLabel =
+    won === true ? t("matchRow.victory") : won === false ? t("matchRow.defeat") : t("matchRow.noResult");
   const resultColor = won === true ? "text-accent" : won === false ? "text-crit" : "text-lo";
   const barColor = won === true ? "bg-accent" : won === false ? "bg-crit" : "bg-line";
 
@@ -54,18 +58,20 @@ export default function MatchRow({ match, puuid, onClick }: MatchRowProps) {
       )}
 
       <div className="w-32 shrink-0">
-        <p className="truncate text-sm text-hi">{match.metadata.map?.name ?? "Carte inconnue"}</p>
-        <p className="truncate text-[11px] text-lo">{player?.agent?.name ?? "Agent inconnu"}</p>
+        <p className="truncate text-sm text-hi">{match.metadata.map?.name ?? t("matchRow.unknownMap")}</p>
+        <p className="truncate text-[11px] text-lo">{player?.agent?.name ?? t("matchRow.unknownAgent")}</p>
       </div>
 
       <div className="w-24 shrink-0">
         <p className="stat-value text-sm font-medium">{formatKda(kills, deaths, assists)}</p>
-        <p className={`stat-value text-[11px] ${resultColor}`}>K/D {formatKdRatio(kills, deaths)}</p>
+        <p className={`stat-value text-[11px] ${resultColor}`}>
+          {t("matchRow.kdLabel", { ratio: formatKdRatio(kills, deaths) })}
+        </p>
       </div>
 
       <div className="flex-1 text-right">
-        <p className="stat-value text-sm font-medium">{acs ?? "—"} ACS</p>
-        <p className="stat-value text-[11px] text-lo">Score {stats?.score ?? "—"}</p>
+        <p className="stat-value text-sm font-medium">{t("matchRow.acsLabel", { acs: acs ?? "—" })}</p>
+        <p className="stat-value text-[11px] text-lo">{t("matchRow.scoreLabel", { score: stats?.score ?? "—" })}</p>
       </div>
 
       <div className="stat-value w-16 shrink-0 text-right text-[11px] text-lo">

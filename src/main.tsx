@@ -5,6 +5,7 @@ import { QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-qu
 
 import App from "./App";
 import "./index.css";
+import "./i18n";
 import { useApiHealthStore } from "./store/apiHealthStore";
 
 const queryClient = new QueryClient({

@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
 import { useRecentSearchesStore } from "../store/recentSearchesStore";
 import { useSettingsStore } from "../store/settingsStore";
 import { tauriApi, type TrackedPlayer } from "../lib/tauriApi";
-import { REGIONS, rankInfo, splitRiotId } from "../lib/format";
+import { getRegions, rankInfo, splitRiotId } from "../lib/format";
 import OnboardingWizard from "../components/OnboardingWizard";
 import logo from "../assets/logo.png";
 
 export default function Search() {
+  const { t } = useTranslation("search");
   const navigate = useNavigate();
   const { settings } = useSettingsStore();
   const { players, refresh, toggleFavorite } = useRecentSearchesStore();
@@ -68,7 +70,7 @@ export default function Search() {
     e.preventDefault();
     const parsed = splitRiotId(riotId);
     if (!parsed) {
-      setFormError("Format attendu : pseudo#tag (ex. Sentinelle#EU1)");
+      setFormError(t("formError"));
       return;
     }
     setFormError(null);
@@ -89,10 +91,10 @@ export default function Search() {
       <img src={logo} alt="Valorant Tracker" className="h-14 w-14 object-contain" />
 
       <h1 className="mt-6 text-center font-display text-3xl font-bold uppercase tracking-hud text-hi">
-        Traque ton <span className="text-accent">rank</span>
+        {t("title.prefix")} <span className="text-accent">{t("title.highlight")}</span>
       </h1>
       <p className="mt-2 text-center text-sm text-lo">
-        Entre un Riot ID complet pour consulter son rank et ses parties récentes.
+        {t("subtitle")}
       </p>
 
       {showWizard ? (
@@ -110,7 +112,7 @@ export default function Search() {
               <input
                 value={riotId}
                 onChange={(e) => setRiotId(e.target.value)}
-                placeholder="pseudo#tag"
+                placeholder={t("form.placeholder")}
                 className="w-full bg-transparent py-3 font-mono text-base text-hi placeholder:text-lo/60 focus:outline-none disabled:opacity-50"
               />
             </div>
@@ -119,7 +121,7 @@ export default function Search() {
               onChange={(e) => setRegion(e.target.value)}
               className="shrink-0 border border-line bg-base px-3 text-sm font-medium text-hi focus:outline-none disabled:opacity-50"
             >
-              {REGIONS.map((r) => (
+              {getRegions().map((r) => (
                 <option key={r.value} value={r.value}>
                   {r.label}
                 </option>
@@ -129,7 +131,7 @@ export default function Search() {
               type="submit"
               className="btn-clip shrink-0 bg-accent px-6 font-display text-sm font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#FF5969] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Chercher
+              {t("form.submit")}
             </button>
           </div>
         </form>
@@ -139,8 +141,8 @@ export default function Search() {
 
       {orderedFavorites.length > 0 && (
         <div className="mt-10 w-full">
-          <h2 className="hud-label mb-3">Favoris</h2>
-          <p className="mb-2 text-xs text-lo">Glisse-dépose pour réordonner.</p>
+          <h2 className="hud-label mb-3">{t("favorites.title")}</h2>
+          <p className="mb-2 text-xs text-lo">{t("favorites.hint")}</p>
           <div className="flex flex-wrap gap-2">
             {orderedFavorites.map((p) => (
               <div
@@ -166,7 +168,7 @@ export default function Search() {
 
       {players.length > 0 && (
         <div className="mt-10 w-full">
-          <h2 className="hud-label mb-3">Recherches récentes</h2>
+          <h2 className="hud-label mb-3">{t("recent.title")}</h2>
           <div className="flex flex-wrap gap-2">
             {players.map((p) => (
               <div
@@ -190,7 +192,7 @@ export default function Search() {
                   <button
                     type="button"
                     onClick={() => handleToggleFavorite(p.puuid)}
-                    aria-label="Basculer favori"
+                    aria-label={t("recent.toggleFavorite")}
                     className={`flex h-6 w-6 items-center justify-center transition-colors ${
                       p.is_favorite ? "text-accent" : "text-lo/60 hover:text-lo"
                     }`}
@@ -212,6 +214,7 @@ export default function Search() {
  * complète — passe par le même cache/rate-limiter Henrik que le reste (fetchMmrByPuuid,
  * déjà utilisé par l'overlay), `enabled` seulement pendant le survol. */
 function RankHoverPreview({ puuid, region }: { puuid: string; region: string }) {
+  const { t } = useTranslation("search");
   const mmr = useQuery({
     queryKey: ["search-hover-mmr", puuid, region],
     queryFn: () => tauriApi.fetchMmrByPuuid(puuid, region),
@@ -225,7 +228,7 @@ function RankHoverPreview({ puuid, region }: { puuid: string; region: string }) 
   return (
     <div className="panel-clip-sm absolute left-0 top-full z-10 mt-1 flex items-center gap-2 bg-surface px-3 py-2 shadow-lg">
       {mmr.isLoading ? (
-        <span className="text-xs text-lo">Chargement…</span>
+        <span className="text-xs text-lo">{t("hoverPreview.loading")}</span>
       ) : (
         <>
           <img src={info.iconUrl} alt="" className="h-6 w-6 object-contain" />

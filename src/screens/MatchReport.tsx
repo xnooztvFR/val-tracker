@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { SkeletonScreen } from "../components/Skeleton";
 import { Link, useParams } from "react-router-dom";
 
@@ -10,16 +11,17 @@ import RecapCardModal from "../components/RecapCardModal";
 import { buildMatchReport, type EconomyTier } from "../lib/matchReport";
 import { buildMatchRecapData } from "../lib/recapCard";
 
-const TIER_LABELS: Record<EconomyTier, string> = {
-  eco: "Éco",
-  force: "Force-buy",
-  full: "Full-buy",
+const TIER_LABEL_KEYS: Record<EconomyTier, string> = {
+  eco: "report.tier.eco",
+  force: "report.tier.force",
+  full: "report.tier.full",
 };
 
 /** Rapport de match (V3) : décompose l'économie round par round et met en évidence les
  * meilleurs/pires rounds du joueur suivi — entièrement calculé côté client à partir du
  * détail de match déjà chargé par l'écran MatchDetail (aucun appel réseau ici). */
 export default function MatchReport() {
+  const { t } = useTranslation("matches");
   const { region, name, tag, matchId } = useParams<{
     region: string;
     name: string;
@@ -49,10 +51,10 @@ export default function MatchReport() {
             to={`/joueur/${region}/${name}/${tag}/matchs/${matchId}`}
             className="text-xs text-lo transition-colors hover:text-accent"
           >
-            ← Retour au détail du match
+            {t("report.backToDetail")}
           </Link>
           <h1 className="mt-2 font-display text-lg font-bold uppercase tracking-hud text-hi">
-            Rapport de match
+            {t("report.title")}
           </h1>
         </div>
         {recapData && (
@@ -61,7 +63,7 @@ export default function MatchReport() {
             onClick={() => setShowRecap(true)}
             className="btn-clip mt-1 shrink-0 bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#FF5969]"
           >
-            Carte de recap
+            {t("report.recapButton")}
           </button>
         )}
       </div>
@@ -72,26 +74,31 @@ export default function MatchReport() {
 
       {!report && (
         <p className="text-sm text-lo">
-          Pas assez de données pour générer un rapport sur ce match.
+          {t("report.notEnoughData")}
         </p>
       )}
 
       {report && (
         <>
           <Panel className="p-4">
-            <p className="hud-label mb-3">Déroulé économique ({report.rounds.length} rounds)</p>
+            <p className="hud-label mb-3">{t("report.economyTimeline.title", { count: report.rounds.length })}</p>
             <div className="flex flex-wrap gap-1">
               {report.rounds.map((round) => (
                 <div
                   key={round.index}
-                  title={`Round ${round.index} — ${round.won ? "gagné" : "perdu"} — ${TIER_LABELS[round.economyTier]} (${Math.round(round.teamAvgLoadout)} cr. moy.)`}
+                  title={t("report.economyTimeline.tooltip", {
+                    index: round.index,
+                    status: round.won ? t("report.economyTimeline.won") : t("report.economyTimeline.lost"),
+                    tier: t(TIER_LABEL_KEYS[round.economyTier]),
+                    avgLoadout: Math.round(round.teamAvgLoadout),
+                  })}
                   className={`flex h-9 w-9 flex-col items-center justify-center border text-[10px] font-semibold ${
                     round.won ? "border-accent/60 bg-accent/10 text-accent" : "border-crit/60 bg-crit/10 text-crit"
                   }`}
                 >
                   <span className="stat-value">{round.index}</span>
                   <span className="text-[8px] uppercase tracking-hud text-lo">
-                    {TIER_LABELS[round.economyTier].slice(0, 4)}
+                    {t(TIER_LABEL_KEYS[round.economyTier]).slice(0, 4)}
                   </span>
                 </div>
               ))}
@@ -99,7 +106,7 @@ export default function MatchReport() {
           </Panel>
 
           <Panel className="p-4">
-            <p className="hud-label mb-3">Winrate par type d'achat</p>
+            <p className="hud-label mb-3">{t("report.winrateByBuyType.title")}</p>
             <div className="space-y-2">
               {report.economyBreakdown.map((bucket) => {
                 const winPercent =
@@ -108,7 +115,7 @@ export default function MatchReport() {
                     : null;
                 return (
                   <div key={bucket.tier} className="flex items-center gap-3">
-                    <span className="w-24 shrink-0 text-sm text-hi">{TIER_LABELS[bucket.tier]}</span>
+                    <span className="w-24 shrink-0 text-sm text-hi">{t(TIER_LABEL_KEYS[bucket.tier])}</span>
                     <div className="h-2 flex-1 bg-surface">
                       <div
                         className="h-2 bg-accent"
@@ -118,34 +125,41 @@ export default function MatchReport() {
                     <span className="stat-value w-24 shrink-0 text-right text-xs text-lo">
                       {bucket.roundsPlayed === 0
                         ? "—"
-                        : `${bucket.roundsWon}/${bucket.roundsPlayed} (${winPercent}%)`}
+                        : t("report.winrateByBuyType.ratio", {
+                            won: bucket.roundsWon,
+                            played: bucket.roundsPlayed,
+                            percent: winPercent,
+                          })}
                     </span>
                   </div>
                 );
               })}
             </div>
             <p className="mt-3 text-xs text-lo">
-              Estimé à partir de la valeur de loadout moyenne de ton équipe sur chaque round
-              — pas un calcul officiel Riot, juste un repère.
+              {t("report.winrateByBuyType.note")}
             </p>
           </Panel>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {report.bestRound && (
               <Panel className="p-4">
-                <p className="hud-label mb-1 !text-accent">Meilleur round</p>
-                <p className="stat-value text-2xl text-hi">Round {report.bestRound.index}</p>
+                <p className="hud-label mb-1 !text-accent">{t("report.bestRound.title")}</p>
+                <p className="stat-value text-2xl text-hi">
+                  {t("report.bestRound.label", { index: report.bestRound.index })}
+                </p>
                 <p className="text-xs text-lo">
-                  {report.bestRound.kills} kill(s) · {report.bestRound.damage} dégâts
+                  {t("report.bestRound.detail", { kills: report.bestRound.kills, damage: report.bestRound.damage })}
                 </p>
               </Panel>
             )}
             {report.worstRound && (
               <Panel className="p-4">
-                <p className="hud-label mb-1 !text-crit">Round le plus discret</p>
-                <p className="stat-value text-2xl text-hi">Round {report.worstRound.index}</p>
+                <p className="hud-label mb-1 !text-crit">{t("report.worstRound.title")}</p>
+                <p className="stat-value text-2xl text-hi">
+                  {t("report.worstRound.label", { index: report.worstRound.index })}
+                </p>
                 <p className="text-xs text-lo">
-                  {report.worstRound.kills} kill(s) · {report.worstRound.damage} dégâts
+                  {t("report.worstRound.detail", { kills: report.worstRound.kills, damage: report.worstRound.damage })}
                 </p>
               </Panel>
             )}
@@ -153,9 +167,9 @@ export default function MatchReport() {
 
           {report.afkRounds.length > 0 && (
             <Panel className="border-crit/30 bg-crit/5 p-4">
-              <p className="hud-label !text-crit">AFK détecté</p>
+              <p className="hud-label !text-crit">{t("report.afk.title")}</p>
               <p className="mt-1 text-sm text-lo">
-                Round{report.afkRounds.length > 1 ? "s" : ""} {report.afkRounds.join(", ")}
+                {t("report.afk.rounds", { count: report.afkRounds.length, list: report.afkRounds.join(", ") })}
               </p>
             </Panel>
           )}

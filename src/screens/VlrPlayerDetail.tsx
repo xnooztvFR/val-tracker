@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { SkeletonScreen } from "../components/Skeleton";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
@@ -7,18 +8,14 @@ import ErrorState from "../components/ErrorState";
 import Panel from "../components/Panel";
 import ExternalImage from "../components/ExternalImage";
 
-const TIMESPANS = [
-  { value: "30d", label: "30 jours" },
-  { value: "60d", label: "60 jours" },
-  { value: "90d", label: "90 jours" },
-  { value: "all", label: "Carrière" },
-] as const;
+const TIMESPAN_VALUES = ["30d", "60d", "90d", "all"] as const;
 
 export default function VlrPlayerDetail() {
+  const { t } = useTranslation("esports");
   const { playerId } = useParams<{ playerId: string }>();
   const navigate = useNavigate();
   const id = playerId ? Number(playerId) : undefined;
-  const [timespan, setTimespan] = useState<(typeof TIMESPANS)[number]["value"]>("90d");
+  const [timespan, setTimespan] = useState<(typeof TIMESPAN_VALUES)[number]>("90d");
 
   const player = useVlrPlayer(id, timespan);
   const matches = useVlrPlayerMatches(id);
@@ -27,12 +24,12 @@ export default function VlrPlayerDetail() {
   if (player.isLoading) return <SkeletonScreen className="p-6" />;
 
   const data = player.data?.data;
-  if (!data) return <p className="text-sm text-lo">Joueur introuvable.</p>;
+  if (!data) return <p className="text-sm text-lo">{t("vlrPlayerDetail.notFound")}</p>;
 
   return (
     <div className="space-y-4">
       <Link to="/esport" className="text-sm text-accent hover:underline">
-        ← Esport
+        {t("vlrPlayerDetail.backLink")}
       </Link>
 
       <Panel className="flex flex-wrap items-center gap-4 px-5 py-4">
@@ -60,15 +57,15 @@ export default function VlrPlayerDetail() {
       </Panel>
 
       <div className="flex items-center justify-between">
-        <p className="hud-label text-sm">Stats par agent</p>
+        <p className="hud-label text-sm">{t("vlrPlayerDetail.statsByAgent")}</p>
         <select
           value={timespan}
           onChange={(e) => setTimespan(e.target.value as typeof timespan)}
           className="border border-line bg-surface px-3 py-1.5 text-sm text-hi focus:border-accent focus:outline-none"
         >
-          {TIMESPANS.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
+          {TIMESPAN_VALUES.map((v) => (
+            <option key={v} value={v}>
+              {t(`vlrPlayerDetail.timespans.${v}`)}
             </option>
           ))}
         </select>
@@ -79,13 +76,13 @@ export default function VlrPlayerDetail() {
           <table className="w-full text-sm">
             <thead className="border-b border-line text-left">
               <tr>
-                <th className="hud-label px-4 py-3 font-semibold">Agent</th>
-                <th className="hud-label px-4 py-3 font-semibold">Usage</th>
-                <th className="hud-label px-4 py-3 font-semibold">Rating</th>
-                <th className="hud-label px-4 py-3 font-semibold">ACS</th>
-                <th className="hud-label px-4 py-3 font-semibold">K/D</th>
-                <th className="hud-label px-4 py-3 font-semibold">ADR</th>
-                <th className="hud-label px-4 py-3 font-semibold">KAST</th>
+                <th className="hud-label px-4 py-3 font-semibold">{t("vlrPlayerDetail.columns.agent")}</th>
+                <th className="hud-label px-4 py-3 font-semibold">{t("vlrPlayerDetail.columns.usage")}</th>
+                <th className="hud-label px-4 py-3 font-semibold">{t("vlrPlayerDetail.columns.rating")}</th>
+                <th className="hud-label px-4 py-3 font-semibold">{t("vlrPlayerDetail.columns.acs")}</th>
+                <th className="hud-label px-4 py-3 font-semibold">{t("vlrPlayerDetail.columns.kd")}</th>
+                <th className="hud-label px-4 py-3 font-semibold">{t("vlrPlayerDetail.columns.adr")}</th>
+                <th className="hud-label px-4 py-3 font-semibold">{t("vlrPlayerDetail.columns.kast")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line/60">
@@ -109,12 +106,12 @@ export default function VlrPlayerDetail() {
           </table>
         </Panel>
       ) : (
-        <p className="text-sm text-lo">Pas de statistiques sur cette période.</p>
+        <p className="text-sm text-lo">{t("vlrPlayerDetail.noStats")}</p>
       )}
 
       {(matches.data?.data.length ?? 0) > 0 && (
         <Panel className="p-4">
-          <p className="hud-label mb-3">Derniers matchs</p>
+          <p className="hud-label mb-3">{t("vlrPlayerDetail.recentMatches")}</p>
           <div className="space-y-1.5">
             {matches.data!.data.map((m) => (
               <button

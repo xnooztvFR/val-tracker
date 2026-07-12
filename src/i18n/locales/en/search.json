@@ -1,0 +1,23 @@
+{
+  "title": {
+    "prefix": "Track your",
+    "highlight": "rank"
+  },
+  "subtitle": "Enter a full Riot ID to check their rank and recent matches.",
+  "form": {
+    "placeholder": "name#tag",
+    "submit": "Search"
+  },
+  "formError": "Expected format: name#tag (e.g. Sentinel#EU1)",
+  "favorites": {
+    "title": "Favorites",
+    "hint": "Drag and drop to reorder."
+  },
+  "recent": {
+    "title": "Recent searches",
+    "toggleFavorite": "Toggle favorite"
+  },
+  "hoverPreview": {
+    "loading": "Loading…"
+  }
+}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 import { useRecentSearchesStore } from "../store/recentSearchesStore";
 
@@ -21,6 +22,7 @@ interface CommandPaletteProps {
  * voir CLAUDE.md § Overlay) : un simple listener frontend suffit, pas de raccourci global
  * Rust nécessaire. */
 export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
+  const { t } = useTranslation("componentsExtra");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
   const navigate = useNavigate();
@@ -36,17 +38,17 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
 
   const items = useMemo<PaletteItem[]>(() => {
     const staticItems: PaletteItem[] = [
-      { id: "settings", label: "Paramètres", hint: "Écran", action: () => navigate("/parametres") },
-      { id: "leaderboard", label: "Classement", hint: "Écran", action: () => navigate("/classement") },
-      { id: "esport", label: "Esport", hint: "Écran", action: () => navigate("/esport") },
-      { id: "premier", label: "Premier", hint: "Écran", action: () => navigate("/premier") },
-      { id: "vs", label: "Comparaison VS", hint: "Écran", action: () => navigate("/vs") },
-      { id: "search", label: "Rechercher un joueur", hint: "Écran", action: () => navigate("/") },
+      { id: "settings", label: t("commandPalette.settings"), hint: t("commandPalette.screenHint"), action: () => navigate("/parametres") },
+      { id: "leaderboard", label: t("commandPalette.leaderboard"), hint: t("commandPalette.screenHint"), action: () => navigate("/classement") },
+      { id: "esport", label: t("commandPalette.esport"), hint: t("commandPalette.screenHint"), action: () => navigate("/esport") },
+      { id: "premier", label: t("commandPalette.premier"), hint: t("commandPalette.screenHint"), action: () => navigate("/premier") },
+      { id: "vs", label: t("commandPalette.vsComparison"), hint: t("commandPalette.screenHint"), action: () => navigate("/vs") },
+      { id: "search", label: t("commandPalette.search"), hint: t("commandPalette.screenHint"), action: () => navigate("/") },
     ];
     const playerItems: PaletteItem[] = players.map((p) => ({
       id: p.puuid,
       label: `${p.name}#${p.tag}`,
-      hint: p.is_favorite ? "Favori" : "Récent",
+      hint: p.is_favorite ? t("commandPalette.favoriteHint") : t("commandPalette.recentHint"),
       action: () => navigate(`/joueur/${p.region}/${p.name}/${p.tag}`),
     }));
 
@@ -54,7 +56,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
     const q = query.trim().toLowerCase();
     if (!q) return all;
     return all.filter((item) => item.label.toLowerCase().includes(q));
-  }, [players, query, navigate]);
+  }, [players, query, navigate, t]);
 
   useEffect(() => {
     setSelected((s) => Math.min(s, Math.max(items.length - 1, 0)));
@@ -96,11 +98,11 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
           autoFocus
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Aller à... (écran, joueur récent/favori)"
+          placeholder={t("commandPalette.placeholder")}
           className="w-full border-b border-line bg-transparent px-4 py-3 text-sm text-hi placeholder:text-lo/60 focus:outline-none"
         />
         <ul className="max-h-80 overflow-y-auto py-1">
-          {items.length === 0 && <li className="px-4 py-3 text-sm text-lo">Aucun résultat.</li>}
+          {items.length === 0 && <li className="px-4 py-3 text-sm text-lo">{t("commandPalette.noResults")}</li>}
           {items.map((item, index) => (
             <li key={item.id}>
               <button

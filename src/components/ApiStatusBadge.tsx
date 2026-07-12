@@ -1,10 +1,12 @@
+import { useTranslation } from "react-i18next";
+
 import { useApiHealthStore } from "../store/apiHealthStore";
 
-const LABELS: Record<string, { label: string; dotClass: string }> = {
-  ok: { label: "API OK", dotClass: "bg-accent" },
-  rate_limited: { label: "Rate limit", dotClass: "bg-[#F5C542]" },
-  circuit_open: { label: "API en pause", dotClass: "bg-crit" },
-  network: { label: "Hors ligne", dotClass: "bg-crit" },
+const DOT_CLASSES: Record<string, string> = {
+  ok: "bg-accent",
+  rate_limited: "bg-[#F5C542]",
+  circuit_open: "bg-crit",
+  network: "bg-crit",
 };
 
 /** Badge permanent dans TopNav reflétant l'état de la connexion à l'API Henrik (OK / rate
@@ -13,18 +15,26 @@ const LABELS: Record<string, { label: string; dotClass: string }> = {
  * ne rafraîchissent plus (TODO #40). Ne s'affiche que si un souci est en cours, pour rester
  * discret le reste du temps (cohérent avec StatusBanner). */
 export default function ApiStatusBadge() {
+  const { t } = useTranslation("componentsCore");
   const { status, detail } = useApiHealthStore();
   if (status === "ok") return null;
 
-  const info = LABELS[status];
+  const LABELS: Record<string, string> = {
+    ok: t("apiStatusBadge.ok"),
+    rate_limited: t("apiStatusBadge.rateLimited"),
+    circuit_open: t("apiStatusBadge.circuitOpen"),
+    network: t("apiStatusBadge.network"),
+  };
+  const label = LABELS[status];
+  const dotClass = DOT_CLASSES[status];
 
   return (
     <span
-      title={detail ?? info.label}
+      title={detail ?? label}
       className="flex shrink-0 items-center gap-1.5 self-center px-2 text-lo"
     >
-      <span className={`h-1.5 w-1.5 animate-pulse ${info.dotClass}`} />
-      <span className="hud-label text-[10px]">{info.label}</span>
+      <span className={`h-1.5 w-1.5 animate-pulse ${dotClass}`} />
+      <span className="hud-label text-[10px]">{label}</span>
     </span>
   );
 }

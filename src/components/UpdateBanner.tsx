@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 import { useUpdater, useStartupUpdateCheck } from "../hooks/useUpdater";
 import { useSettingsStore } from "../store/settingsStore";
 import Panel from "./Panel";
@@ -9,6 +11,7 @@ import Panel from "./Panel";
  * discret : un simple fin bandeau en haut passait inaperçu pour la plupart des
  * utilisateurs, qui ne mettaient jamais l'app à jour. */
 export default function UpdateBanner() {
+  const { t } = useTranslation("componentsExtra");
   const autoUpdateEnabled = useSettingsStore((s) => s.settings?.auto_update_enabled ?? true);
   const { status, version, progress, error, checkNow, installNow, dismiss } = useUpdater();
 
@@ -25,15 +28,15 @@ export default function UpdateBanner() {
     >
       <Panel className="w-full max-w-sm p-5">
         <div onClick={(e) => e.stopPropagation()}>
-          <p className="hud-label text-accent">Mise à jour</p>
+          <p className="hud-label text-accent">{t("updateBanner.title")}</p>
 
           {status === "available" && (
             <>
               <p className="mt-2 text-base font-semibold text-hi">
-                Version {version} disponible
+                {t("updateBanner.versionAvailable", { version })}
               </p>
               <p className="mt-1 text-sm text-lo">
-                Une nouvelle version de Val Tracker est prête à être installée.
+                {t("updateBanner.readyToInstall")}
               </p>
               <div className="mt-4 flex justify-end gap-2">
                 <button
@@ -41,14 +44,14 @@ export default function UpdateBanner() {
                   onClick={dismiss}
                   className="px-3 py-1.5 font-display text-xs font-semibold uppercase tracking-hud text-lo transition-colors hover:text-hi"
                 >
-                  Plus tard
+                  {t("updateBanner.later")}
                 </button>
                 <button
                   type="button"
                   onClick={() => installNow()}
                   className="btn-clip bg-accent px-4 py-1.5 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#FF5969]"
                 >
-                  Installer maintenant
+                  {t("updateBanner.installNow")}
                 </button>
               </div>
             </>
@@ -56,7 +59,7 @@ export default function UpdateBanner() {
 
           {status === "downloading" && (
             <>
-              <p className="mt-2 text-base font-semibold text-hi">Téléchargement en cours…</p>
+              <p className="mt-2 text-base font-semibold text-hi">{t("updateBanner.downloading")}</p>
               <div className="mt-3 h-[3px] w-full bg-line">
                 <div
                   className="h-full bg-accent transition-all"
@@ -70,12 +73,12 @@ export default function UpdateBanner() {
           )}
 
           {status === "ready" && (
-            <p className="mt-2 text-base font-semibold text-hi">Installation, redémarrage…</p>
+            <p className="mt-2 text-base font-semibold text-hi">{t("updateBanner.installing")}</p>
           )}
 
           {status === "error" && (
             <>
-              <p className="mt-2 text-base font-semibold text-crit">Échec de la mise à jour</p>
+              <p className="mt-2 text-base font-semibold text-crit">{t("updateBanner.updateFailed")}</p>
               <p className="mt-1 font-mono text-xs text-lo">{error}</p>
               <div className="mt-4 flex justify-end">
                 <button
@@ -83,7 +86,7 @@ export default function UpdateBanner() {
                   onClick={dismiss}
                   className="px-3 py-1.5 font-display text-xs font-semibold uppercase tracking-hud text-lo transition-colors hover:text-hi"
                 >
-                  Fermer
+                  {t("updateBanner.closeButton")}
                 </button>
               </div>
             </>

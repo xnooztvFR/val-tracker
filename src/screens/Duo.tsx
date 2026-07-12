@@ -1,4 +1,5 @@
 import { useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Skeleton } from "../components/Skeleton";
 
 import { useAccount, useDuoStats, useSquadStats } from "../hooks/usePlayer";
@@ -10,6 +11,7 @@ import { formatPercent } from "../lib/format";
  * chaque consultation de match (voir hooks/usePlayer::useDuoStats) — grandit au fil de la
  * navigation dans l'historique, aucun appel réseau en masse. */
 export default function Duo() {
+  const { t } = useTranslation("stats");
   const { name, tag } = useParams<{ region: string; name: string; tag: string }>();
 
   const account = useAccount(name, tag);
@@ -20,21 +22,15 @@ export default function Duo() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="hud-label text-sm">Duo &amp; Squad</h1>
-        <p className="mt-1 text-xs text-lo">
-          Winrate avec tes coéquipiers de party, calculé au fil des matchs que tu consultes
-          dans Historique — consulte plus de matchs pour affiner ces stats.
-        </p>
+        <h1 className="hud-label text-sm">{t("duo.title")}</h1>
+        <p className="mt-1 text-xs text-lo">{t("duo.description")}</p>
       </div>
 
       {duo.isError && <ErrorState error={duo.error} />}
       {duo.isLoading && <Skeleton className="h-32 w-full" />}
 
       {duo.data && duo.data.length === 0 && (
-        <p className="text-sm text-lo">
-          Pas encore assez de données — ouvre quelques matchs dans l'onglet Historique où tu
-          étais en party pour voir apparaître tes coéquipiers ici.
-        </p>
+        <p className="text-sm text-lo">{t("duo.emptyMessage")}</p>
       )}
 
       {duo.data && duo.data.length > 0 && (
@@ -56,7 +52,7 @@ export default function Duo() {
                     {formatPercent(winPercent)}
                   </span>
                   <span className="text-xs text-lo">
-                    {teammate.matches_won} victoires / {teammate.matches_played} matchs ensemble
+                    {t("duo.statsLine", { wins: teammate.matches_won, played: teammate.matches_played })}
                   </span>
                 </div>
               </Panel>
@@ -68,10 +64,8 @@ export default function Duo() {
       {squad.data && squad.data.length > 0 && (
         <div className="space-y-2">
           <div>
-            <h2 className="hud-label text-sm">Squad (3 joueurs)</h2>
-            <p className="mt-1 text-xs text-lo">
-              Matchs où toi et deux coéquipiers précis étiez dans la même party simultanément.
-            </p>
+            <h2 className="hud-label text-sm">{t("duo.squad.title")}</h2>
+            <p className="mt-1 text-xs text-lo">{t("duo.squad.description")}</p>
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {squad.data.map((s) => {
@@ -94,7 +88,7 @@ export default function Duo() {
                       {formatPercent(winPercent)}
                     </span>
                     <span className="text-xs text-lo">
-                      {s.matches_won} victoires / {s.matches_played} matchs ensemble
+                      {t("duo.statsLine", { wins: s.matches_won, played: s.matches_played })}
                     </span>
                   </div>
                 </Panel>

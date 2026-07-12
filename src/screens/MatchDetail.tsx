@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { SkeletonScreen } from "../components/Skeleton";
 import { Link, useParams } from "react-router-dom";
 
@@ -11,15 +12,20 @@ import { formatDurationMs, formatKda, formatKdRatio } from "../lib/format";
 import { tauriApi } from "../lib/tauriApi";
 import type { MatchDetailPlayer, MatchDetailRound } from "../lib/tauriApi";
 
-const END_TYPE_LABELS: Record<string, string> = {
-  Elimination: "Élimination",
-  Bomb: "Spike",
-  Defuse: "Désamorçage",
-  Round_Timer_Expired: "Temps écoulé",
-  Surrendered: "Abandon",
-};
+function endTypeLabel(t: (key: string) => string, endType: string | null | undefined): string {
+  const key: Record<string, string> = {
+    Elimination: "detail.endType.elimination",
+    Bomb: "detail.endType.bomb",
+    Defuse: "detail.endType.defuse",
+    Round_Timer_Expired: "detail.endType.roundTimerExpired",
+    Surrendered: "detail.endType.surrendered",
+  };
+  if (!endType || !key[endType]) return endType ?? "?";
+  return t(key[endType]);
+}
 
 export default function MatchDetail() {
+  const { t } = useTranslation("matches");
   const { region, name, tag, matchId } = useParams<{
     region: string;
     name: string;
@@ -49,7 +55,7 @@ export default function MatchDetail() {
     return (
       <div>
         <BackLink region={region} name={name} tag={tag} />
-        <p className="mt-4 text-sm text-lo">Match introuvable.</p>
+        <p className="mt-4 text-sm text-lo">{t("detail.notFound")}</p>
       </div>
     );
   }
@@ -69,7 +75,7 @@ export default function MatchDetail() {
         <div>
           <BackLink region={region} name={name} tag={tag} />
           <h1 className="mt-2 font-display text-lg font-bold uppercase tracking-hud text-hi">
-            {data.metadata.map ?? "Carte inconnue"}
+            {data.metadata.map ?? t("detail.unknownMap")}
           </h1>
           <p className="stat-value text-sm text-lo">
             {formatDurationMs((data.metadata.game_length ?? 0) * 1000)} ·{" "}
@@ -84,7 +90,7 @@ export default function MatchDetail() {
             to={`/joueur/${region}/${name}/${tag}/matchs/${matchId}/rapport`}
             className="btn-clip mt-1 shrink-0 bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#FF5969]"
           >
-            Rapport de match
+            {t("detail.reportButton")}
           </Link>
         )}
       </div>
@@ -94,7 +100,7 @@ export default function MatchDetail() {
       {data.rounds.length > 0 && (
         <Panel className="p-3">
           <p className="hud-label mb-2">
-            Déroulé de la partie ({roundsPlayed} rounds) — clique un round pour le détail
+            {t("detail.roundTimeline.title", { count: roundsPlayed })}
           </p>
           <RoundTimeline
             rounds={data.rounds}
@@ -117,15 +123,15 @@ export default function MatchDetail() {
         <table className="w-full text-sm">
           <thead className="border-b border-line text-left">
             <tr>
-              <th className="hud-label px-4 py-3 font-semibold">Joueur</th>
-              <th className="hud-label px-4 py-3 font-semibold">Équipe</th>
-              <th className="hud-label px-4 py-3 font-semibold">KDA</th>
-              <th className="hud-label px-4 py-3 font-semibold">K/D</th>
-              <th className="hud-label px-4 py-3 font-semibold">Score</th>
-              <th className="hud-label px-4 py-3 font-semibold">ACS</th>
-              <th className="hud-label px-4 py-3 font-semibold">HS%</th>
-              <th className="hud-label px-4 py-3 font-semibold">Dégâts inf./reçus</th>
-              <th className="hud-label px-4 py-3 font-semibold">Éco moy.</th>
+              <th className="hud-label px-4 py-3 font-semibold">{t("detail.table.player")}</th>
+              <th className="hud-label px-4 py-3 font-semibold">{t("detail.table.team")}</th>
+              <th className="hud-label px-4 py-3 font-semibold">{t("detail.table.kda")}</th>
+              <th className="hud-label px-4 py-3 font-semibold">{t("detail.table.kd")}</th>
+              <th className="hud-label px-4 py-3 font-semibold">{t("detail.table.score")}</th>
+              <th className="hud-label px-4 py-3 font-semibold">{t("detail.table.acs")}</th>
+              <th className="hud-label px-4 py-3 font-semibold">{t("detail.table.headshotPercent")}</th>
+              <th className="hud-label px-4 py-3 font-semibold">{t("detail.table.damageDealtReceived")}</th>
+              <th className="hud-label px-4 py-3 font-semibold">{t("detail.table.avgEconomy")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line/60">
@@ -138,13 +144,17 @@ export default function MatchDetail() {
 
       {activePlayer?.economy && (
         <Panel className="p-4">
-          <p className="hud-label mb-2">Ton économie</p>
+          <p className="hud-label mb-2">{t("detail.economy.title")}</p>
           <p className="stat-value text-sm text-hi">
-            Dépenses totales : {activePlayer.economy.spent?.overall ?? "—"} crédits ·{" "}
-            {activePlayer.economy.spent?.average?.toFixed(0) ?? "—"} / round en moyenne
+            {t("detail.economy.spent", {
+              spent: activePlayer.economy.spent?.overall ?? "—",
+              average: activePlayer.economy.spent?.average?.toFixed(0) ?? "—",
+            })}
           </p>
           <p className="stat-value text-sm text-lo">
-            Valeur de loadout moyenne : {activePlayer.economy.loadout_value?.average?.toFixed(0) ?? "—"}
+            {t("detail.economy.avgLoadout", {
+              value: activePlayer.economy.loadout_value?.average?.toFixed(0) ?? "—",
+            })}
           </p>
         </Panel>
       )}
@@ -153,9 +163,10 @@ export default function MatchDetail() {
 }
 
 function BackLink({ region, name, tag }: { region?: string; name?: string; tag?: string }) {
+  const { t } = useTranslation("matches");
   return (
     <Link to={`/joueur/${region}/${name}/${tag}/matchs`} className="text-sm text-accent hover:underline">
-      ← Retour à l'historique
+      {t("detail.backToHistory")}
     </Link>
   );
 }
@@ -235,6 +246,7 @@ function RoundTimeline({
   selected: number | null;
   onSelect: (index: number | null) => void;
 }) {
+  const { t } = useTranslation("matches");
   const activeTeam = activePuuid
     ? rounds
         .flatMap((r) => r.player_stats)
@@ -253,7 +265,10 @@ function RoundTimeline({
             key={index}
             type="button"
             onClick={() => onSelect(isSelected ? null : index)}
-            title={`Round ${index + 1} — ${END_TYPE_LABELS[round.end_type ?? ""] ?? round.end_type ?? "?"}`}
+            title={t("detail.roundTimeline.roundTooltip", {
+              number: index + 1,
+              endType: endTypeLabel(t, round.end_type),
+            })}
             className={`flex h-8 w-8 items-center justify-center border text-[11px] font-semibold transition-colors ${bg} ${
               isSelected ? "border-hi" : "border-line"
             }`}
@@ -275,6 +290,7 @@ function RoundDetailPanel({
   roundNumber: number;
   activePuuid: string | undefined;
 }) {
+  const { t } = useTranslation("matches");
   const sorted = useMemo(
     () =>
       [...round.player_stats].sort((a, b) => {
@@ -288,18 +304,18 @@ function RoundDetailPanel({
   return (
     <Panel className="overflow-x-auto p-3">
       <p className="hud-label mb-2">
-        Round {roundNumber} — {END_TYPE_LABELS[round.end_type ?? ""] ?? round.end_type ?? "?"}
-        {round.bomb_planted ? " · Spike posé" : ""}
-        {round.bomb_defused ? " · Spike désamorcé" : ""}
+        {t("detail.roundDetail.title", { number: roundNumber, endType: endTypeLabel(t, round.end_type) })}
+        {round.bomb_planted ? t("detail.roundDetail.bombPlanted") : ""}
+        {round.bomb_defused ? t("detail.roundDetail.bombDefused") : ""}
       </p>
       <table className="w-full text-xs">
         <thead className="border-b border-line text-left">
           <tr>
-            <th className="hud-label px-2 py-2 font-semibold">Joueur</th>
-            <th className="hud-label px-2 py-2 font-semibold">Kills</th>
-            <th className="hud-label px-2 py-2 font-semibold">Dégâts</th>
-            <th className="hud-label px-2 py-2 font-semibold">Arme</th>
-            <th className="hud-label px-2 py-2 font-semibold">Loadout</th>
+            <th className="hud-label px-2 py-2 font-semibold">{t("detail.roundDetail.table.player")}</th>
+            <th className="hud-label px-2 py-2 font-semibold">{t("detail.roundDetail.table.kills")}</th>
+            <th className="hud-label px-2 py-2 font-semibold">{t("detail.roundDetail.table.damage")}</th>
+            <th className="hud-label px-2 py-2 font-semibold">{t("detail.roundDetail.table.weapon")}</th>
+            <th className="hud-label px-2 py-2 font-semibold">{t("detail.roundDetail.table.loadout")}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-line/60">

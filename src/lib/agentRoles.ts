@@ -3,6 +3,8 @@
 // chaque nouvel agent Riot (pas de endpoint dédié consulté pour l'instant, voir aussi la
 // remarque similaire sur v1/content dans TODO.md #7).
 
+import i18n from "../i18n";
+
 export type AgentRole = "Duelist" | "Controller" | "Initiator" | "Sentinel";
 
 const ROLE_BY_AGENT_NAME: Record<string, AgentRole> = {
@@ -35,11 +37,11 @@ const ROLE_BY_AGENT_NAME: Record<string, AgentRole> = {
   vyse: "Sentinel",
 };
 
-const ROLE_LABELS: Record<AgentRole, string> = {
-  Duelist: "Duelliste",
-  Controller: "Contrôleur",
-  Initiator: "Initiateur",
-  Sentinel: "Sentinelle",
+const ROLE_LABEL_KEYS: Record<AgentRole, string> = {
+  Duelist: "stats:agentRoles.duelist",
+  Controller: "stats:agentRoles.controller",
+  Initiator: "stats:agentRoles.initiator",
+  Sentinel: "stats:agentRoles.sentinel",
 };
 
 export function agentRole(agentName: string | null | undefined): AgentRole | null {
@@ -49,7 +51,7 @@ export function agentRole(agentName: string | null | undefined): AgentRole | nul
 }
 
 export function agentRoleLabel(role: AgentRole | null): string {
-  return role ? ROLE_LABELS[role] : "Inconnu";
+  return i18n.t(role ? ROLE_LABEL_KEYS[role] : "stats:agentRoles.unknown");
 }
 
 export const AGENT_ROLE_ORDER: AgentRole[] = ["Duelist", "Initiator", "Controller", "Sentinel"];

@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import i18n from "./i18n";
 
 import Titlebar from "./components/Titlebar";
 import { SkeletonScreen } from "./components/Skeleton";
@@ -44,6 +45,7 @@ export default function App() {
   const refreshSettings = useSettingsStore((s) => s.refresh);
   const uiTheme = useSettingsStore((s) => s.settings?.ui_theme);
   const uiAccent = useSettingsStore((s) => s.settings?.ui_accent);
+  const uiLanguage = useSettingsStore((s) => s.settings?.ui_language);
   const [paletteOpen, setPaletteOpen] = useState(false);
 
   useEffect(() => {
@@ -81,6 +83,15 @@ export default function App() {
       root.removeAttribute("data-accent");
     }
   }, [uiTheme, uiAccent]);
+
+  // Système multilangue : reflète la préférence enregistrée (défaut "fr") sur l'instance
+  // i18next partagée par toutes les fenêtres Tauri (dont l'overlay V2, qui a son propre
+  // document mais importe le même singleton `i18n`).
+  useEffect(() => {
+    if (uiLanguage && uiLanguage !== i18n.language) {
+      i18n.changeLanguage(uiLanguage);
+    }
+  }, [uiLanguage]);
 
   // La fenêtre overlay V2 (créée par overlay::window côté Rust) rend uniquement
   // l'écran Overlay, sans titlebar ni navigation.

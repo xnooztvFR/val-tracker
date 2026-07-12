@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQueries, useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { listen } from "@tauri-apps/api/event";
+import { useTranslation } from "react-i18next";
 
 import { tauriApi, type Fetched, type LivePlayer, type MmrData } from "../lib/tauriApi";
 import { useLiveDetectionState } from "../hooks/useLiveState";
@@ -15,6 +16,7 @@ const OWN_MATCHES_SAMPLE_SIZE = 20;
  * à jour arrivent via l'event `riot-local://state` poussé par le poller Rust ;
  * Ctrl+Shift+V bascule le mode interactif (déplacement de la fenêtre). */
 export default function Overlay() {
+  const { t } = useTranslation("overlay");
   const snapshot = useLiveDetectionState();
   const [interactive, setInteractive] = useState(false);
   // Backlog #31 : l'overlay est une fenêtre Tauri séparée (même bundle React, autre
@@ -85,14 +87,14 @@ export default function Overlay() {
 
   const stateLabel =
     snapshot?.state === "pregame"
-      ? "Sélection des agents"
+      ? t("state.pregame")
       : snapshot?.state === "in_game"
-        ? "Partie en cours"
+        ? t("state.inGame")
         : snapshot?.state === "menu"
-          ? "Dans le menu"
+          ? t("state.menu")
           : snapshot?.state === "desactive"
-            ? "Détection désactivée"
-            : "En attente de partie";
+            ? t("state.disabled")
+            : t("state.waiting");
 
   return (
     <div className="flex h-screen flex-col p-2 font-sans text-hi">
@@ -120,14 +122,14 @@ export default function Overlay() {
           {players.length === 0 ? (
             <p className="px-1 py-2 text-xs text-lo">
               {snapshot?.state === "in_game" || snapshot?.state === "pregame"
-                ? "Partie détectée — identification des joueurs…"
-                : "Lance une partie pour voir le rank du lobby ici."}
+                ? t("detectedHint")
+                : t("waitingHint")}
             </p>
           ) : (
             <div className="space-y-2">
-              <PlayerGroup label="Équipe" entries={allies} density={density} />
+              <PlayerGroup label={t("team")} entries={allies} density={density} />
               {enemies.length > 0 && (
-                <PlayerGroup label="Adversaires" entries={enemies} density={density} accentClass="text-crit" />
+                <PlayerGroup label={t("opponents")} entries={enemies} density={density} accentClass="text-crit" />
               )}
             </div>
           )}
@@ -136,7 +138,7 @@ export default function Overlay() {
         {isPregame && recommendedAgents.length > 0 && (
           <div className="border-t border-line px-2 py-1.5">
             <p className="hud-label pointer-events-none mb-1 text-[9px] text-lo">
-              Tes agents les plus performants
+              {t("topAgents")}
             </p>
             <ul className="flex gap-2">
               {recommendedAgents.map((agent) => (
@@ -151,7 +153,7 @@ export default function Overlay() {
         <div className="border-t border-line px-3 py-1.5">
           <p className="pointer-events-none text-[10px] text-lo">
             <span className="font-mono text-hi/80">Ctrl+Shift+V</span>
-            {interactive ? " — mode interactif : déplace la fenêtre puis rebascule." : " — déplacer l'overlay"}
+            {interactive ? t("shortcutInteractive") : t("shortcutStatic")}
           </p>
         </div>
       </div>
@@ -177,6 +179,7 @@ function PlayerGroup({
   density: string;
   accentClass?: string;
 }) {
+  const { t } = useTranslation("overlay");
   return (
     <div>
       <p className={`hud-label pointer-events-none mb-1 px-1 text-[9px] ${accentClass || "text-lo"}`}>{label}</p>
@@ -189,14 +192,14 @@ function PlayerGroup({
               <img src={info.iconUrl} alt="" className="h-5 w-5 object-contain" />
               <span className="min-w-0 flex-1 truncate text-xs">
                 {query?.isLoading ? (
-                  <span className="text-lo">Identification…</span>
+                  <span className="text-lo">{t("identifying")}</span>
                 ) : data?.name ? (
                   <>
                     {data.name}
                     <span className="text-lo">#{data.tag}</span>
                   </>
                 ) : (
-                  <span className="text-lo">Joueur inconnu</span>
+                  <span className="text-lo">{t("unknownPlayer")}</span>
                 )}
               </span>
               {density === "detailed" && (

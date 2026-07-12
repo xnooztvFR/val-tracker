@@ -1,14 +1,16 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 import { useSettingsStore } from "../store/settingsStore";
 import { tauriApi } from "../lib/tauriApi";
-import { REGIONS } from "../lib/format";
+import { getRegions } from "../lib/format";
 
 type Step = 1 | 2 | 3;
 
 /** Backlog #28 : wizard en 3 étapes au premier lancement (pas de clé API configurée),
  * affiché par Search.tsx à la place du formulaire de recherche désactivé. */
 export default function OnboardingWizard({ onFinish }: { onFinish: () => void }) {
+  const { t } = useTranslation("componentsExtra");
   const { setApiKey, setDefaultRegion } = useSettingsStore();
   const [step, setStep] = useState<Step>(1);
   const [apiKeyInput, setApiKeyInput] = useState("");
@@ -58,11 +60,10 @@ export default function OnboardingWizard({ onFinish }: { onFinish: () => void })
       {step === 1 && (
         <div className="space-y-3">
           <h2 className="font-display text-sm font-bold uppercase tracking-hud text-hi">
-            1. Clé API Henrik
+            {t("onboardingWizard.step1.title")}
           </h2>
           <p className="text-xs text-lo">
-            Nécessaire pour interroger l'API Henrik Dev (rank, matchs). Rejoins le Discord
-            Henrik Dev pour en obtenir une (voir le README).
+            {t("onboardingWizard.step1.description")}
           </p>
           <input
             type="password"
@@ -71,11 +72,11 @@ export default function OnboardingWizard({ onFinish }: { onFinish: () => void })
               setApiKeyInput(e.target.value);
               setVerifyState("idle");
             }}
-            placeholder="Colle ta clé API Henrik ici"
+            placeholder={t("onboardingWizard.step1.placeholder")}
             className="w-full border border-line bg-surface px-3 py-2 font-mono text-sm text-hi placeholder:text-lo/60 focus:border-accent focus:outline-none"
           />
-          {verifyState === "invalid" && <p className="text-xs text-crit">Clé invalide.</p>}
-          {verifyState === "error" && <p className="text-xs text-crit">Impossible de vérifier (panne réseau ?).</p>}
+          {verifyState === "invalid" && <p className="text-xs text-crit">{t("onboardingWizard.step1.invalid")}</p>}
+          {verifyState === "error" && <p className="text-xs text-crit">{t("onboardingWizard.step1.networkError")}</p>}
           <div className="flex justify-end gap-2">
             <button
               type="button"
@@ -83,7 +84,7 @@ export default function OnboardingWizard({ onFinish }: { onFinish: () => void })
               disabled={!apiKeyInput.trim() || verifyState === "checking"}
               className="border border-line px-3 py-1.5 text-xs text-hi hover:border-accent hover:text-accent disabled:opacity-50"
             >
-              {verifyState === "checking" ? "Vérification…" : "Vérifier et enregistrer"}
+              {verifyState === "checking" ? t("onboardingWizard.step1.verifying") : t("onboardingWizard.step1.verifyAndSave")}
             </button>
             {verifyState === "valid" && (
               <button
@@ -91,7 +92,7 @@ export default function OnboardingWizard({ onFinish }: { onFinish: () => void })
                 onClick={() => setStep(2)}
                 className="btn-clip bg-accent px-4 py-1.5 text-xs font-bold uppercase tracking-hud text-base"
               >
-                Suivant
+                {t("onboardingWizard.step1.next")}
               </button>
             )}
           </div>
@@ -101,15 +102,15 @@ export default function OnboardingWizard({ onFinish }: { onFinish: () => void })
       {step === 2 && (
         <div className="space-y-3">
           <h2 className="font-display text-sm font-bold uppercase tracking-hud text-hi">
-            2. Région par défaut
+            {t("onboardingWizard.step2.title")}
           </h2>
-          <p className="text-xs text-lo">Utilisée pour les recherches et le classement.</p>
+          <p className="text-xs text-lo">{t("onboardingWizard.step2.description")}</p>
           <select
             value={region}
             onChange={(e) => setRegion(e.target.value)}
             className="w-full border border-line bg-surface px-3 py-2 text-sm text-hi focus:border-accent focus:outline-none"
           >
-            {REGIONS.map((r) => (
+            {getRegions().map((r) => (
               <option key={r.value} value={r.value}>
                 {r.label}
               </option>
@@ -121,7 +122,7 @@ export default function OnboardingWizard({ onFinish }: { onFinish: () => void })
               onClick={handleSaveRegion}
               className="btn-clip bg-accent px-4 py-1.5 text-xs font-bold uppercase tracking-hud text-base"
             >
-              Suivant
+              {t("onboardingWizard.step2.next")}
             </button>
           </div>
         </div>
@@ -130,20 +131,17 @@ export default function OnboardingWizard({ onFinish }: { onFinish: () => void })
       {step === 3 && (
         <div className="space-y-3">
           <h2 className="font-display text-sm font-bold uppercase tracking-hud text-hi">
-            3. Détection automatique de partie
+            {t("onboardingWizard.step3.title")}
           </h2>
-          {detected === "checking" && <p className="text-xs text-lo">Recherche du client Riot local…</p>}
+          {detected === "checking" && <p className="text-xs text-lo">{t("onboardingWizard.step3.checking")}</p>}
           {detected === "found" && (
             <p className="text-xs text-accent">
-              Client Riot détecté — l'overlay et la détection de partie fonctionneront
-              automatiquement.
+              {t("onboardingWizard.step3.found")}
             </p>
           )}
           {detected === "not_found" && (
             <p className="text-xs text-lo">
-              Client Riot non détecté pour l'instant (pas grave, l'app repasse en mode
-              recherche manuelle) — relance le client Riot puis vérifie dans Paramètres →
-              Overlay si besoin.
+              {t("onboardingWizard.step3.notFound")}
             </p>
           )}
           <div className="flex justify-end">
@@ -152,7 +150,7 @@ export default function OnboardingWizard({ onFinish }: { onFinish: () => void })
               onClick={onFinish}
               className="btn-clip bg-accent px-4 py-1.5 text-xs font-bold uppercase tracking-hud text-base"
             >
-              Terminé
+              {t("onboardingWizard.step3.finish")}
             </button>
           </div>
         </div>

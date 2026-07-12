@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Skeleton } from "../components/Skeleton";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -8,29 +9,23 @@ import Panel from "../components/Panel";
 import EmptyState from "../components/EmptyState";
 import ExternalImage from "../components/ExternalImage";
 
-const REGION_OPTIONS = [
-  { value: "", label: "Toutes régions" },
-  { value: "north_america", label: "Amérique du Nord" },
-  { value: "europe", label: "Europe" },
-  { value: "brazil", label: "Brésil" },
-  { value: "asia_pacific", label: "Asie-Pacifique" },
-  { value: "korea", label: "Corée" },
-  { value: "japan", label: "Japon" },
-  { value: "latin_america", label: "Amérique Latine" },
-  { value: "oceania", label: "Océanie" },
-  { value: "mena", label: "MENA" },
-  { value: "gc", label: "Game Changers" },
-  { value: "collegiate", label: "Universitaire" },
+const REGION_VALUES = [
+  "",
+  "north_america",
+  "europe",
+  "brazil",
+  "asia_pacific",
+  "korea",
+  "japan",
+  "latin_america",
+  "oceania",
+  "mena",
+  "gc",
+  "collegiate",
 ] as const;
 
-const STATUS_LABELS: Record<string, string> = {
-  completed: "Terminé",
-  ongoing: "En cours",
-  upcoming: "À venir",
-  unknown: "?",
-};
-
 export default function VlrEvents() {
+  const { t } = useTranslation("esports");
   const [region, setRegion] = useState("");
   const [type, setType] = useState<"" | "upcoming" | "completed">("");
   const [page, setPage] = useState(1);
@@ -44,9 +39,9 @@ export default function VlrEvents() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <Link to="/esport" className="text-sm text-accent hover:underline">
-            ← Calendrier
+            {t("vlrEvents.backLink")}
           </Link>
-          <h1 className="hud-label mt-1 text-sm">Événements esport</h1>
+          <h1 className="hud-label mt-1 text-sm">{t("vlrEvents.title")}</h1>
         </div>
         <div className="flex items-center gap-2">
           <select
@@ -57,9 +52,9 @@ export default function VlrEvents() {
             }}
             className="border border-line bg-surface px-3 py-1.5 text-sm text-hi focus:border-accent focus:outline-none"
           >
-            <option value="">Tous</option>
-            <option value="upcoming">À venir</option>
-            <option value="completed">Terminés</option>
+            <option value="">{t("vlrEvents.typeAll")}</option>
+            <option value="upcoming">{t("vlrEvents.typeUpcoming")}</option>
+            <option value="completed">{t("vlrEvents.typeCompleted")}</option>
           </select>
           <select
             value={region}
@@ -69,9 +64,9 @@ export default function VlrEvents() {
             }}
             className="border border-line bg-surface px-3 py-1.5 text-sm text-hi focus:border-accent focus:outline-none"
           >
-            {REGION_OPTIONS.map((r) => (
-              <option key={r.value} value={r.value}>
-                {r.label}
+            {REGION_VALUES.map((v) => (
+              <option key={v} value={v}>
+                {t(`vlrEvents.regions.${v || "all"}`)}
               </option>
             ))}
           </select>
@@ -80,7 +75,7 @@ export default function VlrEvents() {
 
       {events.isError && <ErrorState error={events.error} />}
       {events.isLoading && <Skeleton className="h-32 w-full" />}
-      {events.data && list.length === 0 && <EmptyState icon="team" title="Aucun événement" />}
+      {events.data && list.length === 0 && <EmptyState icon="team" title={t("vlrEvents.empty.title")} />}
 
       <div className="grid gap-2 sm:grid-cols-2">
         {list.map((event) => (
@@ -105,7 +100,7 @@ export default function VlrEvents() {
                 event.status === "ongoing" ? "text-accent" : "text-lo"
               }`}
             >
-              {STATUS_LABELS[event.status ?? "unknown"]}
+              {t(`vlrEvents.status.${event.status ?? "unknown"}`, { defaultValue: event.status ?? "?" })}
             </span>
           </Panel>
         ))}
@@ -119,15 +114,15 @@ export default function VlrEvents() {
             disabled={page === 1}
             className="border border-line px-3 py-1.5 font-display text-xs font-semibold uppercase tracking-hud text-hi transition-colors hover:border-accent hover:text-accent disabled:opacity-40"
           >
-            Précédent
+            {t("vlrEvents.pagination.previous")}
           </button>
-          <span className="stat-value text-xs text-lo">Page {page}</span>
+          <span className="stat-value text-xs text-lo">{t("vlrEvents.pagination.page", { page })}</span>
           <button
             type="button"
             onClick={() => setPage((p) => p + 1)}
             className="border border-line px-3 py-1.5 font-display text-xs font-semibold uppercase tracking-hud text-hi transition-colors hover:border-accent hover:text-accent"
           >
-            Suivant
+            {t("vlrEvents.pagination.next")}
           </button>
         </div>
       )}
