@@ -98,8 +98,10 @@ pub async fn set_pending_changelog(
     version: String,
     notes: String,
 ) -> Result<(), CommandError> {
+    crate::applog!("[changelog] set_pending_changelog appelé, version={version}");
     let conn = state.db.lock().await;
     crate::settings::set_pending_changelog(&conn, &version, &notes)?;
+    crate::applog!("[changelog] set_pending_changelog écrit en base pour version={version}");
     Ok(())
 }
 
@@ -110,8 +112,23 @@ pub async fn take_pending_changelog(
     state: State<'_, AppState>,
 ) -> Result<Option<PendingChangelog>, CommandError> {
     let conn = state.db.lock().await;
-    Ok(crate::settings::take_pending_changelog(&conn)?
-        .map(|(version, notes)| PendingChangelog { version, notes }))
+    let result = crate::settings::take_pending_changelog(&conn)?;
+    crate::applog!(
+        "[changelog] take_pending_changelog appelé, trouvé={}",
+        result.is_some()
+    );
+    Ok(result.map(|(version, notes)| PendingChangelog { version, notes }))
+}
+
+/// Diagnostic (backlog #72) : trace côté Rust les étapes du flux `installNow` pour
+/// comprendre pourquoi `set_pending_changelog` ne semble parfois jamais être appelé côté
+/// JS malgré un clic sur "Installer maintenant" — le log frontend n'est pas visible à
+/// l'utilisateur, alors que `val-tracker.log` (Paramètres > Journaux) l'est. À retirer une
+/// fois le vrai problème identifié.
+#[tauri::command]
+pub async fn log_updater_trace(step: String) -> Result<(), CommandError> {
+    crate::applog!("[updater-trace] {step}");
+    Ok(())
 }
 
 #[tauri::command]

@@ -89,6 +89,27 @@ export function useUpdater(): UpdaterState {
       return;
     }
 
+    // Backlog #72 (fix v2) : écrit le changelog en attente AVANT `downloadAndInstall`,
+    // pas juste avant `relaunch()`. La première tentative (écriture juste avant relaunch)
+    // n'apparaissait jamais en base malgré un `invoke()` awaité — signe que quelque chose
+    // dans la fenêtre entre la fin de l'installation et notre code JS peut couper le
+    // process avant que ce code n'ait la main (silencieux : diagnostiqué via
+    // `log_updater_trace`, voir val-tracker.log). Écrire tôt, bien avant tout risque lié à
+    // l'installateur, élimine la fenêtre de course quelle qu'en soit la cause exacte.
+    // Contrepartie : si le téléchargement/installation échoue ensuite, une entrée orpheline
+    // reste en base pour une version jamais installée — `ChangelogModal` s'en protège en
+    // comparant la version lue à `getVersion()` avant d'afficher quoi que ce soit.
+    void invoke("log_updater_trace", { step: `installNow: avant set_pending_changelog (${update.version})` }).catch(() => {});
+    try {
+      await invoke("set_pending_changelog", {
+        version: update.version,
+        notes: update.body ?? "",
+      });
+      void invoke("log_updater_trace", { step: "installNow: set_pending_changelog OK" }).catch(() => {});
+    } catch (err) {
+      void invoke("log_updater_trace", { step: `installNow: set_pending_changelog ÉCHEC: ${String(err)}` }).catch(() => {});
+    }
+
     let downloaded = 0;
     let total = 0;
 
@@ -108,21 +129,7 @@ export function useUpdater(): UpdaterState {
         }
       });
       setStatus("ready");
-      // Backlog #72 (fix) : `update.body` porte les notes de version (champ "notes" de
-      // latest.json, voir scripts/release.ps1) — persistées côté Rust (SQLite) car l'objet
-      // `Update` ne survit pas à `relaunch()`, lues par ChangelogModal au prochain
-      // chargement. `invoke()` est awaité : contrairement à un `localStorage.setItem()`
-      // suivi immédiatement d'un `relaunch()` (qui tue le process sans garantie que
-      // WebView2 ait flush l'écriture sur disque), la commande Tauri ne résout qu'une fois
-      // l'écriture SQLite terminée.
-      try {
-        await invoke("set_pending_changelog", {
-          version: update.version,
-          notes: update.body ?? "",
-        });
-      } catch {
-        // best-effort : pas de changelog affiché si l'écriture échoue.
-      }
+      void invoke("log_updater_trace", { step: "installNow: downloadAndInstall terminé, avant relaunch" }).catch(() => {});
       await relaunch();
     } catch (err) {
       setStatus("error");

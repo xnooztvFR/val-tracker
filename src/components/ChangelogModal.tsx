@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
+import { getVersion } from "@tauri-apps/api/app";
 
 import Panel from "./Panel";
 
@@ -11,20 +12,24 @@ interface PendingChangelog {
 
 /** Backlog #72 : modal "Quoi de neuf" au premier lancement suivant une mise à jour
  * silencieuse (NSIS) — évite de devoir aller lire la release GitHub. Se déclenche une
- * seule fois : `useUpdater.installNow` écrit le changelog côté Rust (SQLite) juste avant
- * `relaunch()` (voir `set_pending_changelog`), ce composant le lit puis l'efface
- * immédiatement au montage suivant via `take_pending_changelog` (lecture unique côté
- * backend, pas de `localStorage` — un `setItem()` juste avant de tuer le process n'offrait
- * aucune garantie de flush sur disque avant WebView2, ce qui faisait que la popup
- * n'apparaissait jamais malgré une mise à jour réussie). */
+ * seule fois : `useUpdater.installNow` écrit le changelog côté Rust (SQLite) avant même de
+ * lancer `downloadAndInstall` (voir `set_pending_changelog`), ce composant le lit puis
+ * l'efface immédiatement au montage suivant via `take_pending_changelog` (lecture unique
+ * côté backend, pas de `localStorage`). Écrit tôt (avant l'install, pas juste avant
+ * `relaunch()`) pour éviter toute fenêtre de course avec le process qui se termine — en
+ * contrepartie une entrée peut rester orpheline si l'install échoue ensuite, d'où la
+ * comparaison à `getVersion()` : on n'affiche que si la version installée correspond
+ * effectivement à celle du changelog écrit. */
 export default function ChangelogModal() {
   const { t } = useTranslation("componentsExtra");
   const [changelog, setChangelog] = useState<PendingChangelog | null>(null);
 
   useEffect(() => {
     invoke<PendingChangelog | null>("take_pending_changelog")
-      .then((pending) => {
-        if (pending) setChangelog(pending);
+      .then(async (pending) => {
+        if (!pending) return;
+        const currentVersion = await getVersion().catch(() => null);
+        if (currentVersion === pending.version) setChangelog(pending);
       })
       .catch(() => {});
   }, []);
