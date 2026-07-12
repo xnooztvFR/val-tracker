@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useVlrPlayer, useVlrPlayerMatches } from "../hooks/useVlr";
 import ErrorState from "../components/ErrorState";
 import Panel from "../components/Panel";
+import ExternalImage from "../components/ExternalImage";
 
 const TIMESPANS = [
   { value: "30d", label: "30 jours" },
@@ -35,7 +36,7 @@ export default function VlrPlayerDetail() {
       </Link>
 
       <Panel className="flex flex-wrap items-center gap-4 px-5 py-4">
-        {data.avatar && <img src={data.avatar} alt="" className="h-14 w-14 rounded-full object-cover" />}
+        {data.avatar && <ExternalImage src={data.avatar} alt="" className="h-14 w-14 rounded-full object-cover" />}
         <div>
           <h1 className="font-display text-lg font-bold uppercase tracking-hud text-hi">{data.name}</h1>
           <p className="stat-value text-sm text-lo">

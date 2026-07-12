@@ -1297,6 +1297,68 @@ pub fn get_recent_logs() -> LogSnapshot {
     }
 }
 
+// ---- Auto-update — vérification d'intégrité (backlog #97) ----
+
+/// Vérifie le SHA256 de l'installeur pointé par `url` contre `expected_sha256` (champ
+/// custom de `latest.json`, en plus de la signature Ed25519 déjà vérifiée par
+/// `tauri-plugin-updater` avant l'installation — voir `updater.rs`). Best-effort : une
+/// erreur réseau ici ne doit pas empêcher `downloadAndInstall` de retenter côté plugin,
+/// l'appelant (useUpdater.ts) traite `Err`/`false` comme "vérification indisponible ou
+/// échouée" et bloque l'installation dans les deux cas.
+#[tauri::command]
+pub async fn verify_update_hash(url: String, expected_sha256: String) -> Result<bool, CommandError> {
+    crate::updater::verify_download_sha256(&url, &expected_sha256)
+        .await
+        .map_err(CommandError::from)
+}
+
+// ---- Verrou PIN des notes perso (backlog #99) ----
+
+/// Active le verrou et enregistre `pin` (chiffré via DPAPI, voir `settings::set_notes_pin`).
+/// `pin` vide rejeté ici plutôt que côté frontend seul — la commande reste la seule porte
+/// d'entrée vers le stockage.
+#[tauri::command]
+pub async fn save_notes_pin(state: State<'_, AppState>, pin: String) -> Result<(), CommandError> {
+    let pin = pin.trim();
+    if pin.is_empty() {
+        return Err(CommandError::Unknown {
+            message: "le PIN ne peut pas être vide".to_string(),
+        });
+    }
+    let conn = state.db.lock().await;
+    crate::settings::set_notes_pin(&conn, pin)?;
+    Ok(())
+}
+
+/// Désactive le verrou et efface le PIN enregistré.
+#[tauri::command]
+pub async fn clear_notes_pin(state: State<'_, AppState>) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::clear_notes_pin(&conn)?;
+    Ok(())
+}
+
+/// Vérifie `pin` contre celui enregistré — utilisé par `PlayerNotesPanel.tsx` pour
+/// déverrouiller l'affichage des notes le temps de la session courante (pas de "déverrouillé"
+/// persistant, cohérent avec l'usage stream/écran partagé visé par #99).
+#[tauri::command]
+pub async fn verify_notes_pin(state: State<'_, AppState>, pin: String) -> Result<bool, CommandError> {
+    let conn = state.db.lock().await;
+    Ok(crate::settings::verify_notes_pin(&conn, pin.trim())?)
+}
+
+// ---- Images externes VLR/esports (backlog #100) ----
+
+/// Récupère un logo/avatar hébergé sur un CDN tiers (voir `image_proxy.rs`) et le renvoie en
+/// `data:` URI, pour l'afficher sans étendre `img-src` à un domaine externe non garanti dans
+/// le temps.
+#[tauri::command]
+pub async fn fetch_external_image(url: String) -> Result<String, CommandError> {
+    crate::image_proxy::fetch_as_data_uri(&url)
+        .await
+        .map_err(CommandError::from)
+}
+
 // ---- Métriques d'usage local (backlog #50) ----
 
 const USAGE_METRICS_WINDOW_SECS: i64 = 7 * 24 * 3600;

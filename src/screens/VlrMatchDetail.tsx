@@ -4,6 +4,7 @@ import { SkeletonScreen } from "../components/Skeleton";
 import { useVlrMatch } from "../hooks/useVlr";
 import ErrorState from "../components/ErrorState";
 import Panel from "../components/Panel";
+import ExternalImage from "../components/ExternalImage";
 import type { VlrMatchGame } from "../lib/tauriApi";
 
 export default function VlrMatchDetail() {
@@ -26,7 +27,7 @@ export default function VlrMatchDetail() {
       <Panel className="flex flex-wrap items-center gap-6 px-5 py-4">
         {data.teams.map((team, i) => (
           <div key={team.id} className={`flex items-center gap-3 ${i === 1 ? "ml-auto flex-row-reverse text-right" : ""}`}>
-            {team.icon && <img src={team.icon} alt="" className="h-10 w-10 object-contain" />}
+            {team.icon && <ExternalImage src={team.icon} alt="" className="h-10 w-10 object-contain" />}
             <div>
               <button
                 type="button"

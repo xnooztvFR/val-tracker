@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
+import { invoke } from "@tauri-apps/api/core";
 
 export type UpdaterStatus =
   | "idle"
@@ -57,6 +58,37 @@ export function useUpdater(): UpdaterState {
 
     setStatus("downloading");
     setProgress(0);
+
+    // Défense en profondeur (backlog #97) : en plus de la signature Ed25519 déjà vérifiée
+    // en interne par tauri-plugin-updater avant l'installation, on compare le SHA256 de
+    // l'installeur à celui publié dans latest.json (champ custom, absent des anciennes
+    // releases — dans ce cas on bloque, l'utilisateur peut toujours réessayer plus tard
+    // une fois la prochaine version publiée avec le hash).
+    const platforms = update.rawJson?.platforms as
+      | Record<string, { url?: string; sha256?: string }>
+      | undefined;
+    const platform = platforms?.["windows-x86_64"];
+    if (!platform?.url || !platform?.sha256) {
+      setStatus("error");
+      setError("Vérification d'intégrité indisponible pour cette mise à jour (hash manquant).");
+      return;
+    }
+    try {
+      const hashOk = await invoke<boolean>("verify_update_hash", {
+        url: platform.url,
+        expectedSha256: platform.sha256,
+      });
+      if (!hashOk) {
+        setStatus("error");
+        setError("Échec de la vérification d'intégrité de l'installeur téléchargé.");
+        return;
+      }
+    } catch (err) {
+      setStatus("error");
+      setError(`Vérification d'intégrité impossible: ${String(err)}`);
+      return;
+    }
+
     let downloaded = 0;
     let total = 0;
 

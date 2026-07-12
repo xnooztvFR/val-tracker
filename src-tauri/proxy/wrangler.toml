@@ -4,5 +4,33 @@ compatibility_date = "2024-11-01"
 
 # Secrets à définir via `wrangler secret put <NOM>` — jamais dans ce fichier ni committés :
 #   HENRIK_API_KEY  — la vraie clé API Henrik Dev (voir README.md dans ce dossier)
-#   PROXY_TOKEN     — jeton d'accès au relais, distinct de la clé Henrik (celui qui finit
-#                     compilé dans le binaire de l'app via HENRIK_PROXY_TOKEN dans .env)
+#   PROXY_TOKENS    — recommandé : JSON `{"nom-canal": "jeton", ...}`, un jeton par canal de
+#                     distribution (voir README.md § Rate limiting par jeton)
+#   PROXY_TOKEN     — rétrocompatibilité : jeton unique global si PROXY_TOKENS absent
+
+# Binding KV pour le rate limiting par jeton (backlog #98) — optionnel : en son absence le
+# Worker fonctionne sans rate limiting (comme avant), voir README.md § Rate limiting.
+# Créer le namespace une fois avec `npx wrangler kv namespace create RATE_LIMIT`, puis coller
+# l'id renvoyé ci-dessous.
+[[kv_namespaces]]
+binding = "RATE_LIMIT"
+id = "79f57057bd56491dadb3fda1dba4df80"
+
+[vars]
+# Seuil de requêtes/minute par jeton, ignoré si RATE_LIMIT (KV) n'est pas configuré.
+RATE_LIMIT_PER_MINUTE = "30"
+
+[observability]
+enabled = false
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1

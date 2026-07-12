@@ -6,6 +6,7 @@ import { useEsportsSchedule } from "../hooks/useMeta";
 import ErrorState from "../components/ErrorState";
 import Panel from "../components/Panel";
 import EmptyState from "../components/EmptyState";
+import ExternalImage from "../components/ExternalImage";
 import type { EsportsMatchTeam, EsportsScheduleEntry } from "../lib/tauriApi";
 
 const STATE_LABELS: Record<string, string> = {
@@ -129,16 +130,7 @@ function TeamChip({ team, reverse }: { team?: EsportsMatchTeam; reverse?: boolea
   }
   const content = (
     <>
-      {team.icon && (
-        <img
-          src={team.icon}
-          alt=""
-          className="h-6 w-6 object-contain"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
-          }}
-        />
-      )}
+      {team.icon && <ExternalImage src={team.icon} alt="" className="h-6 w-6 object-contain" />}
       <span className={`text-sm ${team.has_won ? "font-semibold text-accent" : "text-hi"}`}>
         {team.code || team.name}
       </span>

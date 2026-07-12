@@ -8,32 +8,17 @@ import { useUpdater } from "../hooks/useUpdater";
 import StatCard from "../components/StatCard";
 
 type VerifyState = "idle" | "checking" | "valid" | "invalid" | "error";
-type Category =
-  | "general"
-  | "appearance"
-  | "overlay"
-  | "discord"
-  | "notifications"
-  | "updates"
-  | "crosshair"
-  | "shortcuts"
-  | "data"
-  | "logs"
-  | "health"
-  | "about";
+// Regroupement en 6 catégories (au lieu de 13) : chaque page peut empiler plusieurs
+// sections thématiquement proches (séparées par SectionDivider) plutôt qu'une entrée de
+// nav par réglage isolé.
+type Category = "general" | "game" | "alerts" | "updates" | "data" | "about";
 
 const CATEGORIES: Array<{ id: Category; label: string }> = [
   { id: "general", label: "Général" },
-  { id: "appearance", label: "Apparence" },
-  { id: "overlay", label: "Overlay en jeu" },
-  { id: "discord", label: "Discord" },
-  { id: "notifications", label: "Notifications" },
+  { id: "game", label: "En jeu" },
+  { id: "alerts", label: "Alertes & confidentialité" },
   { id: "updates", label: "Mises à jour" },
-  { id: "crosshair", label: "Crosshair" },
-  { id: "shortcuts", label: "Raccourcis" },
-  { id: "data", label: "Données locales" },
-  { id: "logs", label: "Logs" },
-  { id: "health", label: "Santé" },
+  { id: "data", label: "Données & diagnostics" },
   { id: "about", label: "À propos" },
 ];
 
@@ -60,6 +45,8 @@ export default function Settings() {
     setLossStreakAlertCount,
     setInactivityReminderEnabled,
     setInactivityReminderDays,
+    setNotesPin,
+    clearNotesPin,
   } = useSettingsStore();
   const [searchParams] = useSearchParams();
   const initialCategory = searchParams.get("section");
@@ -92,51 +79,65 @@ export default function Settings() {
 
       <div className="flex-1 overflow-y-auto p-6">
         {category === "general" && (
-          <GeneralSection
-            apiKeySet={settings?.henrik_api_key_set ?? false}
-            savedApiKey={settings?.henrik_api_key ?? ""}
-            defaultRegion={settings?.default_region ?? "eu"}
-            onSaveApiKey={setApiKey}
-            onSaveRegion={setDefaultRegion}
-          />
+          <div className="space-y-10">
+            <GeneralSection
+              apiKeySet={settings?.henrik_api_key_set ?? false}
+              savedApiKey={settings?.henrik_api_key ?? ""}
+              defaultRegion={settings?.default_region ?? "eu"}
+              onSaveApiKey={setApiKey}
+              onSaveRegion={setDefaultRegion}
+            />
+            <SectionDivider />
+            <AppearanceSection
+              theme={settings?.ui_theme ?? "dark"}
+              accent={settings?.ui_accent ?? "red"}
+              onChangeTheme={setUiTheme}
+              onChangeAccent={setUiAccent}
+            />
+          </div>
         )}
-        {category === "appearance" && (
-          <AppearanceSection
-            theme={settings?.ui_theme ?? "dark"}
-            accent={settings?.ui_accent ?? "red"}
-            onChangeTheme={setUiTheme}
-            onChangeAccent={setUiAccent}
-          />
+        {category === "game" && (
+          <div className="space-y-10">
+            <OverlaySection
+              disabled={settings?.riot_local_disabled ?? false}
+              onChange={setRiotLocalDisabled}
+              density={settings?.overlay_density ?? "detailed"}
+              onChangeDensity={setOverlayDensity}
+            />
+            <SectionDivider />
+            <DiscordSection
+              enabled={settings?.discord_rpc_enabled ?? false}
+              clientId={settings?.discord_rpc_client_id ?? ""}
+              onChangeEnabled={setDiscordRpcEnabled}
+              onSaveClientId={setDiscordRpcClientId}
+            />
+            <SectionDivider />
+            <CrosshairSection />
+            <SectionDivider />
+            <ShortcutsSection />
+          </div>
         )}
-        {category === "overlay" && (
-          <OverlaySection
-            disabled={settings?.riot_local_disabled ?? false}
-            onChange={setRiotLocalDisabled}
-            density={settings?.overlay_density ?? "detailed"}
-            onChangeDensity={setOverlayDensity}
-          />
-        )}
-        {category === "discord" && (
-          <DiscordSection
-            enabled={settings?.discord_rpc_enabled ?? false}
-            clientId={settings?.discord_rpc_client_id ?? ""}
-            onChangeEnabled={setDiscordRpcEnabled}
-            onSaveClientId={setDiscordRpcClientId}
-          />
-        )}
-        {category === "notifications" && (
-          <NotificationsSection
-            statusWatcherEnabled={settings?.status_watcher_enabled ?? false}
-            onChangeStatusWatcher={setStatusWatcherEnabled}
-            lossStreakAlertEnabled={settings?.loss_streak_alert_enabled ?? false}
-            lossStreakAlertCount={settings?.loss_streak_alert_count ?? 3}
-            onChangeLossStreakAlertEnabled={setLossStreakAlertEnabled}
-            onChangeLossStreakAlertCount={setLossStreakAlertCount}
-            inactivityReminderEnabled={settings?.inactivity_reminder_enabled ?? false}
-            inactivityReminderDays={settings?.inactivity_reminder_days ?? 3}
-            onChangeInactivityReminderEnabled={setInactivityReminderEnabled}
-            onChangeInactivityReminderDays={setInactivityReminderDays}
-          />
+        {category === "alerts" && (
+          <div className="space-y-10">
+            <NotificationsSection
+              statusWatcherEnabled={settings?.status_watcher_enabled ?? false}
+              onChangeStatusWatcher={setStatusWatcherEnabled}
+              lossStreakAlertEnabled={settings?.loss_streak_alert_enabled ?? false}
+              lossStreakAlertCount={settings?.loss_streak_alert_count ?? 3}
+              onChangeLossStreakAlertEnabled={setLossStreakAlertEnabled}
+              onChangeLossStreakAlertCount={setLossStreakAlertCount}
+              inactivityReminderEnabled={settings?.inactivity_reminder_enabled ?? false}
+              inactivityReminderDays={settings?.inactivity_reminder_days ?? 3}
+              onChangeInactivityReminderEnabled={setInactivityReminderEnabled}
+              onChangeInactivityReminderDays={setInactivityReminderDays}
+            />
+            <SectionDivider />
+            <PrivacySection
+              enabled={settings?.notes_pin_enabled ?? false}
+              onSavePin={setNotesPin}
+              onClearPin={clearNotesPin}
+            />
+          </div>
         )}
         {category === "updates" && (
           <UpdatesSection
@@ -144,20 +145,26 @@ export default function Settings() {
             onChange={setAutoUpdateEnabled}
           />
         )}
-        {category === "crosshair" && <CrosshairSection />}
-        {category === "shortcuts" && <ShortcutsSection />}
-        {category === "data" && <DataSection />}
-        {category === "logs" && <LogsSection />}
-        {category === "health" && (
-          <HealthSection
-            enabled={settings?.usage_metrics_enabled ?? false}
-            onChange={setUsageMetricsEnabled}
-          />
+        {category === "data" && (
+          <div className="space-y-10">
+            <DataSection />
+            <SectionDivider />
+            <LogsSection />
+            <SectionDivider />
+            <HealthSection
+              enabled={settings?.usage_metrics_enabled ?? false}
+              onChange={setUsageMetricsEnabled}
+            />
+          </div>
         )}
         {category === "about" && <AboutSection />}
       </div>
     </div>
   );
+}
+
+function SectionDivider() {
+  return <div className="border-t border-line" />;
 }
 
 const INPUT_CLASS =
@@ -757,6 +764,112 @@ function CrosshairSection() {
       {preview && (
         <div className="panel-clip flex items-center justify-center bg-[#0B0E11] p-8">
           <img src={preview} alt="Aperçu du crosshair" className="max-h-40" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Backlog #99 : verrouillage optionnel par PIN devant les notes perso (tags "smurf"/
+ * "toxique" de #12, voir `PlayerNotesPanel.tsx`) — pensé pour l'usage stream/écran partagé,
+ * pas comme un vrai coffre-fort (le PIN est un simple secret court, pas une passphrase). */
+function PrivacySection({
+  enabled,
+  onSavePin,
+  onClearPin,
+}: {
+  enabled: boolean;
+  onSavePin: (pin: string) => Promise<void>;
+  onClearPin: () => Promise<void>;
+}) {
+  const [pin, setPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [status, setStatus] = useState<"idle" | "saved" | "mismatch" | "error">("idle");
+
+  async function handleSave() {
+    if (!pin.trim()) return;
+    if (pin !== confirmPin) {
+      setStatus("mismatch");
+      return;
+    }
+    try {
+      await onSavePin(pin);
+      setPin("");
+      setConfirmPin("");
+      setStatus("saved");
+      setTimeout(() => setStatus("idle"), 2000);
+    } catch {
+      setStatus("error");
+    }
+  }
+
+  async function handleClear() {
+    const confirmed = window.confirm("Désactiver le verrou PIN des notes perso ?");
+    if (!confirmed) return;
+    await onClearPin();
+  }
+
+  return (
+    <div className="max-w-xl space-y-4">
+      <SectionTitle>Confidentialité</SectionTitle>
+      <p className="text-sm text-lo">
+        Verrouille l'affichage des notes perso (tags "smurf"/"toxique"/"duo régulier"...)
+        derrière un PIN — pratique en stream ou sur un écran partagé. Le verrouillage se
+        redemande à chaque changement de profil ou redémarrage de l'app.
+      </p>
+
+      {enabled ? (
+        <div className="space-y-2">
+          <p className="text-sm text-hi">Verrou PIN actif.</p>
+          <button
+            type="button"
+            onClick={handleClear}
+            className="border border-crit/60 px-4 py-2 font-display text-xs font-semibold uppercase tracking-hud text-crit transition-colors hover:bg-crit/10"
+          >
+            Désactiver le verrou
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <input
+              type="password"
+              inputMode="numeric"
+              value={pin}
+              onChange={(e) => {
+                setPin(e.target.value);
+                setStatus("idle");
+              }}
+              placeholder="Nouveau PIN"
+              className={INPUT_CLASS}
+            />
+            <input
+              type="password"
+              inputMode="numeric"
+              value={confirmPin}
+              onChange={(e) => {
+                setConfirmPin(e.target.value);
+                setStatus("idle");
+              }}
+              placeholder="Confirmer"
+              className={INPUT_CLASS}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={!pin.trim()}
+            className="btn-clip bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#FF5969] disabled:opacity-50"
+          >
+            Activer le verrou
+          </button>
+          {status === "mismatch" && (
+            <p className="text-xs text-crit">Les deux PIN ne correspondent pas.</p>
+          )}
+          {status === "error" && (
+            <p className="text-xs text-crit">Échec de l'enregistrement du PIN.</p>
+          )}
+          {status === "saved" && <p className="text-xs text-lo">Verrou activé.</p>}
         </div>
       )}
     </div>

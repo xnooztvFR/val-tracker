@@ -31,6 +31,12 @@ const KEY_LOSS_STREAK_ALERT_ENABLED: &str = "loss_streak_alert_enabled";
 const KEY_LOSS_STREAK_ALERT_COUNT: &str = "loss_streak_alert_count";
 const KEY_INACTIVITY_REMINDER_ENABLED: &str = "inactivity_reminder_enabled";
 const KEY_INACTIVITY_REMINDER_DAYS: &str = "inactivity_reminder_days";
+const KEY_NOTES_PIN_ENABLED: &str = "notes_pin_enabled";
+/// PIN de verrouillage des notes perso (backlog #99) — chiffré via DPAPI comme la clé API
+/// Henrik (`set_encrypted`/`get_encrypted`), jamais exposé au frontend via `AppSettings`
+/// (seul `notes_pin_enabled` l'est) ; la vérification se fait entièrement côté Rust via
+/// `verify_notes_pin`.
+const KEY_NOTES_PIN: &str = "notes_pin";
 
 const DEFAULT_UI_THEME: &str = "dark";
 const DEFAULT_UI_ACCENT: &str = "red";
@@ -106,6 +112,10 @@ pub struct AppSettings {
     /// — voir `status_watcher.rs` pour le pattern de tâche de fond réutilisé.
     pub inactivity_reminder_enabled: bool,
     pub inactivity_reminder_days: i64,
+    /// Backlog #99 : verrouillage optionnel par PIN avant d'afficher les notes perso
+    /// sensibles (tags "smurf"/"toxique" de #12) — utile en stream/écran partagé. Le PIN
+    /// lui-même n'est jamais inclus ici (voir `verify_notes_pin`).
+    pub notes_pin_enabled: bool,
 }
 
 impl fmt::Debug for AppSettings {
@@ -136,6 +146,7 @@ impl fmt::Debug for AppSettings {
                 &self.inactivity_reminder_enabled,
             )
             .field("inactivity_reminder_days", &self.inactivity_reminder_days)
+            .field("notes_pin_enabled", &self.notes_pin_enabled)
             .finish()
     }
 }
@@ -251,6 +262,9 @@ pub fn load_settings(conn: &Connection) -> rusqlite::Result<AppSettings> {
     let inactivity_reminder_days = get_raw(conn, KEY_INACTIVITY_REMINDER_DAYS)?
         .and_then(|v| v.parse::<i64>().ok())
         .unwrap_or(DEFAULT_INACTIVITY_REMINDER_DAYS);
+    let notes_pin_enabled = get_raw(conn, KEY_NOTES_PIN_ENABLED)?
+        .map(|v| v == "true")
+        .unwrap_or(false);
 
     Ok(AppSettings {
         henrik_api_key_set,
@@ -269,6 +283,7 @@ pub fn load_settings(conn: &Connection) -> rusqlite::Result<AppSettings> {
         loss_streak_alert_count,
         inactivity_reminder_enabled,
         inactivity_reminder_days,
+        notes_pin_enabled,
     })
 }
 
@@ -385,6 +400,28 @@ pub fn set_inactivity_reminder_enabled(conn: &Connection, enabled: bool) -> rusq
 
 pub fn set_inactivity_reminder_days(conn: &Connection, days: i64) -> rusqlite::Result<()> {
     set_raw(conn, KEY_INACTIVITY_REMINDER_DAYS, &days.max(1).to_string())
+}
+
+/// Backlog #99 : active le verrou et enregistre le PIN (chiffré via DPAPI, comme la clé API
+/// Henrik). `pin` doit être non vide — validé côté commande avant d'appeler cette fonction.
+pub fn set_notes_pin(conn: &Connection, pin: &str) -> rusqlite::Result<()> {
+    set_encrypted(conn, KEY_NOTES_PIN, pin)?;
+    set_raw(conn, KEY_NOTES_PIN_ENABLED, "true")
+}
+
+/// Désactive le verrou et efface le PIN enregistré (pas seulement le flag) — repasser
+/// `notes_pin_enabled` à `false` sans effacer le PIN laisserait une valeur DPAPI orpheline
+/// qui redeviendrait active si l'utilisateur ré-active le verrou plus tard sans le vouloir.
+pub fn clear_notes_pin(conn: &Connection) -> rusqlite::Result<()> {
+    set_raw(conn, KEY_NOTES_PIN, "")?;
+    set_raw(conn, KEY_NOTES_PIN_ENABLED, "false")
+}
+
+/// Compare `pin` au PIN enregistré. `false` si aucun PIN n'est configuré (le verrou ne
+/// devrait alors pas être affiché côté frontend — `notes_pin_enabled` sert de garde).
+pub fn verify_notes_pin(conn: &Connection, pin: &str) -> rusqlite::Result<bool> {
+    let stored = get_encrypted(conn, KEY_NOTES_PIN)?;
+    Ok(stored.is_some_and(|s| s == pin))
 }
 
 const KEY_LAST_INACTIVITY_REMINDER_SENT: &str = "last_inactivity_reminder_sent_at";
@@ -600,5 +637,26 @@ mod tests {
         let settings = load_settings(&conn).unwrap();
         assert!(settings.inactivity_reminder_enabled);
         assert_eq!(settings.inactivity_reminder_days, 7);
+    }
+
+    #[test]
+    fn notes_pin_round_trip_verify_and_clear() {
+        let conn = memory_conn();
+        assert!(!load_settings(&conn).unwrap().notes_pin_enabled);
+        assert!(!verify_notes_pin(&conn, "1234").unwrap());
+
+        set_notes_pin(&conn, "1234").unwrap();
+        assert!(load_settings(&conn).unwrap().notes_pin_enabled);
+        assert!(verify_notes_pin(&conn, "1234").unwrap());
+        assert!(!verify_notes_pin(&conn, "0000").unwrap());
+
+        // Le PIN ne doit jamais apparaître en clair dans la base.
+        let raw = get_raw(&conn, KEY_NOTES_PIN).unwrap().unwrap();
+        assert!(raw.starts_with(DPAPI_PREFIX));
+        assert!(!raw.contains("1234"));
+
+        clear_notes_pin(&conn).unwrap();
+        assert!(!load_settings(&conn).unwrap().notes_pin_enabled);
+        assert!(!verify_notes_pin(&conn, "1234").unwrap());
     }
 }

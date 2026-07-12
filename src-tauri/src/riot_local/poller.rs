@@ -392,6 +392,7 @@ async fn read_settings(app: &AppHandle) -> crate::settings::AppSettings {
         loss_streak_alert_count: 3,
         inactivity_reminder_enabled: false,
         inactivity_reminder_days: 3,
+        notes_pin_enabled: false,
     })
 }
 

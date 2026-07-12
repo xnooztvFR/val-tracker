@@ -712,6 +712,8 @@ export interface AppSettings {
   /** Backlog #32 : rappel doux si aucun compte "à soi" consulté depuis X jours. */
   inactivity_reminder_enabled: boolean;
   inactivity_reminder_days: number;
+  /** Backlog #99 : verrou PIN optionnel devant les notes perso (`PlayerNotesPanel`). */
+  notes_pin_enabled: boolean;
 }
 
 export interface UsageMetricsSummary {
@@ -830,6 +832,10 @@ export const tauriApi = {
     invoke<void>("save_inactivity_reminder_days", { days }),
   verifyHenrikApiKey: (apiKey: string) =>
     invoke<boolean>("verify_henrik_api_key", { apiKey }),
+  saveNotesPin: (pin: string) => invoke<void>("save_notes_pin", { pin }),
+  clearNotesPin: () => invoke<void>("clear_notes_pin"),
+  verifyNotesPin: (pin: string) => invoke<boolean>("verify_notes_pin", { pin }),
+  fetchExternalImage: (url: string) => invoke<string>("fetch_external_image", { url }),
 
   fetchAccount: (name: string, tag: string, force = false) =>
     invoke<Fetched<AccountData>>("fetch_account", { name, tag, force }),

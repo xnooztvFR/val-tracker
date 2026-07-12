@@ -22,6 +22,8 @@ interface SettingsState {
   setLossStreakAlertCount: (count: number) => Promise<void>;
   setInactivityReminderEnabled: (enabled: boolean) => Promise<void>;
   setInactivityReminderDays: (days: number) => Promise<void>;
+  setNotesPin: (pin: string) => Promise<void>;
+  clearNotesPin: () => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -111,6 +113,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   setInactivityReminderDays: async (days: number) => {
     await tauriApi.saveInactivityReminderDays(days);
+    await get().refresh();
+  },
+
+  setNotesPin: async (pin: string) => {
+    await tauriApi.saveNotesPin(pin);
+    await get().refresh();
+  },
+
+  clearNotesPin: async () => {
+    await tauriApi.clearNotesPin();
     await get().refresh();
   },
 }));

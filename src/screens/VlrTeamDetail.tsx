@@ -4,6 +4,7 @@ import { SkeletonScreen } from "../components/Skeleton";
 import { useVlrTeam, useVlrTeamMatches } from "../hooks/useVlr";
 import ErrorState from "../components/ErrorState";
 import Panel from "../components/Panel";
+import ExternalImage from "../components/ExternalImage";
 
 export default function VlrTeamDetail() {
   const { teamId } = useParams<{ teamId: string }>();
@@ -25,7 +26,7 @@ export default function VlrTeamDetail() {
       </Link>
 
       <Panel className="flex flex-wrap items-center gap-4 px-5 py-4">
-        {data.logo && <img src={data.logo} alt="" className="h-14 w-14 object-contain" />}
+        {data.logo && <ExternalImage src={data.logo} alt="" className="h-14 w-14 object-contain" />}
         <div>
           <h1 className="font-display text-lg font-bold uppercase tracking-hud text-hi">{data.name}</h1>
           <p className="stat-value text-sm text-lo">
@@ -45,7 +46,7 @@ export default function VlrTeamDetail() {
         <div className="flex flex-wrap gap-2">
           {data.roster.map((m) => (
             <span key={m.id} className="panel-clip-sm flex items-center gap-2 px-3 py-1.5 text-sm text-hi">
-              {m.avatar && <img src={m.avatar} alt="" className="h-5 w-5 rounded-full object-cover" />}
+              {m.avatar && <ExternalImage src={m.avatar} alt="" className="h-5 w-5 rounded-full object-cover" />}
               {m.alias}
               {m.is_captain && <span className="text-[10px] text-accent">(C)</span>}
             </span>

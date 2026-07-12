@@ -27,7 +27,7 @@ export default function DetectionStatusBadge() {
   return (
     <button
       type="button"
-      onClick={() => navigate("/parametres?section=overlay")}
+      onClick={() => navigate("/parametres?section=game")}
       title={`${info.label} — voir les paramètres`}
       aria-label={info.label}
       className="flex h-8 w-8 shrink-0 items-center justify-center self-center text-lo transition-colors hover:text-hi"

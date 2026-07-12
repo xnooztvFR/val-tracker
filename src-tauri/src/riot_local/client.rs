@@ -54,6 +54,26 @@ fn local_url(lockfile: &LockfileInfo, path: &str) -> String {
     format!("https://127.0.0.1:{}{}", lockfile.port, path)
 }
 
+/// Masque les segments UUID (PUUID, match ID) d'une URL/chemin avant de l'inclure dans un
+/// message de log — ces messages remontent jusqu'à `val-tracker.log` via `poller.rs`
+/// (`applog!`), qui n'est pas un canal chiffré (voir Backlog #101, audit du contenu du log).
+fn redact_ids(url_or_path: &str) -> String {
+    url_or_path
+        .split('/')
+        .map(|segment| if is_uuid_like(segment) { "<id>" } else { segment })
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
+fn is_uuid_like(segment: &str) -> bool {
+    let bytes = segment.as_bytes();
+    bytes.len() == 36
+        && bytes.iter().enumerate().all(|(i, b)| match i {
+            8 | 13 | 18 | 23 => *b == b'-',
+            _ => b.is_ascii_hexdigit(),
+        })
+}
+
 async fn get_local_json<T: serde::de::DeserializeOwned>(
     client: &reqwest::Client,
     lockfile: &LockfileInfo,
@@ -64,13 +84,13 @@ async fn get_local_json<T: serde::de::DeserializeOwned>(
         .basic_auth("riot", Some(&lockfile.password))
         .send()
         .await
-        .with_context(|| format!("GET local {path}"))?
+        .with_context(|| format!("GET local {}", redact_ids(path)))?
         .error_for_status()
-        .with_context(|| format!("statut local {path}"))?;
+        .with_context(|| format!("statut local {}", redact_ids(path)))?;
     response
         .json::<T>()
         .await
-        .with_context(|| format!("parse local {path}"))
+        .with_context(|| format!("parse local {}", redact_ids(path)))
 }
 
 // ---- Session / presence ----
@@ -254,9 +274,9 @@ async fn get_glz_json(
         .header("X-Riot-ClientVersion", client_version)
         .send()
         .await
-        .with_context(|| format!("GET glz {url}"))?
+        .with_context(|| format!("GET glz {}", redact_ids(url)))?
         .error_for_status()
-        .with_context(|| format!("statut glz {url}"))?;
+        .with_context(|| format!("statut glz {}", redact_ids(url)))?;
     response.json().await.context("parse glz")
 }
 

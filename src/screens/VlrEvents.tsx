@@ -6,6 +6,7 @@ import { useVlrEvents } from "../hooks/useVlr";
 import ErrorState from "../components/ErrorState";
 import Panel from "../components/Panel";
 import EmptyState from "../components/EmptyState";
+import ExternalImage from "../components/ExternalImage";
 
 const REGION_OPTIONS = [
   { value: "", label: "Toutes régions" },
@@ -89,14 +90,7 @@ export default function VlrEvents() {
             onClick={() => navigate(`/esport/evenements/${event.id}`)}
           >
             {event.icon && (
-              <img
-                src={event.icon}
-                alt=""
-                className="h-10 w-10 object-contain"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
-                }}
-              />
+              <ExternalImage src={event.icon} alt="" className="h-10 w-10 object-contain" />
             )}
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-hi">{event.title}</p>

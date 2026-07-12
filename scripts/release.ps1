@@ -63,6 +63,10 @@ if (-not $nsisExe -or -not $nsisSig) {
 $signature = (Get-Content $nsisSig.FullName -Raw).Trim()
 $pubDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
 $nsisAssetName = $nsisExe.Name -replace " ", "."
+# Hash publié en plus de la signature Ed25519 minisign déjà vérifiée par tauri-plugin-updater
+# (défense en profondeur — voir CommandError/verify_update_hash côté Rust, appelé par
+# useUpdater.ts avant d'installer). Champ custom, ignoré par le plugin lui-même.
+$nsisSha256 = (Get-FileHash $nsisExe.FullName -Algorithm SHA256).Hash.ToLower()
 
 $latestJson = [ordered]@{
     version  = $version
@@ -72,6 +76,7 @@ $latestJson = [ordered]@{
         "windows-x86_64" = [ordered]@{
             signature = $signature
             url       = "https://github.com/$repo/releases/download/$tag/$nsisAssetName"
+            sha256    = $nsisSha256
         }
     }
 } | ConvertTo-Json -Depth 5

@@ -7,11 +7,13 @@ mod commands;
 mod db;
 mod discord_rpc;
 mod dpapi;
+mod image_proxy;
 mod inactivity_reminder;
 mod overlay;
 mod riot_local;
 mod settings;
 mod status_watcher;
+mod updater;
 
 use std::sync::Arc;
 
@@ -145,6 +147,11 @@ fn main() {
             commands::list_self_accounts,
             commands::detect_local_account,
             commands::get_recent_logs,
+            commands::verify_update_hash,
+            commands::save_notes_pin,
+            commands::clear_notes_pin,
+            commands::verify_notes_pin,
+            commands::fetch_external_image,
         ])
         .run(tauri::generate_context!())
         .expect("erreur lors du lancement de l'application Tauri");
