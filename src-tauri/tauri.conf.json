@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Valorant Tracker",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "identifier": "com.xnooztv.val-tracker",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -41,18 +41,18 @@
       "icons/icon.ico"
     ],
     "windows": {
-      "certificateThumbprint": "EB04564FD14749DCF7D1CEAD1854CD4552E25727",
+      "certificateThumbprint": "3FBF44427F5A7F15E239C975B608B7FBE676761D",
       "digestAlgorithm": "sha256",
       "timestampUrl": "http://timestamp.digicert.com",
       "signCommand": {
         "cmd": "C:\\Program Files (x86)\\Windows Kits\\10\\bin\\10.0.26100.0\\x64\\signtool.exe",
-        "args": ["sign", "/sha1", "EB04564FD14749DCF7D1CEAD1854CD4552E25727", "/tr", "http://timestamp.digicert.com", "/td", "sha256", "/fd", "sha256", "%1"]
+        "args": ["sign", "/sha1", "3FBF44427F5A7F15E239C975B608B7FBE676761D", "/tr", "http://timestamp.digicert.com", "/td", "sha256", "/fd", "sha256", "%1"]
       }
     }
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDZGREM2NTE0MzdENDk0RDMKUldUVGxOUTNGR1hjYjVXaEkyUldDckViL2hJTDcxLzlNSmJiWi91QXdqQUp6MUdTa2ZyQ0NUckEK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE0MDg3MkY1QzM3N0M5RUQKUldUdHlYZkQ5WElJcEJQblNVSW5tM3NGWjJCbFc5aGs1NmtBdnh4aUo5eEJva2VVd2RsMTlRNncK",
       "endpoints": [
         "https://github.com/xnooztvFR/val-tracker/releases/latest/download/latest.json"
       ]
