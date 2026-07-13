@@ -65,7 +65,9 @@
       "networkError": "Impossible de vérifier (panne réseau ?).",
       "verifying": "Vérification…",
       "verifyAndSave": "Vérifier et enregistrer",
-      "next": "Suivant"
+      "next": "Suivant",
+      "proxyAvailable": "Un accès sans clé perso est déjà disponible sur cette installation — tu peux passer cette étape.",
+      "skip": "Passer"
     },
     "step2": {
       "title": "2. Région par défaut",

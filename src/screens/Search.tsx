@@ -57,14 +57,20 @@ export default function Search() {
 
   const apiKeyMissing = settings ? !settings.henrik_api_key_set : false;
   const [showWizard, setShowWizard] = useState(false);
-  const [wizardDismissed, setWizardDismissed] = useState(false);
 
-  // Backlog #28 : une fois lancé, le wizard reste affiché jusqu'à "Terminé" même si
-  // `apiKeyMissing` devient false dès l'étape 1 (clé validée) — sinon les étapes 2/3
-  // (région, détection) seraient sautées silencieusement.
+  // Fix (2026-07-13) : déclenché par `onboarding_completed` (vrai flag "premier lancement"
+  // persisté côté backend), plus par `apiKeyMissing` — ce dernier reste `false` en
+  // permanence sur un build avec relais proxy compilé (voir `settings.rs`), ce qui empêchait
+  // le wizard de jamais s'afficher tant qu'un `.env` proxy était configuré au build.
   useEffect(() => {
-    if (apiKeyMissing && !wizardDismissed) setShowWizard(true);
-  }, [apiKeyMissing, wizardDismissed]);
+    if (settings && !settings.onboarding_completed) setShowWizard(true);
+  }, [settings]);
+
+  async function finishWizard() {
+    setShowWizard(false);
+    await tauriApi.markOnboardingCompleted();
+    await useSettingsStore.getState().refresh();
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -98,12 +104,7 @@ export default function Search() {
       </p>
 
       {showWizard ? (
-        <OnboardingWizard
-          onFinish={() => {
-            setShowWizard(false);
-            setWizardDismissed(true);
-          }}
-        />
+        <OnboardingWizard apiKeyAlreadySet={!apiKeyMissing} onFinish={finishWizard} />
       ) : (
         <form onSubmit={handleSubmit} className="mt-8 w-full">
           <div className="panel-clip flex items-stretch gap-2 p-1.5 transition-shadow focus-within:[box-shadow:inset_0_0_0_1px_rgb(var(--color-accent))]">

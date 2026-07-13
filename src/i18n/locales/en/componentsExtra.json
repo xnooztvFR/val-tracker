@@ -65,7 +65,9 @@
       "networkError": "Could not verify (network issue?).",
       "verifying": "Verifying…",
       "verifyAndSave": "Verify and save",
-      "next": "Next"
+      "next": "Next",
+      "proxyAvailable": "Access without a personal key is already available on this install — you can skip this step.",
+      "skip": "Skip"
     },
     "step2": {
       "title": "2. Default region",

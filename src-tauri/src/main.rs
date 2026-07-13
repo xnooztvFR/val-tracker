@@ -218,6 +218,7 @@ fn main() {
             commands::fetch_external_image,
             commands::get_autostart_enabled,
             commands::save_autostart_enabled,
+            commands::mark_onboarding_completed,
         ])
         .run(tauri::generate_context!())
         .expect("erreur lors du lancement de l'application Tauri");

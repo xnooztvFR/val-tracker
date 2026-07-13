@@ -487,6 +487,7 @@ async fn read_settings(app: &AppHandle) -> crate::settings::AppSettings {
         inactivity_reminder_enabled: false,
         inactivity_reminder_days: 3,
         notes_pin_enabled: false,
+        onboarding_completed: true,
     })
 }
 

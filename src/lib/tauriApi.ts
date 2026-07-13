@@ -745,6 +745,10 @@ export interface AppSettings {
   inactivity_reminder_days: number;
   /** Backlog #99 : verrou PIN optionnel devant les notes perso (`PlayerNotesPanel`). */
   notes_pin_enabled: boolean;
+  /** Fix (2026-07-13) : `true` une fois le wizard d'onboarding (`OnboardingWizard.tsx`)
+   * terminé — indépendant de `henrik_api_key_set` (qui reste `true` en permanence sur un
+   * build avec relais proxy compilé, voir `settings.rs::KEY_ONBOARDING_COMPLETED`). */
+  onboarding_completed: boolean;
 }
 
 export interface UsageMetricsSummary {
@@ -895,6 +899,7 @@ export const tauriApi = {
     invoke<boolean>("verify_henrik_api_key", { apiKey }),
   saveNotesPin: (pin: string) => invoke<void>("save_notes_pin", { pin }),
   clearNotesPin: () => invoke<void>("clear_notes_pin"),
+  markOnboardingCompleted: () => invoke<void>("mark_onboarding_completed"),
   verifyNotesPin: (pin: string) => invoke<boolean>("verify_notes_pin", { pin }),
   fetchExternalImage: (url: string) => invoke<string>("fetch_external_image", { url }),
   getAutostartEnabled: () => invoke<boolean>("get_autostart_enabled"),

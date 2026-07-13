@@ -7,9 +7,17 @@ import { getRegions } from "../lib/format";
 
 type Step = 1 | 2 | 3;
 
-/** Backlog #28 : wizard en 3 étapes au premier lancement (pas de clé API configurée),
- * affiché par Search.tsx à la place du formulaire de recherche désactivé. */
-export default function OnboardingWizard({ onFinish }: { onFinish: () => void }) {
+/** Backlog #28 : wizard en 3 étapes au premier lancement, affiché par Search.tsx à la place
+ * du formulaire de recherche. `apiKeyAlreadySet` (fix 2026-07-13) : `true` quand un relais
+ * proxy compilé donne déjà accès à Henrik (voir `settings.rs::default_proxy_access`) — dans
+ * ce cas l'étape 1 propose de passer directement à l'étape 2 sans saisir de clé perso. */
+export default function OnboardingWizard({
+  onFinish,
+  apiKeyAlreadySet,
+}: {
+  onFinish: () => void;
+  apiKeyAlreadySet: boolean;
+}) {
   const { t } = useTranslation("componentsExtra");
   const { setApiKey, setDefaultRegion } = useSettingsStore();
   const [step, setStep] = useState<Step>(1);
@@ -65,6 +73,9 @@ export default function OnboardingWizard({ onFinish }: { onFinish: () => void })
           <p className="text-xs text-lo">
             {t("onboardingWizard.step1.description")}
           </p>
+          {apiKeyAlreadySet && (
+            <p className="text-xs text-accent">{t("onboardingWizard.step1.proxyAvailable")}</p>
+          )}
           <input
             type="password"
             value={apiKeyInput}
@@ -78,6 +89,15 @@ export default function OnboardingWizard({ onFinish }: { onFinish: () => void })
           {verifyState === "invalid" && <p className="text-xs text-crit">{t("onboardingWizard.step1.invalid")}</p>}
           {verifyState === "error" && <p className="text-xs text-crit">{t("onboardingWizard.step1.networkError")}</p>}
           <div className="flex justify-end gap-2">
+            {apiKeyAlreadySet && verifyState !== "valid" && (
+              <button
+                type="button"
+                onClick={() => setStep(2)}
+                className="border border-line px-3 py-1.5 text-xs text-hi hover:border-accent hover:text-accent"
+              >
+                {t("onboardingWizard.step1.skip")}
+              </button>
+            )}
             <button
               type="button"
               onClick={handleVerifyAndSave}

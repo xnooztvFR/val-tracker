@@ -49,6 +49,12 @@ const KEY_NOTES_PIN: &str = "notes_pin";
 /// n'apparaît jamais" malgré une mise à jour réussie.
 const KEY_PENDING_CHANGELOG_VERSION: &str = "pending_changelog_version";
 const KEY_PENDING_CHANGELOG_NOTES: &str = "pending_changelog_notes";
+/// Fix (2026-07-13) : le wizard d'onboarding (`OnboardingWizard.tsx`) se déclenchait sur
+/// `!henrik_api_key_set`, qui reste `false` en permanence dès qu'un relais proxy est compilé
+/// (voir `default_proxy_access`) — un build de distribution ne montrait donc jamais l'écran
+/// de configuration initiale (région, détection auto...), même sur une base SQLite vierge.
+/// Ce flag marque un vrai "premier lancement", indépendant de la disponibilité d'une clé.
+const KEY_ONBOARDING_COMPLETED: &str = "onboarding_completed";
 
 const DEFAULT_UI_THEME: &str = "dark";
 const DEFAULT_UI_ACCENT: &str = "red";
@@ -145,6 +151,10 @@ pub struct AppSettings {
     /// sensibles (tags "smurf"/"toxique" de #12) — utile en stream/écran partagé. Le PIN
     /// lui-même n'est jamais inclus ici (voir `verify_notes_pin`).
     pub notes_pin_enabled: bool,
+    /// Fix (2026-07-13) : `true` une fois le wizard d'onboarding terminé (ou explicitement
+    /// marqué comme tel) — déclenche l'affichage du wizard côté `Search.tsx` tant que
+    /// `false`, sans dépendre de `henrik_api_key_set` (voir `KEY_ONBOARDING_COMPLETED`).
+    pub onboarding_completed: bool,
 }
 
 impl fmt::Debug for AppSettings {
@@ -179,6 +189,7 @@ impl fmt::Debug for AppSettings {
             )
             .field("inactivity_reminder_days", &self.inactivity_reminder_days)
             .field("notes_pin_enabled", &self.notes_pin_enabled)
+            .field("onboarding_completed", &self.onboarding_completed)
             .finish()
     }
 }
@@ -303,6 +314,9 @@ pub fn load_settings(conn: &Connection) -> rusqlite::Result<AppSettings> {
     let notes_pin_enabled = get_raw(conn, KEY_NOTES_PIN_ENABLED)?
         .map(|v| v == "true")
         .unwrap_or(false);
+    let onboarding_completed = get_raw(conn, KEY_ONBOARDING_COMPLETED)?
+        .map(|v| v == "true")
+        .unwrap_or(false);
 
     Ok(AppSettings {
         henrik_api_key_set,
@@ -325,7 +339,18 @@ pub fn load_settings(conn: &Connection) -> rusqlite::Result<AppSettings> {
         inactivity_reminder_enabled,
         inactivity_reminder_days,
         notes_pin_enabled,
+        onboarding_completed,
     })
+}
+
+/// Marque le wizard d'onboarding comme terminé — n'est plus jamais réaffiché
+/// automatiquement ensuite (voir doc de `KEY_ONBOARDING_COMPLETED`).
+pub fn set_onboarding_completed(conn: &Connection, completed: bool) -> rusqlite::Result<()> {
+    set_raw(
+        conn,
+        KEY_ONBOARDING_COMPLETED,
+        if completed { "true" } else { "false" },
+    )
 }
 
 pub fn set_henrik_api_key(conn: &Connection, api_key: &str) -> rusqlite::Result<()> {
@@ -812,6 +837,18 @@ mod tests {
         clear_notes_pin(&conn).unwrap();
         assert!(!load_settings(&conn).unwrap().notes_pin_enabled);
         assert!(!verify_notes_pin(&conn, "1234").unwrap());
+    }
+
+    #[test]
+    fn onboarding_completed_defaults_false_then_round_trip() {
+        let conn = memory_conn();
+        assert!(!load_settings(&conn).unwrap().onboarding_completed);
+
+        set_onboarding_completed(&conn, true).unwrap();
+        assert!(load_settings(&conn).unwrap().onboarding_completed);
+
+        set_onboarding_completed(&conn, false).unwrap();
+        assert!(!load_settings(&conn).unwrap().onboarding_completed);
     }
 
     #[test]

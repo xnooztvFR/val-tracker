@@ -1543,6 +1543,15 @@ pub async fn clear_notes_pin(state: State<'_, AppState>) -> Result<(), CommandEr
     Ok(())
 }
 
+/// Marque le wizard d'onboarding (`OnboardingWizard.tsx`) comme terminé — voir
+/// `settings::KEY_ONBOARDING_COMPLETED`. Appelée au clic sur "Terminé" de la dernière étape.
+#[tauri::command]
+pub async fn mark_onboarding_completed(state: State<'_, AppState>) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::set_onboarding_completed(&conn, true)?;
+    Ok(())
+}
+
 /// Vérifie `pin` contre celui enregistré — utilisé par `PlayerNotesPanel.tsx` pour
 /// déverrouiller l'affichage des notes le temps de la session courante (pas de "déverrouillé"
 /// persistant, cohérent avec l'usage stream/écran partagé visé par #99).
