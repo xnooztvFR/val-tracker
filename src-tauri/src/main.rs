@@ -17,7 +17,7 @@ mod updater;
 
 use std::sync::Arc;
 
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 use tokio::sync::Mutex;
 
 use api::henrik::{HenrikClient, RateLimiter};
@@ -61,6 +61,9 @@ fn main() {
             // Ctrl+Shift+V (bascule click-through de l'overlay). Best-effort : un échec
             // d'enregistrement du raccourci ne doit pas empêcher l'app de démarrer.
             app.manage(riot_local::LiveState::new());
+            // Backlog #81 : lien "voir le récap" déposé par le poller à la fin d'une
+            // partie, consommé au focus de la fenêtre principale (voir plus bas).
+            app.manage(riot_local::PostgameLinkState::new());
             // Le handle doit rester géré pour toute la durée de vie de l'app : il détient
             // le `watch::Sender` qui maintient la boucle de polling en vie. Le laisser
             // tomber ici fermerait immédiatement le canal et arrêterait `run_loop` dès sa
@@ -110,8 +113,23 @@ fn main() {
             if let Some(main_window) = app.get_webview_window("main") {
                 let handle = app.handle().clone();
                 main_window.on_window_event(move |event| {
-                    if let tauri::WindowEvent::CloseRequested { .. } = event {
-                        handle.exit(0);
+                    match event {
+                        tauri::WindowEvent::CloseRequested { .. } => handle.exit(0),
+                        // Backlog #81 : reprend le focus de la fenêtre principale (ex. clic
+                        // sur la notification de fin de partie, qui active l'app côté OS
+                        // sans callback direct côté plugin) pour consommer un éventuel lien
+                        // "voir le récap" déposé par le poller et naviguer dessus.
+                        tauri::WindowEvent::Focused(true) => {
+                            if let Some(link_state) =
+                                handle.try_state::<riot_local::PostgameLinkState>()
+                            {
+                                let now = chrono::Utc::now().timestamp();
+                                if let Some(link) = link_state.take_if_fresh(now) {
+                                    let _ = handle.emit("postgame://navigate", link);
+                                }
+                            }
+                        }
+                        _ => {}
                     }
                 });
             }
@@ -137,6 +155,7 @@ fn main() {
             commands::save_ui_language,
             commands::save_ui_density,
             commands::save_overlay_density,
+            commands::save_overlay_layout,
             commands::save_loss_streak_alert_enabled,
             commands::save_loss_streak_alert_count,
             commands::save_inactivity_reminder_enabled,

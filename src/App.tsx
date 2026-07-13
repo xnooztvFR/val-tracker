@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from "react";
-import { Route, Routes, useLocation } from "react-router-dom";
+import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { listen } from "@tauri-apps/api/event";
 import { useTranslation } from "react-i18next";
 import i18n from "./i18n";
 
@@ -43,6 +44,7 @@ const VlrPlayerDetail = lazy(() => import("./screens/VlrPlayerDetail"));
 const Compare = lazy(() => import("./screens/Compare"));
 
 export default function App() {
+  const navigate = useNavigate();
   const compact = useUiStore((s) => s.compact);
   const focus = useUiStore((s) => s.focus);
   const toggleFocus = useUiStore((s) => s.toggleFocus);
@@ -116,6 +118,25 @@ export default function App() {
       i18n.changeLanguage(uiLanguage);
     }
   }, [uiLanguage]);
+
+  // Backlog #81 : lien "voir le récap" déposé côté Rust par le poller à la fin d'une
+  // partie (voir `riot_local::PostgameLinkState`) et poussé au focus de la fenêtre
+  // principale (le clic sur la notification Windows active l'app sans callback direct
+  // exploitable côté plugin, donc c'est le focus qui sert de déclencheur). N'a de sens que
+  // pour la fenêtre principale — l'overlay n'a pas de router applicatif.
+  useEffect(() => {
+    if (getCurrentWindow().label === "overlay") return;
+    const unlisten = listen<{ region: string; name: string; tag: string }>(
+      "postgame://navigate",
+      (event) => {
+        const { region, name, tag } = event.payload;
+        navigate(`/joueur/${region}/${encodeURIComponent(name)}/${encodeURIComponent(tag)}/matchs`);
+      },
+    );
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, [navigate]);
 
   // La fenêtre overlay V2 (créée par overlay::window côté Rust) rend uniquement
   // l'écran Overlay, sans titlebar ni navigation.

@@ -69,3 +69,49 @@ impl LiveState {
         Self(Mutex::new(LiveSnapshot::offline()))
     }
 }
+
+/// Cible du lien "voir le récap" déposé par la notification de fin de partie (backlog
+/// #81) — le match qui vient de se terminer n'est pas encore forcément ingéré côté Henrik
+/// (voir le message de la notification), donc on pointe vers l'historique de matchs du
+/// compte local plutôt qu'un `match_id` précis. Consommé une seule fois : le handler de
+/// focus de la fenêtre principale (voir `main.rs`) le prend puis le vide.
+#[derive(Debug, Clone, Serialize)]
+pub struct PostgameLink {
+    pub region: String,
+    pub name: String,
+    pub tag: String,
+    /// Timestamp Unix (secondes) de dépôt — un lien trop vieux (fenêtre principale restée
+    /// masquée longtemps) n'a plus grand intérêt à rediriger automatiquement l'utilisateur
+    /// vers un match qu'il a peut-être déjà consulté depuis.
+    pub set_at: i64,
+}
+
+/// Backlog #81 : durée de vie du lien avant qu'on le considère périmé plutôt que de
+/// rediriger l'utilisateur vers une partie déjà oubliée.
+pub const POSTGAME_LINK_TTL_SECS: i64 = 15 * 60;
+
+pub struct PostgameLinkState(pub Mutex<Option<PostgameLink>>);
+
+impl PostgameLinkState {
+    pub fn new() -> Self {
+        Self(Mutex::new(None))
+    }
+
+    pub fn set(&self, link: PostgameLink) {
+        if let Ok(mut guard) = self.0.lock() {
+            *guard = Some(link);
+        }
+    }
+
+    /// Retire et retourne le lien s'il existe et n'est pas périmé (voir
+    /// `POSTGAME_LINK_TTL_SECS`) — appelé au focus de la fenêtre principale.
+    pub fn take_if_fresh(&self, now: i64) -> Option<PostgameLink> {
+        let mut guard = self.0.lock().ok()?;
+        let link = guard.take()?;
+        if now - link.set_at <= POSTGAME_LINK_TTL_SECS {
+            Some(link)
+        } else {
+            None
+        }
+    }
+}

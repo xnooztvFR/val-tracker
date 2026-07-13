@@ -61,6 +61,12 @@
     "title": "Overlay en jeu",
     "description": "Détecte automatiquement une partie en cours via l'API locale du Riot Client et affiche un overlay always-on-top avec le rank des joueurs du lobby. Aucune injection dans le jeu : uniquement une fenêtre superposée. Fonctionne en « plein écran sans bordure » (le plein écran exclusif peut masquer l'overlay).",
     "enableLabel": "Activer la détection automatique de partie et l'overlay",
+    "layoutLabel": "Disposition",
+    "layout": {
+      "full": "Complète (défaut)",
+      "mini": "Mini résumé"
+    },
+    "layoutHint": "« Complète » (défaut) liste tous les joueurs détectés, alliés et adversaires. « Mini résumé » réduit l'overlay à une seule ligne de badges de rang, sans nom ni recommandation d'agent — pour un encombrement minimal en jeu.",
     "densityLabel": "Densité d'affichage",
     "density": {
       "compact": "Compact",

@@ -29,6 +29,7 @@ const KEY_UI_ACCENT: &str = "ui_accent";
 const KEY_UI_LANGUAGE: &str = "ui_language";
 const KEY_UI_DENSITY: &str = "ui_density";
 const KEY_OVERLAY_DENSITY: &str = "overlay_density";
+const KEY_OVERLAY_LAYOUT: &str = "overlay_layout";
 const KEY_LOSS_STREAK_ALERT_ENABLED: &str = "loss_streak_alert_enabled";
 const KEY_LOSS_STREAK_ALERT_COUNT: &str = "loss_streak_alert_count";
 const KEY_INACTIVITY_REMINDER_ENABLED: &str = "inactivity_reminder_enabled";
@@ -54,6 +55,7 @@ const DEFAULT_UI_ACCENT: &str = "red";
 const DEFAULT_UI_LANGUAGE: &str = "fr";
 const DEFAULT_UI_DENSITY: &str = "comfortable";
 const DEFAULT_OVERLAY_DENSITY: &str = "detailed";
+const DEFAULT_OVERLAY_LAYOUT: &str = "full";
 const DEFAULT_LOSS_STREAK_ALERT_COUNT: i64 = 3;
 const DEFAULT_INACTIVITY_REMINDER_DAYS: i64 = 3;
 
@@ -126,6 +128,11 @@ pub struct AppSettings {
     /// Backlog #31 : densité d'info affichée dans l'overlay en jeu — `"compact"` (juste le
     /// badge de rank) ou `"detailed"` (défaut, ajoute le nom du rank + le RR).
     pub overlay_density: String,
+    /// Backlog #75 : structure globale de l'overlay — `"full"` (défaut, liste complète
+    /// alliés/adversaires, cf `overlay_density` pour le niveau d'info par ligne) ou
+    /// `"mini"` (résumé minimal coin d'écran : juste les badges de rang, sans nom/RR ni
+    /// recommandation d'agent, pour un encombrement visuel minimal en jeu).
+    pub overlay_layout: String,
     /// Backlog #24 : notifie quand un joueur "à soi" (`tracked_players.is_self`) enchaîne
     /// `loss_streak_alert_count` défaites d'affilée. Désactivé par défaut.
     pub loss_streak_alert_enabled: bool,
@@ -163,6 +170,7 @@ impl fmt::Debug for AppSettings {
             .field("ui_language", &self.ui_language)
             .field("ui_density", &self.ui_density)
             .field("overlay_density", &self.overlay_density)
+            .field("overlay_layout", &self.overlay_layout)
             .field("loss_streak_alert_enabled", &self.loss_streak_alert_enabled)
             .field("loss_streak_alert_count", &self.loss_streak_alert_count)
             .field(
@@ -278,6 +286,8 @@ pub fn load_settings(conn: &Connection) -> rusqlite::Result<AppSettings> {
         get_raw(conn, KEY_UI_DENSITY)?.unwrap_or_else(|| DEFAULT_UI_DENSITY.to_string());
     let overlay_density = get_raw(conn, KEY_OVERLAY_DENSITY)?
         .unwrap_or_else(|| DEFAULT_OVERLAY_DENSITY.to_string());
+    let overlay_layout = get_raw(conn, KEY_OVERLAY_LAYOUT)?
+        .unwrap_or_else(|| DEFAULT_OVERLAY_LAYOUT.to_string());
     let loss_streak_alert_enabled = get_raw(conn, KEY_LOSS_STREAK_ALERT_ENABLED)?
         .map(|v| v == "true")
         .unwrap_or(false);
@@ -309,6 +319,7 @@ pub fn load_settings(conn: &Connection) -> rusqlite::Result<AppSettings> {
         ui_language,
         ui_density,
         overlay_density,
+        overlay_layout,
         loss_streak_alert_enabled,
         loss_streak_alert_count,
         inactivity_reminder_enabled,
@@ -348,21 +359,42 @@ pub fn set_riot_local_disabled(conn: &Connection, disabled: bool) -> rusqlite::R
     )
 }
 
-/// Dernière position connue de la fenêtre overlay (déplacée en mode interactif via
-/// Ctrl+Shift+V), pour la restaurer au prochain lancement plutôt que de revenir à la
-/// position par défaut à chaque redémarrage.
-pub fn get_overlay_position(conn: &Connection) -> rusqlite::Result<Option<(f64, f64)>> {
-    let raw = get_raw(conn, KEY_OVERLAY_POSITION)?;
-    Ok(raw.and_then(|v| {
-        let (x_raw, y_raw) = v.split_once(',')?;
-        let x = x_raw.parse::<f64>().ok()?;
-        let y = y_raw.parse::<f64>().ok()?;
-        Some((x, y))
-    }))
+fn parse_position(raw: &str) -> Option<(f64, f64)> {
+    let (x_raw, y_raw) = raw.split_once(',')?;
+    let x = x_raw.parse::<f64>().ok()?;
+    let y = y_raw.parse::<f64>().ok()?;
+    Some((x, y))
 }
 
-pub fn set_overlay_position(conn: &Connection, x: f64, y: f64) -> rusqlite::Result<()> {
-    set_raw(conn, KEY_OVERLAY_POSITION, &format!("{x},{y}"))
+/// Dernière position connue de la fenêtre overlay (déplacée en mode interactif via
+/// Ctrl+Shift+V), pour la restaurer au prochain lancement plutôt que de revenir à la
+/// position par défaut à chaque redémarrage. Backlog #76 : la position est mémorisée par
+/// configuration d'écran (`monitor_signature`, voir `overlay::window::monitor_signature`)
+/// pour éviter qu'elle réapparaisse hors-écran après un changement de setup (ex. laptop
+/// débranché d'un moniteur externe) — chaque signature a sa propre entrée. Une position
+/// enregistrée par une version antérieure de l'app (avant #76, une seule position globale
+/// sans signature) sert de repli pour une configuration encore jamais vue, plutôt que de la
+/// perdre silencieusement à la mise à jour.
+pub fn get_overlay_position(
+    conn: &Connection,
+    monitor_signature: &str,
+) -> rusqlite::Result<Option<(f64, f64)>> {
+    let key = format!("{KEY_OVERLAY_POSITION}:{monitor_signature}");
+    if let Some(raw) = get_raw(conn, &key)? {
+        return Ok(parse_position(&raw));
+    }
+    let legacy = get_raw(conn, KEY_OVERLAY_POSITION)?;
+    Ok(legacy.and_then(|v| parse_position(&v)))
+}
+
+pub fn set_overlay_position(
+    conn: &Connection,
+    monitor_signature: &str,
+    x: f64,
+    y: f64,
+) -> rusqlite::Result<()> {
+    let key = format!("{KEY_OVERLAY_POSITION}:{monitor_signature}");
+    set_raw(conn, &key, &format!("{x},{y}"))
 }
 
 pub fn set_discord_rpc_enabled(conn: &Connection, enabled: bool) -> rusqlite::Result<()> {
@@ -414,6 +446,11 @@ pub fn set_ui_density(conn: &Connection, density: &str) -> rusqlite::Result<()> 
 /// Backlog #31 : `"compact"` | `"detailed"`.
 pub fn set_overlay_density(conn: &Connection, density: &str) -> rusqlite::Result<()> {
     set_raw(conn, KEY_OVERLAY_DENSITY, density)
+}
+
+/// Backlog #75 : `"full"` | `"mini"`.
+pub fn set_overlay_layout(conn: &Connection, layout: &str) -> rusqlite::Result<()> {
+    set_raw(conn, KEY_OVERLAY_LAYOUT, layout)
 }
 
 /// Backlog #24 : toggle + seuil de l'alerte "N défaites d'affilée".
@@ -625,12 +662,32 @@ mod tests {
     #[test]
     fn overlay_position_round_trip() {
         let conn = memory_conn();
-        assert!(get_overlay_position(&conn).unwrap().is_none());
+        assert!(get_overlay_position(&conn, "1920x1080@0,0").unwrap().is_none());
 
-        set_overlay_position(&conn, 128.5, -12.0).unwrap();
-        let (x, y) = get_overlay_position(&conn).unwrap().unwrap();
+        set_overlay_position(&conn, "1920x1080@0,0", 128.5, -12.0).unwrap();
+        let (x, y) = get_overlay_position(&conn, "1920x1080@0,0").unwrap().unwrap();
         assert_eq!(x, 128.5);
         assert_eq!(y, -12.0);
+    }
+
+    #[test]
+    fn overlay_position_is_scoped_per_monitor_signature() {
+        let conn = memory_conn();
+        set_overlay_position(&conn, "1920x1080@0,0", 10.0, 20.0).unwrap();
+        // Une configuration d'écran jamais vue ne doit pas hériter de la position d'une
+        // autre config tant qu'aucun legacy global n'existe.
+        assert!(get_overlay_position(&conn, "2560x1440@0,0").unwrap().is_none());
+        let (x, y) = get_overlay_position(&conn, "1920x1080@0,0").unwrap().unwrap();
+        assert_eq!((x, y), (10.0, 20.0));
+    }
+
+    #[test]
+    fn overlay_position_falls_back_to_legacy_global_key_for_unseen_signature() {
+        let conn = memory_conn();
+        // Simule une valeur enregistrée par une version antérieure à #76 (sans signature).
+        set_raw(&conn, KEY_OVERLAY_POSITION, "5,6").unwrap();
+        let (x, y) = get_overlay_position(&conn, "1920x1080@0,0").unwrap().unwrap();
+        assert_eq!((x, y), (5.0, 6.0));
     }
 
     #[test]
@@ -695,6 +752,15 @@ mod tests {
 
         set_overlay_density(&conn, "compact").unwrap();
         assert_eq!(load_settings(&conn).unwrap().overlay_density, "compact");
+    }
+
+    #[test]
+    fn overlay_layout_default_then_round_trip() {
+        let conn = memory_conn();
+        assert_eq!(load_settings(&conn).unwrap().overlay_layout, "full");
+
+        set_overlay_layout(&conn, "mini").unwrap();
+        assert_eq!(load_settings(&conn).unwrap().overlay_layout, "mini");
     }
 
     #[test]

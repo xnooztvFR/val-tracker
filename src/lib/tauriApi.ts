@@ -718,6 +718,9 @@ export interface AppSettings {
   ui_density: string;
   /** Backlog #31 : `"compact"` | `"detailed"` (défaut). */
   overlay_density: string;
+  /** Backlog #75 : `"full"` (défaut, liste alliés/adversaires) | `"mini"` (résumé coin
+   * d'écran, juste les badges de rang). */
+  overlay_layout: string;
   /** Backlog #24 : alerte "N défaites d'affilée" (comptes "à soi" uniquement). */
   loss_streak_alert_enabled: boolean;
   loss_streak_alert_count: number;
@@ -836,6 +839,8 @@ export const tauriApi = {
   saveUiDensity: (density: string) => invoke<void>("save_ui_density", { density }),
   saveOverlayDensity: (density: string) =>
     invoke<void>("save_overlay_density", { density }),
+  saveOverlayLayout: (layout: string) =>
+    invoke<void>("save_overlay_layout", { layout }),
   saveLossStreakAlertEnabled: (enabled: boolean) =>
     invoke<void>("save_loss_streak_alert_enabled", { enabled }),
   saveLossStreakAlertCount: (count: number) =>

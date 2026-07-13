@@ -61,6 +61,12 @@
     "title": "In-game overlay",
     "description": "Automatically detects an ongoing match via the Riot Client's local API and displays an always-on-top overlay with the lobby players' rank. No game injection: just an overlay window. Works in \"borderless fullscreen\" (exclusive fullscreen may hide the overlay).",
     "enableLabel": "Enable automatic match detection and the overlay",
+    "layoutLabel": "Layout",
+    "layout": {
+      "full": "Full (default)",
+      "mini": "Mini summary"
+    },
+    "layoutHint": "\"Full\" (default) lists every detected player, allies and opponents. \"Mini summary\" shrinks the overlay to a single row of rank badges, no name or agent recommendation — for minimal screen clutter in-game.",
     "densityLabel": "Display density",
     "density": {
       "compact": "Compact",

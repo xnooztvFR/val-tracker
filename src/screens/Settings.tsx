@@ -39,6 +39,7 @@ export default function Settings() {
     setUiLanguage,
     setUiDensity,
     setOverlayDensity,
+    setOverlayLayout,
     setLossStreakAlertEnabled,
     setLossStreakAlertCount,
     setInactivityReminderEnabled,
@@ -110,6 +111,8 @@ export default function Settings() {
               onChange={setRiotLocalDisabled}
               density={settings?.overlay_density ?? "detailed"}
               onChangeDensity={setOverlayDensity}
+              layout={settings?.overlay_layout ?? "full"}
+              onChangeLayout={setOverlayLayout}
             />
             <SectionDivider />
             <DiscordSection
@@ -465,11 +468,15 @@ function OverlaySection({
   onChange,
   density,
   onChangeDensity,
+  layout,
+  onChangeLayout,
 }: {
   disabled: boolean;
   onChange: (disabled: boolean) => Promise<void>;
   density: string;
   onChangeDensity: (density: string) => Promise<void>;
+  layout: string;
+  onChangeLayout: (layout: string) => Promise<void>;
 }) {
   const { t } = useTranslation("settings");
   const [shortcutRegistered, setShortcutRegistered] = useState<boolean | null>(null);
@@ -497,25 +504,48 @@ function OverlaySection({
       </label>
 
       <section className="space-y-2">
-        <h2 className="hud-label">{t("overlay.densityLabel")}</h2>
+        <h2 className="hud-label">{t("overlay.layoutLabel")}</h2>
         <div className="flex gap-2">
-          {OVERLAY_DENSITY_IDS.map((id) => (
+          {OVERLAY_LAYOUT_IDS.map((id) => (
             <button
               key={id}
               type="button"
-              onClick={() => onChangeDensity(id)}
+              onClick={() => onChangeLayout(id)}
               className={`border px-4 py-2 text-sm transition-colors ${
-                density === id
+                layout === id
                   ? "border-accent text-hi"
                   : "border-line text-lo hover:border-line hover:text-hi"
               }`}
             >
-              {t(`overlay.density.${id}`)}
+              {t(`overlay.layout.${id}`)}
             </button>
           ))}
         </div>
-        <p className="text-xs text-lo">{t("overlay.densityHint")}</p>
+        <p className="text-xs text-lo">{t("overlay.layoutHint")}</p>
       </section>
+
+      {layout === "full" && (
+        <section className="space-y-2">
+          <h2 className="hud-label">{t("overlay.densityLabel")}</h2>
+          <div className="flex gap-2">
+            {OVERLAY_DENSITY_IDS.map((id) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => onChangeDensity(id)}
+                className={`border px-4 py-2 text-sm transition-colors ${
+                  density === id
+                    ? "border-accent text-hi"
+                    : "border-line text-lo hover:border-line hover:text-hi"
+                }`}
+              >
+                {t(`overlay.density.${id}`)}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-lo">{t("overlay.densityHint")}</p>
+        </section>
+      )}
 
       {shortcutRegistered === false && (
         <div className="relative border border-crit/30 bg-crit/5 py-2.5 pl-4 pr-3 text-xs text-hi">
@@ -547,6 +577,7 @@ function OverlaySection({
 }
 
 const OVERLAY_DENSITY_IDS = ["compact", "detailed"] as const;
+const OVERLAY_LAYOUT_IDS = ["full", "mini"] as const;
 
 function DiscordSection({
   enabled,

@@ -27,6 +27,12 @@ use crate::AppState;
 
 const ACTIVE_INTERVAL: Duration = Duration::from_millis(2500);
 const IDLE_INTERVAL: Duration = Duration::from_millis(8000);
+/// Backlog #78 : au-delà de `DEEP_IDLE_THRESHOLD` ticks consécutifs sans lockfile (Riot
+/// Client fermé), on espace encore plus les vérifications — un simple `read_lockfile()`
+/// idle à 8s en continu pendant des heures hors session n'a pas de raison d'être alors que
+/// rien ne peut changer sans que l'utilisateur relance le client.
+const DEEP_IDLE_INTERVAL: Duration = Duration::from_millis(60_000);
+const DEEP_IDLE_THRESHOLD: u32 = 10;
 const MAX_LOCAL_FAILURES: u32 = 3;
 /// Durée d'affichage de l'overlay une fois la manche lancée, le temps de lire le roster
 /// ennemi (voir `on_state_changed`) avant de se masquer pour ne pas gêner la visée.
@@ -71,9 +77,13 @@ async fn run_loop(app: AppHandle, mut stop_rx: watch::Receiver<bool>) {
 
 /// Pregame/in-game veulent une détection rapide (overlay réactif) ; le reste du temps
 /// (hors-jeu, menu, désactivé, ou avant le premier tick) on peut se permettre d'espacer
-/// les vérifications, il n'y a qu'une transition à guetter.
+/// les vérifications, il n'y a qu'une transition à guetter. Backlog #78 : hors-jeu
+/// (lockfile absent, client fermé) durablement escalade encore vers `DEEP_IDLE_INTERVAL`
+/// après `DEEP_IDLE_THRESHOLD` ticks — `Menu` reste à `IDLE_INTERVAL` puisque le client est
+/// ouvert et une mise en file d'attente peut survenir à tout moment.
 fn next_interval(ctx: &PollContext) -> Duration {
     match ctx.previous_state {
+        Some(GameState::HorsJeu) if ctx.idle_ticks >= DEEP_IDLE_THRESHOLD => DEEP_IDLE_INTERVAL,
         Some(GameState::HorsJeu) | Some(GameState::Menu) => IDLE_INTERVAL,
         _ => ACTIVE_INTERVAL,
     }
@@ -94,6 +104,8 @@ struct PollContext {
     /// Échecs consécutifs de l'API locale (lockfile présent mais injoignable) — voir
     /// `on_local_api_failure`.
     local_failures: u32,
+    /// Ticks consécutifs sans lockfile (client fermé) — voir `next_interval` et backlog #78.
+    idle_ticks: u32,
     /// Roster mis en cache pour la phase de jeu en cours (pregame OU in-game) : le roster
     /// ne change pas une fois connu pour cette phase, pas besoin de refaire
     /// entitlements + 2 requêtes GLZ à chaque tick tant qu'on y est encore.
@@ -147,10 +159,14 @@ async fn tick(app: &AppHandle, ctx: &mut PollContext) {
             crate::overlay::window::hide_overlay(app);
             ctx.previous_state = Some(GameState::HorsJeu);
             ctx.local_failures = 0;
+            ctx.idle_ticks = ctx.idle_ticks.saturating_add(1);
             ctx.clear_roster();
             return;
         }
     };
+    // Le lockfile est là : le client vient de (re)démarrer ou tournait déjà, dans les deux
+    // cas on n'est plus dans le "long hors-jeu" que `DEEP_IDLE_INTERVAL` cible.
+    ctx.idle_ticks = 0;
 
     // (Re)construit le client local et invalide le contexte si le Riot Client a
     // redémarré (port/mot de passe différents).
@@ -288,7 +304,7 @@ async fn tick(app: &AppHandle, ctx: &mut PollContext) {
         );
     }
 
-    on_state_changed(app, ctx.previous_state, state).await;
+    on_state_changed(app, ctx.previous_state, state, ctx.local_puuid.as_deref()).await;
     ctx.previous_state = Some(state);
 
     publish(
@@ -327,7 +343,12 @@ async fn on_local_api_failure(app: &AppHandle, ctx: &mut PollContext, settings: 
 /// — avant de se masquer automatiquement : il peut sinon gêner le focus/la visée pendant
 /// l'action (retour utilisateur : kills loupés à cause de l'overlay affiché pendant le
 /// combat).
-async fn on_state_changed(app: &AppHandle, previous: Option<GameState>, current: GameState) {
+async fn on_state_changed(
+    app: &AppHandle,
+    previous: Option<GameState>,
+    current: GameState,
+    local_puuid: Option<&str>,
+) {
     match current {
         GameState::Pregame => {
             crate::overlay::window::show_overlay(app).await;
@@ -349,11 +370,30 @@ async fn on_state_changed(app: &AppHandle, previous: Option<GameState>, current:
     }
 
     if previous == Some(GameState::InGame) && current == GameState::Menu {
+        // Backlog #81 : dépose un lien "voir le récap" (historique du compte local), pris
+        // par le handler de focus de la fenêtre principale (voir `main.rs`) — best-effort,
+        // un puuid local inconnu ou une DB indisponible laisse juste la notification sans
+        // lien plutôt que d'échouer la notification elle-même.
+        if let (Some(puuid), Some(state)) = (local_puuid, app.try_state::<AppState>()) {
+            if let Ok(conn) = state.db.try_lock() {
+                if let Ok(Some(player)) = crate::db::find_tracked_player(&conn, puuid) {
+                    if let Some(link_state) = app.try_state::<crate::riot_local::PostgameLinkState>() {
+                        link_state.set(crate::riot_local::PostgameLink {
+                            region: player.region,
+                            name: player.name,
+                            tag: player.tag,
+                            set_at: chrono::Utc::now().timestamp(),
+                        });
+                    }
+                }
+            }
+        }
+
         let _ = app
             .notification()
             .builder()
             .title("Partie terminée")
-            .body("Tes stats seront à jour dans le tracker d'ici quelques minutes.")
+            .body("Tes stats seront à jour dans le tracker d'ici quelques minutes. Clique pour voir ton historique.")
             .show();
     }
 }
@@ -441,6 +481,7 @@ async fn read_settings(app: &AppHandle) -> crate::settings::AppSettings {
         ui_language: "fr".to_string(),
         ui_density: "comfortable".to_string(),
         overlay_density: "detailed".to_string(),
+        overlay_layout: "full".to_string(),
         loss_streak_alert_enabled: false,
         loss_streak_alert_count: 3,
         inactivity_reminder_enabled: false,
@@ -458,6 +499,19 @@ mod tests {
         let mut ctx = PollContext::default();
         ctx.previous_state = Some(GameState::HorsJeu);
         assert_eq!(next_interval(&ctx), IDLE_INTERVAL);
+        ctx.previous_state = Some(GameState::Menu);
+        assert_eq!(next_interval(&ctx), IDLE_INTERVAL);
+    }
+
+    #[test]
+    fn next_interval_escalates_to_deep_idle_after_threshold_out_of_game() {
+        let mut ctx = PollContext::default();
+        ctx.previous_state = Some(GameState::HorsJeu);
+        ctx.idle_ticks = DEEP_IDLE_THRESHOLD - 1;
+        assert_eq!(next_interval(&ctx), IDLE_INTERVAL);
+        ctx.idle_ticks = DEEP_IDLE_THRESHOLD;
+        assert_eq!(next_interval(&ctx), DEEP_IDLE_INTERVAL);
+        // Menu (client ouvert) ne doit jamais escalader, même avec le compteur haut.
         ctx.previous_state = Some(GameState::Menu);
         assert_eq!(next_interval(&ctx), IDLE_INTERVAL);
     }

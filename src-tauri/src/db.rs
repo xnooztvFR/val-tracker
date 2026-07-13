@@ -254,6 +254,19 @@ pub fn list_recent_players(conn: &Connection, limit: i64) -> rusqlite::Result<Ve
     rows.collect()
 }
 
+/// Retrouve un Riot ID déjà suivi par son puuid, sans filtrer sur `is_self` — utilisé par
+/// le poller pour bâtir le lien direct vers le récap du dernier match dans la notification
+/// de fin de partie (backlog #81 ; voir `riot_local::poller::on_state_changed`).
+pub fn find_tracked_player(conn: &Connection, puuid: &str) -> rusqlite::Result<Option<TrackedPlayer>> {
+    conn.query_row(
+        "SELECT puuid, name, tag, region, is_favorite, last_viewed_at, is_self, notes
+         FROM tracked_players WHERE puuid = ?1",
+        [puuid],
+        map_tracked_player,
+    )
+    .optional()
+}
+
 /// Marque (ou démarque) un Riot ID déjà suivi comme l'un des comptes "à soi" de
 /// l'utilisateur (V4, multi-comptes) — voir doc de `TrackedPlayer::is_self`.
 pub fn set_self_account(conn: &Connection, puuid: &str, is_self: bool) -> rusqlite::Result<()> {

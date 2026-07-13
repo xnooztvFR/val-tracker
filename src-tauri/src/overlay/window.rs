@@ -37,6 +37,35 @@ impl ShortcutStatus {
     }
 }
 
+/// Backlog #76 : signature textuelle de la configuration d'écran courante (résolution +
+/// position de chaque moniteur connecté, triées pour être stables indépendamment de l'ordre
+/// renvoyé par l'OS) — sert de clé pour mémoriser la position de l'overlay par setup plutôt
+/// qu'une seule position globale, qui pouvait réapparaître hors-écran après un changement de
+/// setup (ex. laptop débranché d'un moniteur externe). Dérivée de la fenêtre "main" (qui
+/// existe toujours) plutôt que de l'overlay lui-même, pour rester utilisable avant même que
+/// la fenêtre overlay soit créée.
+pub fn monitor_signature(app_handle: &AppHandle) -> String {
+    let monitors = app_handle
+        .get_webview_window("main")
+        .and_then(|w| w.available_monitors().ok())
+        .unwrap_or_default();
+
+    if monitors.is_empty() {
+        return "unknown".to_string();
+    }
+
+    let mut parts: Vec<String> = monitors
+        .iter()
+        .map(|m| {
+            let size = m.size();
+            let pos = m.position();
+            format!("{}x{}@{},{}", size.width, size.height, pos.x, pos.y)
+        })
+        .collect();
+    parts.sort();
+    parts.join("|")
+}
+
 /// Crée la fenêtre overlay si elle n'existe pas encore (cachée par défaut, affichée par
 /// le poller quand une partie démarre), à la position sauvegardée si connue.
 fn create_overlay_window(app_handle: &AppHandle, position: Option<(f64, f64)>) -> tauri::Result<()> {
@@ -75,10 +104,11 @@ fn create_overlay_window(app_handle: &AppHandle, position: Option<(f64, f64)>) -
         if let tauri::WindowEvent::Moved(pos) = event {
             let handle = handle.clone();
             let (x, y) = (pos.x as f64, pos.y as f64);
+            let signature = monitor_signature(&handle);
             tauri::async_runtime::spawn(async move {
                 if let Some(state) = handle.try_state::<AppState>() {
                     let conn = state.db.lock().await;
-                    if let Err(err) = crate::settings::set_overlay_position(&conn, x, y) {
+                    if let Err(err) = crate::settings::set_overlay_position(&conn, &signature, x, y) {
                         crate::applog!("[overlay] échec de sauvegarde de la position: {err}");
                     }
                 }
@@ -91,10 +121,13 @@ fn create_overlay_window(app_handle: &AppHandle, position: Option<(f64, f64)>) -
 
 pub async fn show_overlay(app_handle: &AppHandle) {
     if app_handle.get_webview_window(OVERLAY_LABEL).is_none() {
+        let signature = monitor_signature(app_handle);
         let position = match app_handle.try_state::<AppState>() {
             Some(state) => {
                 let conn = state.db.lock().await;
-                crate::settings::get_overlay_position(&conn).ok().flatten()
+                crate::settings::get_overlay_position(&conn, &signature)
+                    .ok()
+                    .flatten()
             }
             None => None,
         };

@@ -20,6 +20,7 @@ interface SettingsState {
   setUiLanguage: (language: string) => Promise<void>;
   setUiDensity: (density: string) => Promise<void>;
   setOverlayDensity: (density: string) => Promise<void>;
+  setOverlayLayout: (layout: string) => Promise<void>;
   setLossStreakAlertEnabled: (enabled: boolean) => Promise<void>;
   setLossStreakAlertCount: (count: number) => Promise<void>;
   setInactivityReminderEnabled: (enabled: boolean) => Promise<void>;
@@ -105,6 +106,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   setOverlayDensity: async (density: string) => {
     await tauriApi.saveOverlayDensity(density);
+    await get().refresh();
+  },
+
+  setOverlayLayout: async (layout: string) => {
+    await tauriApi.saveOverlayLayout(layout);
     await get().refresh();
   },
 

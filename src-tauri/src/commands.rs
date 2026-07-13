@@ -298,6 +298,18 @@ pub async fn save_overlay_density(
     Ok(())
 }
 
+/// Backlog #75 : `"full"` | `"mini"`.
+#[tauri::command]
+pub async fn save_overlay_layout(
+    state: State<'_, AppState>,
+    layout: String,
+) -> Result<(), CommandError> {
+    ensure_one_of(&layout, &["full", "mini"], "layout")?;
+    let conn = state.db.lock().await;
+    crate::settings::set_overlay_layout(&conn, &layout)?;
+    Ok(())
+}
+
 /// Backlog #24 : toggle + seuil de l'alerte "N défaites d'affilée" (comptes "à soi"
 /// uniquement — voir `fetch_matches` pour le check déclenché après chaque refetch).
 #[tauri::command]
