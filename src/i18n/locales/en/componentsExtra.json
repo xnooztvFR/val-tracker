@@ -80,6 +80,24 @@
       "finish": "Done"
     }
   },
+  "accountTimeline": {
+    "empty": "No history yet — come back after a few refreshes and matches played.",
+    "rankChange": "Rank: {{tier}} ({{rr}} RR)",
+    "goalAchieved": "Goal achieved: {{goal}}",
+    "goalMatches": "match count",
+    "goalWinrate": "winrate",
+    "noteUpdated": "Personal note updated"
+  },
+  "periodRecapModal": {
+    "weekTitle": "WEEK RECAP",
+    "monthTitle": "MONTH RECAP",
+    "winrate": "{{percent}} winrate",
+    "kd": "K/D",
+    "headshotPercent": "HS%",
+    "acs": "ACS",
+    "topAgent": "Top agent",
+    "noAgent": "—"
+  },
   "recapCardModal": {
     "victory": "VICTORY",
     "defeat": "DEFEAT",

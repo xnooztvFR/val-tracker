@@ -5,11 +5,13 @@ import {
   computeHeatmap,
   computeLeaderboardPercentile,
   computeOverview,
+  computePeriodRecap,
   computeRegularity,
   computeSeasonComparison,
   computeWeeklyMatchStats,
+  isoWeekKey,
 } from "./stats";
-import type { LeaderboardThreshold, MatchEntry, MmrHistoryEntry } from "./tauriApi";
+import type { LeaderboardThreshold, MatchEntry, MmrHistoryEntry, RankSnapshot } from "./tauriApi";
 
 function makeMatch(opts: {
   matchId: string;
@@ -180,6 +182,66 @@ describe("computeLeaderboardPercentile", () => {
     expect(result?.tierName).toBe("Immortal 3");
     expect(result?.playersInTier).toBeNull();
     expect(result?.percentileInTier).toBe(0);
+  });
+});
+
+describe("computePeriodRecap", () => {
+  function makeSnapshot(tier: number, rr: number | null, recordedAt: number): RankSnapshot {
+    return { tier, tier_patched: `Tier ${tier}`, rr, recorded_at: recordedAt };
+  }
+
+  it("only aggregates matches within the current ISO week and reports the rank change", () => {
+    // 2024-03-06 est un mercredi ; la semaine ISO commence le lundi 2024-03-04.
+    const now = new Date("2024-03-06T12:00:00Z");
+    const matches = [
+      makeMatch({ matchId: "in-week", startedAt: "2024-03-05T10:00:00Z", won: true }),
+      makeMatch({ matchId: "before-week", startedAt: "2024-02-28T10:00:00Z", won: true }),
+    ];
+    const snapshots = [
+      makeSnapshot(18, 40, new Date("2024-02-27T10:00:00Z").getTime() / 1000),
+      makeSnapshot(19, 10, new Date("2024-03-05T09:00:00Z").getTime() / 1000),
+    ];
+
+    const recap = computePeriodRecap(matches, snapshots, "me", "week", now);
+    expect(recap.overview.played).toBe(1);
+    expect(recap.rankChange?.tierStart).toBe(18);
+    expect(recap.rankChange?.tierEnd).toBe(19);
+    expect(recap.rankChange?.rrEnd).toBe(10);
+  });
+
+  it("only aggregates matches within the current calendar month", () => {
+    const now = new Date("2024-03-15T12:00:00Z");
+    const matches = [
+      makeMatch({ matchId: "in-month", startedAt: "2024-03-02T10:00:00Z", won: true }),
+      makeMatch({ matchId: "before-month", startedAt: "2024-02-28T10:00:00Z", won: true }),
+    ];
+    const recap = computePeriodRecap(matches, [], "me", "month", now);
+    expect(recap.overview.played).toBe(1);
+    expect(recap.rankChange).toBeNull();
+  });
+
+  it("falls back to the first snapshot of the period when none exists before it", () => {
+    const now = new Date("2024-03-06T12:00:00Z");
+    const snapshots = [makeSnapshot(20, 5, new Date("2024-03-05T09:00:00Z").getTime() / 1000)];
+    const recap = computePeriodRecap([], snapshots, "me", "week", now);
+    expect(recap.rankChange?.tierStart).toBe(20);
+    expect(recap.rankChange?.tierEnd).toBe(20);
+  });
+});
+
+describe("isoWeekKey", () => {
+  it("returns the same key for every day within the same ISO week", () => {
+    // 2026-01-05 (lundi) à 2026-01-11 (dimanche) sont la semaine ISO 2026-W02 — heures
+    // choisies en milieu de journée UTC pour rester dans le bon jour local quel que soit
+    // le fuseau d'exécution des tests.
+    expect(isoWeekKey(new Date("2026-01-05T12:00:00Z"))).toBe("2026-W02");
+    expect(isoWeekKey(new Date("2026-01-11T12:00:00Z"))).toBe("2026-W02");
+  });
+
+  it("attributes the last days of December to next year's week 1 when applicable", () => {
+    // 2025-12-29 est un lundi, première semaine ISO complète de 2026 (heure milieu de
+    // journée UTC pour ne pas dépendre du fuseau d'exécution des tests).
+    expect(isoWeekKey(new Date("2025-12-29T12:00:00Z"))).toBe("2026-W01");
   });
 });
 

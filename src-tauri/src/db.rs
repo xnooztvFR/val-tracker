@@ -174,6 +174,37 @@ pub(crate) fn run_migrations(conn: &Connection) -> rusqlite::Result<()> {
 
     migrate_progression_goals_multi(conn)?;
 
+    // Backlog #58 : réutilise `party_matches` pour aussi capturer les adversaires
+    // ("rivalité"), pas seulement les coéquipiers de party — voir `record_party_match` et
+    // `list_rivalry_stats`. `teammate_puuid`/`teammate_name`/`teammate_tag` désignent alors
+    // l'adversaire, `relation` distingue les deux cas. Défaut 'teammate' pour ne pas
+    // réinterpréter les lignes déjà enregistrées par des versions antérieures.
+    add_column_if_missing(conn, "party_matches", "relation", "TEXT NOT NULL DEFAULT 'teammate'")?;
+
+    // Backlog #57 : date de dernière modification de la note perso, voir `set_player_notes`.
+    add_column_if_missing(conn, "tracked_players", "notes_updated_at", "INTEGER")?;
+
+    conn.execute_batch(
+        r#"
+        -- Backlog #57 : marqueurs datés pour la frise "vie du compte" (objectifs hebdo
+        -- atteints) — les changements de rang et la note perso, eux, sont dérivés à la
+        -- volée depuis rank_snapshots/tracked_players.notes_updated_at (voir
+        -- `list_account_timeline`), pas besoin de les dupliquer ici.
+        CREATE TABLE IF NOT EXISTS timeline_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            puuid TEXT NOT NULL,
+            event_type TEXT NOT NULL,
+            goal_type TEXT,
+            period_key TEXT,
+            occurred_at INTEGER NOT NULL,
+            UNIQUE(puuid, event_type, goal_type, period_key)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_timeline_events_puuid
+            ON timeline_events (puuid, occurred_at);
+        "#,
+    )?;
+
     Ok(())
 }
 
@@ -365,12 +396,17 @@ pub fn list_self_accounts(conn: &Connection) -> rusqlite::Result<Vec<TrackedPlay
 }
 
 /// Backlog #12 : enregistre (ou efface, si vide) la note libre attachée à un joueur suivi.
+/// Backlog #57 : mémorise aussi la date de dernière modification (`notes_updated_at`), pour
+/// placer un marqueur "note mise à jour" sur la frise "vie du compte" sans dupliquer le
+/// contenu de la note elle-même (voir `list_account_timeline`) — effacé en même temps que
+/// la note quand elle redevient vide.
 pub fn set_player_notes(conn: &Connection, puuid: &str, notes: &str) -> rusqlite::Result<()> {
     let trimmed = notes.trim();
     let value: Option<&str> = if trimmed.is_empty() { None } else { Some(trimmed) };
+    let updated_at = value.map(|_| chrono::Utc::now().timestamp());
     conn.execute(
-        "UPDATE tracked_players SET notes = ?2 WHERE puuid = ?1",
-        (puuid, value),
+        "UPDATE tracked_players SET notes = ?2, notes_updated_at = ?3 WHERE puuid = ?1",
+        (puuid, value, updated_at),
     )?;
     Ok(())
 }
@@ -702,9 +738,12 @@ pub struct DuoStat {
     pub matches_won: i64,
 }
 
-/// Enregistre qu'un coéquipier partageait le même `party_id` que `tracked_puuid` sur ce
-/// match. Idempotent : rejouer le même match (ex. `force` refresh) écrase juste le nom/tag
-/// et le résultat au lieu de dupliquer la ligne (clé primaire composite).
+/// Enregistre qu'un coéquipier (relation = "teammate") ou un adversaire (relation =
+/// "opponent", backlog #58) partageait ce match avec `tracked_puuid`. Idempotent : rejouer
+/// le même match (ex. `force` refresh) écrase juste le nom/tag/résultat au lieu de
+/// dupliquer la ligne (clé primaire composite) — un joueur ne peut être à la fois
+/// coéquipier et adversaire sur un même match, donc la relation ne change jamais pour une
+/// même ligne en pratique.
 #[allow(clippy::too_many_arguments)]
 pub fn record_party_match(
     conn: &Connection,
@@ -714,16 +753,18 @@ pub fn record_party_match(
     teammate_name: &str,
     teammate_tag: &str,
     won: bool,
+    relation: &str,
 ) -> rusqlite::Result<()> {
     let now = chrono::Utc::now().timestamp();
     conn.execute(
         "INSERT INTO party_matches
-            (match_id, tracked_puuid, teammate_puuid, teammate_name, teammate_tag, won, recorded_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+            (match_id, tracked_puuid, teammate_puuid, teammate_name, teammate_tag, won, recorded_at, relation)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
          ON CONFLICT(match_id, tracked_puuid, teammate_puuid) DO UPDATE SET
             teammate_name = excluded.teammate_name,
             teammate_tag = excluded.teammate_tag,
-            won = excluded.won",
+            won = excluded.won,
+            relation = excluded.relation",
         (
             match_id,
             tracked_puuid,
@@ -732,6 +773,7 @@ pub fn record_party_match(
             teammate_tag,
             won as i64,
             now,
+            relation,
         ),
     )?;
     Ok(())
@@ -748,7 +790,7 @@ pub fn list_duo_stats(
         "SELECT teammate_puuid, teammate_name, teammate_tag,
                 COUNT(*) AS matches_played, SUM(won) AS matches_won
          FROM party_matches
-         WHERE tracked_puuid = ?1
+         WHERE tracked_puuid = ?1 AND relation = 'teammate'
          GROUP BY teammate_puuid
          HAVING matches_played >= ?2
          ORDER BY matches_played DESC, matches_won DESC",
@@ -758,6 +800,46 @@ pub fn list_duo_stats(
             teammate_puuid: row.get(0)?,
             teammate_name: row.get(1)?,
             teammate_tag: row.get(2)?,
+            matches_played: row.get(3)?,
+            matches_won: row.get(4)?,
+        })
+    })?;
+    rows.collect()
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct RivalryStat {
+    pub opponent_puuid: String,
+    pub opponent_name: String,
+    pub opponent_tag: String,
+    pub matches_played: i64,
+    pub matches_won: i64,
+}
+
+/// Backlog #58 : rivalité suivie en continu — winrate face à un adversaire rencontré à
+/// plusieurs reprises, réutilisant `party_matches`/le même schéma d'agrégation que
+/// `list_duo_stats` (relation = "opponent" au lieu de "teammate"). Alimenté par
+/// `record_party_match`, accumulé au fil de la consultation des matchs dans l'historique —
+/// aucun appel réseau dédié.
+pub fn list_rivalry_stats(
+    conn: &Connection,
+    tracked_puuid: &str,
+    min_matches: i64,
+) -> rusqlite::Result<Vec<RivalryStat>> {
+    let mut stmt = conn.prepare(
+        "SELECT teammate_puuid, teammate_name, teammate_tag,
+                COUNT(*) AS matches_played, SUM(won) AS matches_won
+         FROM party_matches
+         WHERE tracked_puuid = ?1 AND relation = 'opponent'
+         GROUP BY teammate_puuid
+         HAVING matches_played >= ?2
+         ORDER BY matches_played DESC, matches_won DESC",
+    )?;
+    let rows = stmt.query_map((tracked_puuid, min_matches), |row| {
+        Ok(RivalryStat {
+            opponent_puuid: row.get(0)?,
+            opponent_name: row.get(1)?,
+            opponent_tag: row.get(2)?,
             matches_played: row.get(3)?,
             matches_won: row.get(4)?,
         })
@@ -798,7 +880,7 @@ pub fn list_squad_stats(
             ON a.match_id = b.match_id
             AND a.tracked_puuid = b.tracked_puuid
             AND a.teammate_puuid < b.teammate_puuid
-         WHERE a.tracked_puuid = ?1
+         WHERE a.tracked_puuid = ?1 AND a.relation = 'teammate' AND b.relation = 'teammate'
          GROUP BY a.teammate_puuid, b.teammate_puuid
          HAVING matches_played >= ?2
          ORDER BY matches_played DESC, matches_won DESC",
@@ -816,6 +898,127 @@ pub fn list_squad_stats(
         })
     })?;
     rows.collect()
+}
+
+/// Backlog #57 : marque un objectif hebdo comme atteint pour une période donnée
+/// (`period_key`, ex. "2026-W03") — idempotent (`INSERT OR IGNORE`) : appelé à chaque
+/// rendu du panneau d'objectifs tant que l'objectif reste atteint, sans dupliquer
+/// l'événement ni en avancer la date la première fois qu'il a été détecté.
+pub fn record_goal_achieved_event(
+    conn: &Connection,
+    puuid: &str,
+    goal_type: &str,
+    period_key: &str,
+) -> rusqlite::Result<()> {
+    let now = chrono::Utc::now().timestamp();
+    conn.execute(
+        "INSERT OR IGNORE INTO timeline_events (puuid, event_type, goal_type, period_key, occurred_at)
+         VALUES (?1, 'goal_achieved', ?2, ?3, ?4)",
+        (puuid, goal_type, period_key, now),
+    )?;
+    Ok(())
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct AccountTimelineEvent {
+    /// "rank_change" | "goal_achieved" | "note_updated"
+    pub event_type: String,
+    pub occurred_at: i64,
+    pub tier: Option<i64>,
+    pub tier_patched: Option<String>,
+    pub rr: Option<i64>,
+    pub goal_type: Option<String>,
+}
+
+/// Backlog #57 : frise "vie du compte" — combine, sur un seul axe temporel trié du plus
+/// récent au plus ancien : les changements de rang réels (dédupliqués depuis
+/// `rank_snapshots`, qui contient désormais un point à chaque refresh MMR même sans
+/// changement — voir l'auto-actualisation périodique de Home.tsx), les objectifs hebdo
+/// atteints (`timeline_events`) et un marqueur "note mise à jour" (`tracked_players.
+/// notes_updated_at`, seulement si une note est actuellement renseignée). Aucun appel
+/// réseau : uniquement des données déjà locales.
+pub fn list_account_timeline(
+    conn: &Connection,
+    puuid: &str,
+) -> rusqlite::Result<Vec<AccountTimelineEvent>> {
+    let mut events = Vec::new();
+
+    let mut stmt = conn.prepare(
+        "SELECT tier, tier_patched, rr, recorded_at FROM rank_snapshots
+         WHERE puuid = ?1 ORDER BY recorded_at ASC",
+    )?;
+    let snapshot_rows = stmt.query_map([puuid], |row| {
+        Ok((
+            row.get::<_, i64>(0)?,
+            row.get::<_, String>(1)?,
+            row.get::<_, Option<i64>>(2)?,
+            row.get::<_, i64>(3)?,
+        ))
+    })?;
+
+    let mut last: Option<(i64, Option<i64>)> = None;
+    for row in snapshot_rows {
+        let (tier, tier_patched, rr, recorded_at) = row?;
+        if last == Some((tier, rr)) {
+            continue;
+        }
+        last = Some((tier, rr));
+        events.push(AccountTimelineEvent {
+            event_type: "rank_change".to_string(),
+            occurred_at: recorded_at,
+            tier: Some(tier),
+            tier_patched: Some(tier_patched),
+            rr,
+            goal_type: None,
+        });
+    }
+    drop(stmt);
+
+    let mut stmt = conn.prepare(
+        "SELECT goal_type, occurred_at FROM timeline_events
+         WHERE puuid = ?1 AND event_type = 'goal_achieved'",
+    )?;
+    let goal_rows = stmt.query_map([puuid], |row| {
+        Ok(AccountTimelineEvent {
+            event_type: "goal_achieved".to_string(),
+            occurred_at: row.get(1)?,
+            tier: None,
+            tier_patched: None,
+            rr: None,
+            goal_type: row.get(0)?,
+        })
+    })?;
+    for event in goal_rows {
+        events.push(event?);
+    }
+    drop(stmt);
+
+    let notes_marker: Option<i64> = conn
+        .query_row(
+            "SELECT notes_updated_at FROM tracked_players
+             WHERE puuid = ?1 AND notes IS NOT NULL AND notes_updated_at IS NOT NULL",
+            [puuid],
+            |row| row.get(0),
+        )
+        .optional()?;
+    if let Some(occurred_at) = notes_marker {
+        events.push(AccountTimelineEvent {
+            event_type: "note_updated".to_string(),
+            occurred_at,
+            tier: None,
+            tier_patched: None,
+            rr: None,
+            goal_type: None,
+        });
+    }
+
+    // `sort_by` est stable : en cas d'égalité de timestamp (deux événements enregistrés à
+    // la même seconde, ex. deux refresh MMR rapprochés), on veut que le plus récemment
+    // *inséré* apparaisse en premier — d'où le `reverse()` avant le tri plutôt qu'un tri
+    // direct qui conserverait l'ordre d'insertion (le plus ancien en tête) pour les égalités.
+    events.reverse();
+    events.sort_by(|a, b| b.occurred_at.cmp(&a.occurred_at));
+    Ok(events)
 }
 
 #[cfg(test)]
@@ -939,10 +1142,10 @@ mod tests {
     #[test]
     fn record_party_match_then_list_duo_stats_aggregates_by_teammate() {
         let conn = memory_conn();
-        record_party_match(&conn, "match-1", "me", "buddy", "Buddy", "1111", true).unwrap();
-        record_party_match(&conn, "match-2", "me", "buddy", "Buddy", "1111", false).unwrap();
-        record_party_match(&conn, "match-3", "me", "buddy", "Buddy", "1111", true).unwrap();
-        record_party_match(&conn, "match-1", "me", "stranger", "Stranger", "2222", true).unwrap();
+        record_party_match(&conn, "match-1", "me", "buddy", "Buddy", "1111", true, "teammate").unwrap();
+        record_party_match(&conn, "match-2", "me", "buddy", "Buddy", "1111", false, "teammate").unwrap();
+        record_party_match(&conn, "match-3", "me", "buddy", "Buddy", "1111", true, "teammate").unwrap();
+        record_party_match(&conn, "match-1", "me", "stranger", "Stranger", "2222", true, "teammate").unwrap();
 
         let stats = list_duo_stats(&conn, "me", 1).unwrap();
         assert_eq!(stats.len(), 2);
@@ -957,7 +1160,7 @@ mod tests {
     #[test]
     fn list_duo_stats_filters_out_below_min_matches() {
         let conn = memory_conn();
-        record_party_match(&conn, "match-1", "me", "stranger", "Stranger", "2222", true).unwrap();
+        record_party_match(&conn, "match-1", "me", "stranger", "Stranger", "2222", true, "teammate").unwrap();
 
         assert_eq!(list_duo_stats(&conn, "me", 2).unwrap().len(), 0);
         assert_eq!(list_duo_stats(&conn, "me", 1).unwrap().len(), 1);
@@ -966,10 +1169,10 @@ mod tests {
     #[test]
     fn record_party_match_is_idempotent_on_replay() {
         let conn = memory_conn();
-        record_party_match(&conn, "match-1", "me", "buddy", "Buddy", "1111", true).unwrap();
+        record_party_match(&conn, "match-1", "me", "buddy", "Buddy", "1111", true, "teammate").unwrap();
         // Refetch du même match (force refresh) avec un nom mis à jour : pas de doublon,
         // juste une mise à jour de la ligne existante.
-        record_party_match(&conn, "match-1", "me", "buddy", "BuddyRenamed", "1111", true).unwrap();
+        record_party_match(&conn, "match-1", "me", "buddy", "BuddyRenamed", "1111", true, "teammate").unwrap();
 
         let stats = list_duo_stats(&conn, "me", 1).unwrap();
         assert_eq!(stats.len(), 1);
@@ -978,11 +1181,40 @@ mod tests {
     }
 
     #[test]
+    fn list_rivalry_stats_aggregates_opponents_separately_from_teammates() {
+        let conn = memory_conn();
+        record_party_match(&conn, "match-1", "me", "buddy", "Buddy", "1111", true, "teammate").unwrap();
+        record_party_match(&conn, "match-1", "me", "nemesis", "Nemesis", "3333", true, "opponent").unwrap();
+        record_party_match(&conn, "match-2", "me", "nemesis", "Nemesis", "3333", false, "opponent").unwrap();
+        record_party_match(&conn, "match-3", "me", "nemesis", "Nemesis", "3333", true, "opponent").unwrap();
+
+        let rivalry = list_rivalry_stats(&conn, "me", 1).unwrap();
+        assert_eq!(rivalry.len(), 1);
+        assert_eq!(rivalry[0].opponent_puuid, "nemesis");
+        assert_eq!(rivalry[0].matches_played, 3);
+        assert_eq!(rivalry[0].matches_won, 2);
+
+        // La party ne doit apparaître ni dans list_rivalry_stats ni fausser le compte.
+        let duo = list_duo_stats(&conn, "me", 1).unwrap();
+        assert_eq!(duo.len(), 1);
+        assert_eq!(duo[0].teammate_puuid, "buddy");
+    }
+
+    #[test]
+    fn list_rivalry_stats_filters_out_below_min_matches() {
+        let conn = memory_conn();
+        record_party_match(&conn, "match-1", "me", "nemesis", "Nemesis", "3333", true, "opponent").unwrap();
+
+        assert_eq!(list_rivalry_stats(&conn, "me", 2).unwrap().len(), 0);
+        assert_eq!(list_rivalry_stats(&conn, "me", 1).unwrap().len(), 1);
+    }
+
+    #[test]
     fn reset_local_stats_clears_cache_history_search_and_party_but_not_settings() {
         let conn = memory_conn();
         upsert_tracked_player(&conn, "puuid-1", "Player1", "1234", "eu").unwrap();
         insert_rank_snapshot(&conn, "puuid-1", 10, "Argent 1", Some(20)).unwrap();
-        record_party_match(&conn, "match-1", "puuid-1", "buddy", "Buddy", "1111", true).unwrap();
+        record_party_match(&conn, "match-1", "puuid-1", "buddy", "Buddy", "1111", true, "teammate").unwrap();
         cache_set_for_test(&conn, "https://example/api", "{}", 999_999_999_999);
         conn.execute(
             "INSERT INTO settings (key, value) VALUES ('henrik_api_key', 'secret')",
@@ -1203,12 +1435,12 @@ mod tests {
     #[test]
     fn list_squad_stats_aggregates_pairs_of_teammates_sharing_the_same_match() {
         let conn = memory_conn();
-        record_party_match(&conn, "match-1", "me", "alice", "Alice", "1111", true).unwrap();
-        record_party_match(&conn, "match-1", "me", "bob", "Bob", "2222", true).unwrap();
-        record_party_match(&conn, "match-2", "me", "alice", "Alice", "1111", false).unwrap();
-        record_party_match(&conn, "match-2", "me", "bob", "Bob", "2222", false).unwrap();
+        record_party_match(&conn, "match-1", "me", "alice", "Alice", "1111", true, "teammate").unwrap();
+        record_party_match(&conn, "match-1", "me", "bob", "Bob", "2222", true, "teammate").unwrap();
+        record_party_match(&conn, "match-2", "me", "alice", "Alice", "1111", false, "teammate").unwrap();
+        record_party_match(&conn, "match-2", "me", "bob", "Bob", "2222", false, "teammate").unwrap();
         // Match-3 : Alice seule (pas de squad complet), ne doit pas compter comme trio.
-        record_party_match(&conn, "match-3", "me", "alice", "Alice", "1111", true).unwrap();
+        record_party_match(&conn, "match-3", "me", "alice", "Alice", "1111", true, "teammate").unwrap();
 
         let squads = list_squad_stats(&conn, "me", 1).unwrap();
         assert_eq!(squads.len(), 1);
@@ -1222,8 +1454,8 @@ mod tests {
     #[test]
     fn list_squad_stats_filters_below_min_matches() {
         let conn = memory_conn();
-        record_party_match(&conn, "match-1", "me", "alice", "Alice", "1111", true).unwrap();
-        record_party_match(&conn, "match-1", "me", "bob", "Bob", "2222", true).unwrap();
+        record_party_match(&conn, "match-1", "me", "alice", "Alice", "1111", true, "teammate").unwrap();
+        record_party_match(&conn, "match-1", "me", "bob", "Bob", "2222", true, "teammate").unwrap();
 
         assert_eq!(list_squad_stats(&conn, "me", 2).unwrap().len(), 0);
         assert_eq!(list_squad_stats(&conn, "me", 1).unwrap().len(), 1);
@@ -1280,5 +1512,47 @@ mod tests {
 
         drop(conn);
         let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn list_account_timeline_dedupes_consecutive_identical_rank_snapshots() {
+        let conn = memory_conn();
+        insert_rank_snapshot(&conn, "puuid-1", 10, "Argent 1", Some(20)).unwrap();
+        // Refresh périodique sans changement de rang : ne doit pas produire un second
+        // événement "rank_change" identique.
+        insert_rank_snapshot(&conn, "puuid-1", 10, "Argent 1", Some(20)).unwrap();
+        insert_rank_snapshot(&conn, "puuid-1", 11, "Argent 2", Some(5)).unwrap();
+
+        let timeline = list_account_timeline(&conn, "puuid-1").unwrap();
+        let rank_events: Vec<_> = timeline.iter().filter(|e| e.event_type == "rank_change").collect();
+        assert_eq!(rank_events.len(), 2);
+        // Trié du plus récent au plus ancien.
+        assert_eq!(rank_events[0].tier, Some(11));
+        assert_eq!(rank_events[1].tier, Some(10));
+    }
+
+    #[test]
+    fn list_account_timeline_includes_goal_achieved_and_note_updated_markers() {
+        let conn = memory_conn();
+        upsert_tracked_player(&conn, "puuid-1", "Player1", "1234", "eu").unwrap();
+        set_player_notes(&conn, "puuid-1", "smurf, duo régulier").unwrap();
+        record_goal_achieved_event(&conn, "puuid-1", "weekly_matches", "2026-W03").unwrap();
+        // Idempotent : rejouer le même événement ne duplique pas la ligne.
+        record_goal_achieved_event(&conn, "puuid-1", "weekly_matches", "2026-W03").unwrap();
+
+        let timeline = list_account_timeline(&conn, "puuid-1").unwrap();
+        assert_eq!(timeline.iter().filter(|e| e.event_type == "goal_achieved").count(), 1);
+        assert_eq!(timeline.iter().filter(|e| e.event_type == "note_updated").count(), 1);
+    }
+
+    #[test]
+    fn list_account_timeline_omits_note_marker_once_note_is_cleared() {
+        let conn = memory_conn();
+        upsert_tracked_player(&conn, "puuid-1", "Player1", "1234", "eu").unwrap();
+        set_player_notes(&conn, "puuid-1", "smurf").unwrap();
+        set_player_notes(&conn, "puuid-1", "   ").unwrap();
+
+        let timeline = list_account_timeline(&conn, "puuid-1").unwrap();
+        assert!(timeline.iter().all(|e| e.event_type != "note_updated"));
     }
 }

@@ -810,6 +810,25 @@ export interface DuoStat {
   matches_won: number;
 }
 
+/** Backlog #57 : événement de la frise "vie du compte". */
+export interface AccountTimelineEvent {
+  event_type: "rank_change" | "goal_achieved" | "note_updated";
+  occurred_at: number;
+  tier: number | null;
+  tier_patched: string | null;
+  rr: number | null;
+  goal_type: string | null;
+}
+
+/** Backlog #58 : pendant "adversaire" de DuoStat. */
+export interface RivalryStat {
+  opponent_puuid: string;
+  opponent_name: string;
+  opponent_tag: string;
+  matches_played: number;
+  matches_won: number;
+}
+
 /** Backlog #23 : extension "squad" (trios) de DuoStat. */
 export interface SquadStat {
   teammate_a_puuid: string;
@@ -1004,6 +1023,12 @@ export const tauriApi = {
     invoke<DuoStat[]>("list_duo_stats", { puuid, minMatches }),
   listSquadStats: (puuid: string, minMatches = 2) =>
     invoke<SquadStat[]>("list_squad_stats", { puuid, minMatches }),
+  listRivalryStats: (puuid: string, minMatches = 2) =>
+    invoke<RivalryStat[]>("list_rivalry_stats", { puuid, minMatches }),
+  recordGoalAchieved: (puuid: string, goalType: string, periodKey: string) =>
+    invoke<void>("record_goal_achieved", { puuid, goalType, periodKey }),
+  listAccountTimeline: (puuid: string) =>
+    invoke<AccountTimelineEvent[]>("list_account_timeline", { puuid }),
 
   setSelfAccount: (puuid: string, isSelf: boolean) =>
     invoke<void>("set_self_account", { puuid, isSelf }),

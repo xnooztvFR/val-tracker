@@ -2,7 +2,7 @@ import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Skeleton } from "../components/Skeleton";
 
-import { useAccount, useDuoStats, useSquadStats } from "../hooks/usePlayer";
+import { useAccount, useDuoStats, useRivalryStats, useSquadStats } from "../hooks/usePlayer";
 import Panel from "../components/Panel";
 import ErrorState from "../components/ErrorState";
 import { formatPercent } from "../lib/format";
@@ -18,6 +18,7 @@ export default function Duo() {
   const puuid = account.data?.data.puuid;
   const duo = useDuoStats(puuid);
   const squad = useSquadStats(puuid);
+  const rivalry = useRivalryStats(puuid);
 
   return (
     <div className="space-y-4">
@@ -89,6 +90,40 @@ export default function Duo() {
                     </span>
                     <span className="text-xs text-lo">
                       {t("duo.statsLine", { wins: s.matches_won, played: s.matches_played })}
+                    </span>
+                  </div>
+                </Panel>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {rivalry.data && rivalry.data.length > 0 && (
+        <div className="space-y-2">
+          <div>
+            <h2 className="hud-label text-sm">{t("duo.rivalry.title")}</h2>
+            <p className="mt-1 text-xs text-lo">{t("duo.rivalry.description")}</p>
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {rivalry.data.map((opponent) => {
+              const winPercent = Math.round((opponent.matches_won / opponent.matches_played) * 100);
+              return (
+                <Panel key={opponent.opponent_puuid} className="p-4">
+                  <p className="text-sm font-semibold text-hi">
+                    {opponent.opponent_name}
+                    <span className="text-lo">#{opponent.opponent_tag}</span>
+                  </p>
+                  <div className="mt-2 flex items-center gap-3">
+                    <span
+                      className={`font-display text-lg font-bold tracking-hud ${
+                        winPercent >= 50 ? "text-accent" : "text-crit"
+                      }`}
+                    >
+                      {formatPercent(winPercent)}
+                    </span>
+                    <span className="text-xs text-lo">
+                      {t("duo.rivalry.statsLine", { wins: opponent.matches_won, played: opponent.matches_played })}
                     </span>
                   </div>
                 </Panel>

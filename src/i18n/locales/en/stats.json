@@ -110,6 +110,11 @@
     "squad": {
       "title": "Squad (3 players)",
       "description": "Matches where you and two specific teammates were in the same party at the same time."
+    },
+    "rivalry": {
+      "title": "Rivalry",
+      "description": "Head-to-head against opponents you've faced repeatedly, accumulated as you browse matches in History.",
+      "statsLine": "{{wins}} wins / {{played}} head-to-head matches"
     }
   },
   "agentRoles": {

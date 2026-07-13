@@ -1,10 +1,10 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Skeleton, SkeletonScreen } from "../components/Skeleton";
 import { Link, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { useAccount, useMmr, useMmrHistory, useRankSnapshots } from "../hooks/usePlayer";
+import { useAccount, useAccountTimeline, useMmr, useMmrHistory, useRankSnapshots } from "../hooks/usePlayer";
 import { useMatches } from "../hooks/useMatches";
 import { useCountdown, formatCountdown } from "../hooks/useCountdown";
 import CopyButton from "../components/CopyButton";
@@ -12,6 +12,8 @@ import StatCard from "../components/StatCard";
 import SampleSizeSwitch, { SAMPLE_SIZES } from "../components/SampleSizeSwitch";
 import Panel from "../components/Panel";
 import ProfileCardModal from "../components/ProfileCardModal";
+import PeriodRecapModal from "../components/PeriodRecapModal";
+import AccountTimeline from "../components/AccountTimeline";
 import RankBadge from "../components/RankBadge";
 import RankHistoryChart from "../components/RankHistoryChart";
 import QueueStatusStrip from "../components/QueueStatusStrip";
@@ -30,10 +32,14 @@ import {
   playerCardIconUrl,
   rankGlowColor,
 } from "../lib/format";
-import { computeOverview } from "../lib/stats";
+import { computeOverview, computePeriodRecap, type PeriodRecap } from "../lib/stats";
 import { buildProfileCardData } from "../lib/profileCard";
 
 const MMR_TTL_SECONDS = 600;
+// Backlog : auto-actualisation périodique — rafraîchit toutes les données (MMR, matchs,
+// historique de rang) si l'utilisateur n'a pas cliqué sur "Rafraîchir" entre-temps (le
+// minuteur est réarmé à chaque refresh manuel, voir scheduleAutoRefresh).
+const AUTO_REFRESH_INTERVAL_MS = 10 * 60_000;
 
 export default function Home() {
   const { t } = useTranslation("home");
@@ -42,12 +48,14 @@ export default function Home() {
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
   const [showProfileCard, setShowProfileCard] = useState(false);
+  const [periodRecap, setPeriodRecap] = useState<PeriodRecap | null>(null);
 
   const account = useAccount(name, tag);
   const puuid = account.data?.data.puuid;
   const mmr = useMmr({ puuid, region, name, tag });
   const snapshots = useRankSnapshots(puuid);
   const mmrHistory = useMmrHistory({ region, name, tag });
+  const accountTimeline = useAccountTimeline(puuid);
   const matches = useMatches({ region, name, tag, size: sampleSize });
   // Backlog #12 : la note libre vit sur `tracked_players` (upsertée à chaque vue de profil
   // par `fetch_account`) — pas de commande dédiée "get one", on relit la liste récente et on
@@ -80,15 +88,54 @@ export default function Home() {
     return latest.tier > previous.tier ? "up" : "down";
   }, [snapshots.data]);
 
-  async function handleRefresh() {
+  const autoRefreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Force-refetch MMR + matchs + historique de rang (le snapshot local est réécrit côté
+  // Rust dans fetch_mmr dès que la donnée vient réellement du réseau, voir commands.rs).
+  const refreshAll = useCallback(async () => {
     if (!puuid || !region || !name || !tag) return;
     setRefreshing(true);
     try {
-      await tauriApi.fetchMmr(puuid, region, name, tag, true);
-      await queryClient.invalidateQueries({ queryKey: ["mmr", puuid, region, name, tag] });
+      await Promise.all([
+        tauriApi.fetchMmr(puuid, region, name, tag, true),
+        tauriApi.fetchMatches(region, name, tag, sampleSize, true),
+        tauriApi.fetchMmrHistory(region, name, tag, true),
+      ]);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["mmr", puuid, region, name, tag] }),
+        queryClient.invalidateQueries({ queryKey: ["matches", region, name, tag, sampleSize] }),
+        queryClient.invalidateQueries({ queryKey: ["mmr_history", region, name, tag] }),
+        queryClient.invalidateQueries({ queryKey: ["rank_snapshots", puuid] }),
+      ]);
     } finally {
       setRefreshing(false);
     }
+  }, [puuid, region, name, tag, sampleSize, queryClient]);
+
+  const scheduleAutoRefresh = useCallback(() => {
+    if (autoRefreshTimer.current) clearTimeout(autoRefreshTimer.current);
+    autoRefreshTimer.current = setTimeout(() => {
+      void refreshAll().finally(scheduleAutoRefresh);
+    }, AUTO_REFRESH_INTERVAL_MS);
+  }, [refreshAll]);
+
+  useEffect(() => {
+    scheduleAutoRefresh();
+    return () => {
+      if (autoRefreshTimer.current) clearTimeout(autoRefreshTimer.current);
+    };
+  }, [scheduleAutoRefresh]);
+
+  async function handleRefresh() {
+    await refreshAll();
+    scheduleAutoRefresh();
+  }
+
+  // Backlog #56 : agrégation locale sur les matchs déjà chargés (sampleSize courant) et les
+  // snapshots de rang locaux — aucun fetch supplémentaire déclenché ici.
+  function openPeriodRecap(period: "week" | "month") {
+    if (!puuid || !matches.data) return;
+    setPeriodRecap(computePeriodRecap(matches.data.data, snapshots.data ?? [], puuid, period));
   }
 
   if (account.isLoading) {
@@ -196,6 +243,24 @@ export default function Home() {
                 {t("statusBar.exportCard")}
               </button>
             )}
+            {puuid && matches.data && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => openPeriodRecap("week")}
+                  className="flex items-center gap-1.5 border border-line px-2.5 py-1 font-display text-[11px] font-semibold uppercase tracking-hud text-hi transition-colors hover:border-accent hover:text-accent"
+                >
+                  {t("statusBar.recapWeek")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openPeriodRecap("month")}
+                  className="flex items-center gap-1.5 border border-line px-2.5 py-1 font-display text-[11px] font-semibold uppercase tracking-hud text-hi transition-colors hover:border-accent hover:text-accent"
+                >
+                  {t("statusBar.recapMonth")}
+                </button>
+              </>
+            )}
             <button
               type="button"
               onClick={handleRefresh}
@@ -211,6 +276,10 @@ export default function Home() {
 
       {showProfileCard && profileCardData && (
         <ProfileCardModal data={profileCardData} onClose={() => setShowProfileCard(false)} />
+      )}
+
+      {periodRecap && name && tag && (
+        <PeriodRecapModal recap={periodRecap} playerLabel={`${name}#${tag}`} onClose={() => setPeriodRecap(null)} />
       )}
 
       {puuid && (
@@ -350,6 +419,13 @@ export default function Home() {
           serverHistory={mmrHistory.data?.data.history ?? []}
         />
       </div>
+
+      {puuid && (
+        <div>
+          <h2 className="hud-label mb-2">{t("accountTimeline.title")}</h2>
+          <AccountTimeline events={accountTimeline.data ?? []} />
+        </div>
+      )}
     </div>
   );
 }

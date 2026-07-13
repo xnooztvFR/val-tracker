@@ -14,7 +14,10 @@ use crate::api::henrik::types_esports::{
 };
 use crate::api::henrik::types_premier::{PremierTeamDetail, PremierTeamHistory, PremierTeamLite};
 use crate::api::henrik::HenrikError;
-use crate::db::{DuoStat, ProgressionGoal, RankSnapshot, SquadStat, TrackedPlayer};
+use crate::db::{
+    AccountTimelineEvent, DuoStat, ProgressionGoal, RankSnapshot, RivalryStat, SquadStat,
+    TrackedPlayer,
+};
 use crate::settings::AppSettings;
 use crate::AppState;
 
@@ -1124,9 +1127,8 @@ pub async fn record_party_from_match(
     else {
         return Ok(());
     };
-    let Some(my_party_id) = me.party_id.clone() else {
-        return Ok(());
-    };
+    let my_party_id = me.party_id.clone();
+    let my_team = me.team.clone();
     let won = team_won(&detail, &me.team);
 
     let conn = state.db.lock().await;
@@ -1134,9 +1136,16 @@ pub async fn record_party_from_match(
         if player.puuid == tracked_puuid {
             continue;
         }
-        if player.party_id.as_deref() != Some(my_party_id.as_str()) {
+        // Backlog #58 : réutilise cette même boucle (détail de match déjà en cache, aucun
+        // appel réseau de plus) pour aussi enregistrer les adversaires — `relation`
+        // distingue les deux cas dans `party_matches` (voir db::record_party_match).
+        let relation = if player.team != my_team {
+            "opponent"
+        } else if my_party_id.as_deref().is_some() && player.party_id == my_party_id {
+            "teammate"
+        } else {
             continue;
-        }
+        };
         crate::db::record_party_match(
             &conn,
             &match_id,
@@ -1145,6 +1154,7 @@ pub async fn record_party_from_match(
             &player.name,
             &player.tag,
             won,
+            relation,
         )?;
     }
     Ok(())
@@ -1204,6 +1214,41 @@ pub async fn list_squad_stats(
 ) -> Result<Vec<SquadStat>, CommandError> {
     let conn = state.db.lock().await;
     Ok(crate::db::list_squad_stats(&conn, &puuid, min_matches.max(1))?)
+}
+
+/// Backlog #58 : rivalité suivie en continu — pendant "adversaire" de `list_duo_stats`.
+#[tauri::command]
+pub async fn list_rivalry_stats(
+    state: State<'_, AppState>,
+    puuid: String,
+    min_matches: i64,
+) -> Result<Vec<RivalryStat>, CommandError> {
+    let conn = state.db.lock().await;
+    Ok(crate::db::list_rivalry_stats(&conn, &puuid, min_matches.max(1))?)
+}
+
+/// Backlog #57 : marque un objectif hebdo comme atteint pour la période en cours — appelé
+/// par WeeklyGoalsPanel.tsx dès que la progression calculée localement franchit la cible.
+#[tauri::command]
+pub async fn record_goal_achieved(
+    state: State<'_, AppState>,
+    puuid: String,
+    goal_type: String,
+    period_key: String,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::db::record_goal_achieved_event(&conn, &puuid, &goal_type, &period_key)?;
+    Ok(())
+}
+
+/// Backlog #57 : frise "vie du compte" (rank_snapshots + objectifs atteints + note perso).
+#[tauri::command]
+pub async fn list_account_timeline(
+    state: State<'_, AppState>,
+    puuid: String,
+) -> Result<Vec<AccountTimelineEvent>, CommandError> {
+    let conn = state.db.lock().await;
+    Ok(crate::db::list_account_timeline(&conn, &puuid)?)
 }
 
 // ---- Données locales (historique de recherche, favoris, snapshots de rank) ----

@@ -2,7 +2,7 @@
 // ici) — réutilisées entre Home.tsx, Compare.tsx (backlog #11) et Trends.tsx (#15, #21).
 
 import { formatKdRatio } from "./format";
-import type { LeaderboardThreshold, MatchEntry, MmrHistoryEntry } from "./tauriApi";
+import type { LeaderboardThreshold, MatchEntry, MmrHistoryEntry, RankSnapshot } from "./tauriApi";
 
 export interface AgentTally {
   id: string;
@@ -212,6 +212,93 @@ export function computeWeeklyMatchStats(matches: MatchEntry[], puuid: string, no
   }
 
   return { matches: count, wins, winPercent: count > 0 ? (wins / count) * 100 : 0 };
+}
+
+/** Clé de semaine ISO ("2026-W03") pour dédupliquer un objectif hebdo atteint une seule
+ * fois par semaine (backlog #57, voir record_goal_achieved côté Rust). */
+export function isoWeekKey(date: Date): string {
+  // Algorithme ISO 8601 standard : le jeudi de la semaine détermine son année ISO.
+  const target = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNumber = (target.getUTCDay() + 6) % 7;
+  target.setUTCDate(target.getUTCDate() - dayNumber + 3);
+  const firstThursday = new Date(Date.UTC(target.getUTCFullYear(), 0, 4));
+  const firstDayNumber = (firstThursday.getUTCDay() + 6) % 7;
+  firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDayNumber + 3);
+  const week = 1 + Math.round((target.getTime() - firstThursday.getTime()) / (7 * 86400000));
+  return `${target.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+/** Début du mois calendaire en cours (1er à 00:00, heure locale) pour la date donnée. */
+function startOfMonth(date: Date): Date {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(1);
+  return start;
+}
+
+export interface PeriodRankChange {
+  tierStart: number;
+  tierPatchedStart: string;
+  rrStart: number | null;
+  tierEnd: number;
+  tierPatchedEnd: string;
+  rrEnd: number | null;
+}
+
+export interface PeriodRecap {
+  period: "week" | "month";
+  start: Date;
+  end: Date;
+  overview: Overview;
+  rankChange: PeriodRankChange | null;
+}
+
+/** Backlog #56 : récap hebdo/mensuel — agrégation locale des matchs et snapshots de rang
+ * déjà en cache sur une fenêtre "semaine ISO en cours" ou "mois calendaire en cours" (pas
+ * de période arbitraire ni de stockage : recalculé à la demande à partir de
+ * `metadata.started_at`/`recorded_at`, comme `computeWeeklyMatchStats`). Le changement de
+ * rang compare le dernier snapshot avant la période (ou le premier de la période s'il n'y
+ * en a pas avant) au tout dernier snapshot connu — pas de delta RR synthétisé entre tiers
+ * différents, qui ne serait pas fiable (les paliers de RR par tier ne sont pas uniformes). */
+export function computePeriodRecap(
+  matches: MatchEntry[],
+  snapshots: RankSnapshot[],
+  puuid: string,
+  period: "week" | "month",
+  now = new Date(),
+): PeriodRecap {
+  const start = period === "week" ? startOfIsoWeek(now) : startOfMonth(now);
+  const startMs = start.getTime();
+
+  const periodMatches = matches.filter((m) => {
+    const startedAt = m.metadata.started_at;
+    if (!startedAt) return false;
+    const date = new Date(startedAt);
+    return !Number.isNaN(date.getTime()) && date.getTime() >= startMs;
+  });
+
+  const overview = computeOverview(periodMatches, puuid);
+
+  const sorted = [...snapshots].sort((a, b) => a.recorded_at - b.recorded_at);
+  const startSec = startMs / 1000;
+  const beforePeriod = sorted.filter((s) => s.recorded_at < startSec);
+  const fromPeriod = sorted.filter((s) => s.recorded_at >= startSec);
+  const startSnapshot = beforePeriod[beforePeriod.length - 1] ?? fromPeriod[0] ?? null;
+  const endSnapshot = sorted[sorted.length - 1] ?? null;
+
+  const rankChange: PeriodRankChange | null =
+    startSnapshot && endSnapshot
+      ? {
+          tierStart: startSnapshot.tier,
+          tierPatchedStart: startSnapshot.tier_patched,
+          rrStart: startSnapshot.rr,
+          tierEnd: endSnapshot.tier,
+          tierPatchedEnd: endSnapshot.tier_patched,
+          rrEnd: endSnapshot.rr,
+        }
+      : null;
+
+  return { period, start, end: now, overview, rankChange };
 }
 
 export interface RegularityScore {

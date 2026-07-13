@@ -110,6 +110,11 @@
     "squad": {
       "title": "Squad (3 joueurs)",
       "description": "Matchs où toi et deux coéquipiers précis étiez dans la même party simultanément."
+    },
+    "rivalry": {
+      "title": "Rivalité",
+      "description": "Face-à-face contre des adversaires croisés à plusieurs reprises, accumulé au fil des matchs consultés dans Historique.",
+      "statsLine": "{{wins}} victoires / {{played}} matchs face à face"
     }
   },
   "agentRoles": {

@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
 import Panel from "./Panel";
 import { tauriApi, type MatchEntry, type WeeklyGoalType } from "../lib/tauriApi";
-import { computeWeeklyMatchStats } from "../lib/stats";
+import { computeWeeklyMatchStats, isoWeekKey } from "../lib/stats";
 
 interface WeeklyGoalsPanelProps {
   puuid: string;
@@ -46,6 +46,21 @@ export default function WeeklyGoalsPanel({ puuid, matches }: WeeklyGoalsPanelPro
   const activeGoals = goals.data ?? [];
   const canAddMatches = !activeGoals.some((g) => g.goal_type === "weekly_matches");
   const canAddWinrate = !activeGoals.some((g) => g.goal_type === "weekly_winrate");
+
+  // Backlog #57 : marque les objectifs atteints sur la frise "vie du compte" — idempotent
+  // côté Rust (dédupliqué par semaine ISO), donc sans risque à rappeler à chaque rendu tant
+  // que l'objectif reste atteint.
+  useEffect(() => {
+    const periodKey = isoWeekKey(new Date());
+    for (const goal of activeGoals) {
+      const isMatches = goal.goal_type === "weekly_matches";
+      const target = goal.target_value ?? 0;
+      const current = isMatches ? weekly.matches : Math.round(weekly.winPercent);
+      if (current >= target && target > 0) {
+        void tauriApi.recordGoalAchieved(puuid, goal.goal_type, periodKey);
+      }
+    }
+  }, [puuid, activeGoals, weekly.matches, weekly.winPercent]);
 
   return (
     <Panel className="p-4">

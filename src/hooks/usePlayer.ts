@@ -63,3 +63,24 @@ export function useSquadStats(puuid: string | undefined, minMatches = 2) {
     enabled: Boolean(puuid),
   });
 }
+
+/** Backlog #58 : rivalité suivie en continu, pendant "adversaire" de useDuoStats —
+ * alimentée par commands::record_party_from_match à chaque consultation d'un match où le
+ * joueur suivi affrontait un adversaire déjà croisé, aucun appel réseau ici non plus. */
+export function useRivalryStats(puuid: string | undefined, minMatches = 2) {
+  return useQuery({
+    queryKey: ["rivalry_stats", puuid, minMatches],
+    queryFn: () => tauriApi.listRivalryStats(puuid!, minMatches),
+    enabled: Boolean(puuid),
+  });
+}
+
+/** Backlog #57 : frise "vie du compte" (rank_snapshots + objectifs hebdo atteints + note
+ * perso), entièrement locale — aucun appel réseau. */
+export function useAccountTimeline(puuid: string | undefined) {
+  return useQuery({
+    queryKey: ["account_timeline", puuid],
+    queryFn: () => tauriApi.listAccountTimeline(puuid!),
+    enabled: Boolean(puuid),
+  });
+}
