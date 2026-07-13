@@ -10,6 +10,23 @@ interface PendingChangelog {
   notes: string;
 }
 
+/** Backlog #72 (fix bilingue) : `scripts/release.ps1` encode désormais `notes` en JSON
+ * `{"fr": "...", "en": "..."}` plutôt qu'une chaîne brute mono-langue, pour afficher le
+ * changelog dans la langue active de l'app (`ui_language`) plutôt que systématiquement
+ * dans la langue où la release a été rédigée. Une release plus ancienne (avant ce fix) a
+ * pu écrire une simple chaîne : `resolveNotes` la renvoie alors telle quelle. */
+function resolveNotes(rawNotes: string, language: string): string {
+  try {
+    const parsed = JSON.parse(rawNotes);
+    if (parsed && typeof parsed === "object" && (typeof parsed.fr === "string" || typeof parsed.en === "string")) {
+      return (language === "en" ? parsed.en : parsed.fr) || parsed.fr || parsed.en || "";
+    }
+  } catch {
+    // Chaîne brute (release antérieure au format bilingue) — on la renvoie telle quelle.
+  }
+  return rawNotes;
+}
+
 /** Backlog #72 : modal "Quoi de neuf" au premier lancement suivant une mise à jour
  * silencieuse (NSIS) — évite de devoir aller lire la release GitHub. Se déclenche une
  * seule fois : `useUpdater.installNow` écrit le changelog côté Rust (SQLite) avant même de
@@ -21,7 +38,7 @@ interface PendingChangelog {
  * comparaison à `getVersion()` : on n'affiche que si la version installée correspond
  * effectivement à celle du changelog écrit. */
 export default function ChangelogModal() {
-  const { t } = useTranslation("componentsExtra");
+  const { t, i18n } = useTranslation("componentsExtra");
   const [changelog, setChangelog] = useState<PendingChangelog | null>(null);
 
   useEffect(() => {
@@ -36,6 +53,8 @@ export default function ChangelogModal() {
 
   if (!changelog) return null;
 
+  const notes = resolveNotes(changelog.notes, i18n.language);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6">
       <Panel className="w-full max-w-md p-5">
@@ -43,8 +62,8 @@ export default function ChangelogModal() {
         <p className="mt-2 text-base font-semibold text-hi">
           {t("changelogModal.version", { version: changelog.version })}
         </p>
-        {changelog.notes ? (
-          <p className="mt-3 whitespace-pre-line text-sm text-lo">{changelog.notes}</p>
+        {notes ? (
+          <p className="mt-3 whitespace-pre-line text-sm text-lo">{notes}</p>
         ) : (
           <p className="mt-3 text-sm text-lo">{t("changelogModal.noNotes")}</p>
         )}

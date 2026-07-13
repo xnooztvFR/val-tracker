@@ -6,11 +6,15 @@ Nécessite `gh auth login` fait au préalable.
 #>
 param(
     [switch]$Draft = $true,
-    # Backlog #72 : chemin d'un fichier markdown/texte avec le vrai changelog de cette
-    # version — utilisé à la fois comme description de la release GitHub ET comme champ
-    # "notes" de latest.json (lu par tauri-plugin-updater, affiché dans ChangelogModal.tsx
-    # après l'auto-update). Sans ce paramètre, retombe sur un texte générique.
-    [string]$NotesFile
+    # Backlog #72 (fix bilingue) : fichiers markdown/texte avec le vrai changelog de cette
+    # version, un par langue — utilisés à la fois pour la description de la release GitHub
+    # (les deux concaténées, pour un lecteur humain sur GitHub) ET comme champ "notes" de
+    # latest.json, encodé en JSON `{"fr": "...", "en": "..."}` (lu par tauri-plugin-updater,
+    # affiché dans ChangelogModal.tsx dans la langue active de l'app après l'auto-update —
+    # voir `resolveNotes` côté frontend). Sans ces paramètres, retombe sur un texte
+    # générique dans les deux langues plutôt que de bloquer la release.
+    [string]$NotesFileFr,
+    [string]$NotesFileEn
 )
 
 $ErrorActionPreference = "Stop"
@@ -42,12 +46,22 @@ if (gh release view $tag --repo $repo 2>$null) {
     throw "La release $tag existe déjà sur $repo. Monte la version dans src-tauri/tauri.conf.json et package.json d'abord."
 }
 
-$releaseNotes = if ($NotesFile) {
-    if (-not (Test-Path $NotesFile)) { throw "NotesFile introuvable: $NotesFile" }
-    Get-Content $NotesFile -Raw
-} else {
-    "Voir les changements de cette version."
+$hasBilingualNotes = $NotesFileFr -and $NotesFileEn
+if ($hasBilingualNotes) {
+    if (-not (Test-Path $NotesFileFr)) { throw "NotesFileFr introuvable: $NotesFileFr" }
+    if (-not (Test-Path $NotesFileEn)) { throw "NotesFileEn introuvable: $NotesFileEn" }
 }
+$notesFr = if ($hasBilingualNotes) { (Get-Content $NotesFileFr -Raw).Trim() } else { "Voir les changements de cette version." }
+$notesEn = if ($hasBilingualNotes) { (Get-Content $NotesFileEn -Raw).Trim() } else { "See this version's changes." }
+
+# JSON compact (pas d'indentation) : c'est la valeur brute lue par `resolveNotes` côté
+# frontend, elle n'a pas besoin d'être lisible telle quelle.
+$releaseNotesJson = [ordered]@{ fr = $notesFr; en = $notesEn } | ConvertTo-Json -Compress
+
+# Description de la release GitHub : bilingue, lisible par un humain qui parcourt la page.
+$releaseBody = "## Francais`n`n$notesFr`n`n## English`n`n$notesEn"
+$releaseBodyPath = "$env:TEMP\val-tracker-release-notes-$version.md"
+Set-Content -Path $releaseBodyPath -Value $releaseBody -NoNewline
 
 $env:TAURI_SIGNING_PRIVATE_KEY = (Get-Content $keyPath -Raw)
 $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = (Get-Content $keyPasswordPath -Raw).Trim()
@@ -82,7 +96,7 @@ $nsisSha256 = (Get-FileHash $nsisExe.FullName -Algorithm SHA256).Hash.ToLower()
 
 $latestJson = [ordered]@{
     version  = $version
-    notes    = $releaseNotes
+    notes    = $releaseNotesJson
     pub_date = $pubDate
     platforms = [ordered]@{
         "windows-x86_64" = [ordered]@{
@@ -103,18 +117,10 @@ if ($msiSig) { $assets += $msiSig.FullName }
 Write-Host "== Publication de $tag sur $repo (brouillon) ==" -ForegroundColor Cyan
 $draftFlag = if ($Draft) { "--draft" } else { $null }
 
-if ($NotesFile) {
-    gh release create $tag @assets `
-        --repo $repo `
-        --title "Valorant Tracker $tag" `
-        --notes-file $NotesFile `
-        $draftFlag
-} else {
-    gh release create $tag @assets `
-        --repo $repo `
-        --title "Valorant Tracker $tag" `
-        --notes $releaseNotes `
-        $draftFlag
-}
+gh release create $tag @assets `
+    --repo $repo `
+    --title "Valorant Tracker $tag" `
+    --notes-file $releaseBodyPath `
+    $draftFlag
 
 Write-Host "Release $tag créée en brouillon. Vérifie les notes et les assets sur GitHub avant de la publier." -ForegroundColor Green
