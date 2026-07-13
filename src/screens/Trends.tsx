@@ -14,7 +14,7 @@ import {
 } from "recharts";
 
 import { useAccount, useMmrHistory } from "../hooks/usePlayer";
-import { useMatches } from "../hooks/useMatches";
+import { useMatches, useSideWinrate } from "../hooks/useMatches";
 import StatCard from "../components/StatCard";
 import Panel from "../components/Panel";
 import SampleSizeSwitch, { type SampleSize } from "../components/SampleSizeSwitch";
@@ -23,7 +23,7 @@ import StaleDataBanner from "../components/StaleDataBanner";
 import PerformanceHeatmap from "../components/PerformanceHeatmap";
 import type { MatchEntry } from "../lib/tauriApi";
 import { formatKdRatio, formatRelativeTime } from "../lib/format";
-import { computeHeatmap, computeSeasonComparison } from "../lib/stats";
+import { computeHeatmap, computeRegularity, computeSeasonComparison } from "../lib/stats";
 
 const MONO = '"JetBrains Mono", Consolas, monospace';
 
@@ -95,6 +95,7 @@ export default function Trends() {
   const puuid = account.data?.data.puuid;
   const matches = useMatches({ region, name, tag, size: sampleSize });
   const mmrHistory = useMmrHistory({ region, name, tag });
+  const sideWinrate = useSideWinrate(puuid);
 
   const trends = useMemo(
     () => (matches.data && puuid ? computeTrends(matches.data.data, puuid) : null),
@@ -107,6 +108,10 @@ export default function Trends() {
   const seasonComparison = useMemo(
     () => (mmrHistory.data ? computeSeasonComparison(mmrHistory.data.data.history) : []),
     [mmrHistory.data],
+  );
+  const regularity = useMemo(
+    () => (matches.data && puuid ? computeRegularity(matches.data.data, puuid) : null),
+    [matches.data, puuid],
   );
 
   function toggleSeries(key: SeriesKey) {
@@ -131,7 +136,7 @@ export default function Trends() {
 
       {trends && (
         <>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
             <StatCard
               label={t("trends.statCards.recentMatches", { count: sampleSize })}
               value={t("trends.statCards.kdValue", { kd: trends.overallKd })}
@@ -155,6 +160,18 @@ export default function Trends() {
                   : undefined
               }
             />
+            {regularity && regularity.sampleSize > 0 && (
+              <StatCard
+                label={t("trends.statCards.regularity")}
+                value={t("trends.statCards.regularityValue", {
+                  cv: (regularity.coefficientOfVariation * 100).toFixed(0),
+                })}
+                hint={t("trends.statCards.regularityHint", {
+                  mean: regularity.kdaMean.toFixed(2),
+                  count: regularity.sampleSize,
+                })}
+              />
+            )}
           </div>
 
           <Panel className="h-72 p-4">
@@ -223,6 +240,47 @@ export default function Trends() {
               <Panel className="p-4">
                 <PerformanceHeatmap cells={heatmapCells} />
               </Panel>
+            </div>
+          )}
+
+          {sideWinrate.data && sideWinrate.data.matches_considered > 0 && (
+            <div>
+              <h2 className="hud-label mb-2">{t("trends.sideWinrate.title")}</h2>
+              <p className="mb-2 text-xs text-lo">
+                {t("trends.sideWinrate.description", { count: sideWinrate.data.matches_considered })}
+              </p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <StatCard
+                  label={t("trends.sideWinrate.attack")}
+                  value={t("trends.statCards.bestMapWinrate", {
+                    percent:
+                      sideWinrate.data.attack.rounds_played > 0
+                        ? ((sideWinrate.data.attack.rounds_won / sideWinrate.data.attack.rounds_played) * 100).toFixed(0)
+                        : "0",
+                  })}
+                  hint={t("trends.sideWinrate.roundsHint", { n: sideWinrate.data.attack.rounds_played })}
+                  gaugePercent={
+                    sideWinrate.data.attack.rounds_played > 0
+                      ? (sideWinrate.data.attack.rounds_won / sideWinrate.data.attack.rounds_played) * 100
+                      : 0
+                  }
+                />
+                <StatCard
+                  label={t("trends.sideWinrate.defense")}
+                  value={t("trends.statCards.bestMapWinrate", {
+                    percent:
+                      sideWinrate.data.defense.rounds_played > 0
+                        ? ((sideWinrate.data.defense.rounds_won / sideWinrate.data.defense.rounds_played) * 100).toFixed(0)
+                        : "0",
+                  })}
+                  hint={t("trends.sideWinrate.roundsHint", { n: sideWinrate.data.defense.rounds_played })}
+                  gaugePercent={
+                    sideWinrate.data.defense.rounds_played > 0
+                      ? (sideWinrate.data.defense.rounds_won / sideWinrate.data.defense.rounds_played) * 100
+                      : 0
+                  }
+                />
+              </div>
             </div>
           )}
         </>

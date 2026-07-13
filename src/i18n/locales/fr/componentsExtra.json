@@ -132,6 +132,20 @@
     "removeGoal": "Retirer l'objectif",
     "rrSuffix": "({{rr}} RR)"
   },
+  "weeklyGoalsPanel": {
+    "title": "Objectifs hebdo",
+    "addGoal": "Ajouter un objectif",
+    "matchesLabel": "Nombre de matchs",
+    "winrateLabel": "Winrate cible (%)",
+    "typeMatches": "Matchs joués",
+    "typeWinrate": "Winrate",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "reached": "Atteint",
+    "remove": "Retirer",
+    "matchesProgress": "{{current}} / {{target}} matchs cette semaine",
+    "winrateProgress": "{{current}}% / {{target}}% winrate cette semaine ({{matches}} matchs)"
+  },
   "matchRow": {
     "victory": "Victoire",
     "defeat": "Défaite",

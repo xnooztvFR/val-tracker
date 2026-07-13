@@ -23,7 +23,10 @@
       "bestMatch": "Best match",
       "bestMatchValue": "{{kills}} kills",
       "bestMap": "Best map",
-      "bestMapWinrate": "{{percent}}% win rate"
+      "bestMapWinrate": "{{percent}}% win rate",
+      "regularity": "Consistency (K/D)",
+      "regularityValue": "±{{cv}}%",
+      "regularityHint": "Avg. K/D {{mean}} over {{count}} matches"
     },
     "series": {
       "kd": "K/D",
@@ -33,6 +36,13 @@
       "headshots": "Headshots"
     },
     "heatmapTitle": "Performance by time slot (local time)",
+    "sideWinrate": {
+      "title": "Attack vs Defense winrate",
+      "description": "Based on the {{count}} matches already opened in detail (round by round) — matches never opened in detail aren't counted.",
+      "attack": "Round win % — Attack",
+      "defense": "Round win % — Defense",
+      "roundsHint": "{{n}} rounds"
+    },
     "seasonComparison": {
       "title": "Comparison by season",
       "description": "Approximation by season (Henrik doesn't expose the exact patch per match without an extra network call per match) — based on the RR history already cached.",

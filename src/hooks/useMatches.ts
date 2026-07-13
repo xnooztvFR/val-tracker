@@ -24,3 +24,14 @@ export function useMatchDetail(matchId: string | undefined) {
     staleTime: Infinity,
   });
 }
+
+/** Backlog #52 : winrate ATK/DEF agrégé côté Rust sur les détails de match déjà en cache
+ * (voir `useMatchDetail`) — n'engage aucun fetch réseau, se recalcule juste à chaque
+ * consultation d'un nouveau match en détail (queryKey partagée avec `match_detail`). */
+export function useSideWinrate(puuid: string | undefined) {
+  return useQuery({
+    queryKey: ["side_winrate", puuid],
+    queryFn: () => tauriApi.getSideWinrate(puuid!),
+    enabled: Boolean(puuid),
+  });
+}

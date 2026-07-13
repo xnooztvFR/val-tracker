@@ -19,6 +19,8 @@ import ErrorState from "../components/ErrorState";
 import StaleDataBanner from "../components/StaleDataBanner";
 import PlayerNotesPanel from "../components/PlayerNotesPanel";
 import ProgressionGoalPanel from "../components/ProgressionGoalPanel";
+import WeeklyGoalsPanel from "../components/WeeklyGoalsPanel";
+import LeaderboardPercentileCard from "../components/LeaderboardPercentileCard";
 import { tauriApi, type MatchEntry } from "../lib/tauriApi";
 import {
   agentPortraitUrl,
@@ -226,8 +228,13 @@ export default function Home() {
             puuid={puuid}
             initialNotes={trackedPlayer.data?.notes ?? null}
           />
+          <WeeklyGoalsPanel key={`weekly-${puuid}`} puuid={puuid} matches={matches.data?.data ?? []} />
         </div>
       )}
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <LeaderboardPercentileCard region={region} name={name} tag={tag} currentTier={current?.currenttier} />
+      </div>
 
       <div className="flex items-center justify-between">
         <h1 className="hud-label text-sm">{t("overview.title")}</h1>

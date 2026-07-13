@@ -12,6 +12,7 @@ mod inactivity_reminder;
 mod overlay;
 mod riot_local;
 mod settings;
+mod side_stats;
 mod status_watcher;
 mod updater;
 
@@ -187,6 +188,7 @@ fn main() {
             commands::get_live_state,
             commands::get_overlay_shortcut_status,
             commands::record_party_from_match,
+            commands::get_side_winrate,
             commands::list_duo_stats,
             commands::list_squad_stats,
             commands::list_tracked_players,
@@ -199,6 +201,9 @@ fn main() {
             commands::get_progression_goal,
             commands::save_progression_goal,
             commands::clear_progression_goal,
+            commands::list_weekly_goals,
+            commands::save_weekly_goal,
+            commands::clear_weekly_goal,
             commands::set_self_account,
             commands::list_self_accounts,
             commands::detect_local_account,

@@ -132,6 +132,20 @@
     "removeGoal": "Remove goal",
     "rrSuffix": "({{rr}} RR)"
   },
+  "weeklyGoalsPanel": {
+    "title": "Weekly goals",
+    "addGoal": "Add a goal",
+    "matchesLabel": "Number of matches",
+    "winrateLabel": "Target winrate (%)",
+    "typeMatches": "Matches played",
+    "typeWinrate": "Winrate",
+    "save": "Save",
+    "cancel": "Cancel",
+    "reached": "Reached",
+    "remove": "Remove",
+    "matchesProgress": "{{current}} / {{target}} matches this week",
+    "winrateProgress": "{{current}}% / {{target}}% winrate this week ({{matches}} matches)"
+  },
   "matchRow": {
     "victory": "Victory",
     "defeat": "Defeat",

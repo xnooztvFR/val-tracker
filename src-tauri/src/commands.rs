@@ -1150,6 +1150,30 @@ pub async fn record_party_from_match(
     Ok(())
 }
 
+/// Backlog #52 : winrate Attaque vs Défense agrégé sur tous les détails de match déjà en
+/// cache pour ce puuid (aucun appel réseau — voir `side_stats::compute_side_winrate`).
+#[tauri::command]
+pub async fn get_side_winrate(
+    state: State<'_, AppState>,
+    puuid: String,
+) -> Result<crate::side_stats::SideWinrateStat, CommandError> {
+    let payloads = {
+        let conn = state.db.lock().await;
+        crate::api::henrik::cache::list_by_prefix(&conn, "/valorant/v2/match/")?
+    };
+
+    let matches: Vec<MatchDetailData> = payloads
+        .iter()
+        .filter_map(|payload| {
+            serde_json::from_str::<crate::api::henrik::types::HenrikEnvelope<MatchDetailData>>(payload)
+                .ok()
+                .map(|envelope| envelope.data)
+        })
+        .collect();
+
+    Ok(crate::side_stats::compute_side_winrate(&matches, &puuid))
+}
+
 fn team_won(detail: &MatchDetailData, team: &str) -> bool {
     let team_data = if team.eq_ignore_ascii_case("red") {
         detail.teams.red.as_ref()
@@ -1284,6 +1308,39 @@ pub async fn clear_progression_goal(
 ) -> Result<(), CommandError> {
     let conn = state.db.lock().await;
     Ok(crate::db::clear_progression_goal(&conn, &puuid)?)
+}
+
+/// Backlog #55 : objectifs hebdomadaires custom ("X matchs cette semaine", "winrate ≥ 50%"),
+/// en complément de l'objectif de rang ci-dessus — même table (`progression_goals`),
+/// distingués par `goal_type`.
+#[tauri::command]
+pub async fn list_weekly_goals(
+    state: State<'_, AppState>,
+    puuid: String,
+) -> Result<Vec<ProgressionGoal>, CommandError> {
+    let conn = state.db.lock().await;
+    Ok(crate::db::list_weekly_goals(&conn, &puuid)?)
+}
+
+#[tauri::command]
+pub async fn save_weekly_goal(
+    state: State<'_, AppState>,
+    puuid: String,
+    goal_type: String,
+    target_value: i64,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    Ok(crate::db::set_weekly_goal(&conn, &puuid, &goal_type, target_value)?)
+}
+
+#[tauri::command]
+pub async fn clear_weekly_goal(
+    state: State<'_, AppState>,
+    puuid: String,
+    goal_type: String,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    Ok(crate::db::clear_weekly_goal(&conn, &puuid, &goal_type)?)
 }
 
 // ---- V4 : "Mon compte" — lier son propre compte Valorant sans RSO ----

@@ -11,6 +11,12 @@
     "copyRiotId": "Copy Riot ID",
     "exportCard": "Profile card"
   },
+  "leaderboardPercentile": {
+    "label": "Regional leaderboard",
+    "value": "#{{rank}}",
+    "hintWithPercentile": "Top {{percent}}% of {{tier}}",
+    "hint": "{{tier}}"
+  },
   "overview": {
     "title": "Overview",
     "notEnoughData": "Not enough data.",

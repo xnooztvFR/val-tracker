@@ -255,6 +255,22 @@ export interface MatchDetailData {
 
 // ---- leaderboard ----
 
+// ---- side winrate (ATK/DEF) ----
+
+export interface SideTally {
+  rounds_played: number;
+  rounds_won: number;
+}
+
+/** Backlog #52 : winrate Attaque vs Défense, agrégé côté Rust sur les détails de match déjà
+ * en cache (voir `fetch_match_detail`) — best-effort, ne couvre que les matchs déjà
+ * consultés en détail. */
+export interface SideWinrateStat {
+  attack: SideTally;
+  defense: SideTally;
+  matches_considered: number;
+}
+
 export interface LeaderboardPlayer {
   puuid: string | null;
   name: string;
@@ -750,11 +766,18 @@ export interface TrackedPlayer {
   notes: string | null;
 }
 
-/** Backlog #13 : objectif de progression ("atteindre Diamant 2") pour un joueur suivi. */
+/** Backlog #13 : objectif de progression ("atteindre Diamant 2") pour un joueur suivi.
+ * Backlog #55 : étendu aux objectifs hebdo custom via `goal_type` — `target_tier`/
+ * `target_tier_patched`/`target_rr` ne sont renseignés que pour `"rank"`, `target_value`
+ * que pour `"weekly_matches"`/`"weekly_winrate"`. */
+export type WeeklyGoalType = "weekly_matches" | "weekly_winrate";
+
 export interface ProgressionGoal {
-  target_tier: number;
-  target_tier_patched: string;
+  goal_type: "rank" | WeeklyGoalType;
+  target_tier: number | null;
+  target_tier_patched: string | null;
   target_rr: number | null;
+  target_value: number | null;
   created_at: number;
 }
 
@@ -968,6 +991,12 @@ export const tauriApi = {
     }),
   clearProgressionGoal: (puuid: string) =>
     invoke<void>("clear_progression_goal", { puuid }),
+  listWeeklyGoals: (puuid: string) => invoke<ProgressionGoal[]>("list_weekly_goals", { puuid }),
+  saveWeeklyGoal: (puuid: string, goalType: WeeklyGoalType, targetValue: number) =>
+    invoke<void>("save_weekly_goal", { puuid, goalType, targetValue }),
+  clearWeeklyGoal: (puuid: string, goalType: WeeklyGoalType) =>
+    invoke<void>("clear_weekly_goal", { puuid, goalType }),
+  getSideWinrate: (puuid: string) => invoke<SideWinrateStat>("get_side_winrate", { puuid }),
 
   recordPartyFromMatch: (matchId: string, trackedPuuid: string) =>
     invoke<void>("record_party_from_match", { matchId, trackedPuuid }),

@@ -39,7 +39,7 @@ export default function ProgressionGoalPanel({ puuid, currentTier, currentRr }: 
 
   const activeGoal = goal.data;
   const progress =
-    activeGoal && currentTier != null && currentRr != null
+    activeGoal && currentTier != null && currentRr != null && activeGoal.target_tier != null
       ? computeGoalProgress(currentTier, currentRr, activeGoal.target_tier, activeGoal.target_rr)
       : null;
 

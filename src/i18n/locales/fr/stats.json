@@ -23,7 +23,10 @@
       "bestMatch": "Meilleur match",
       "bestMatchValue": "{{kills}} kills",
       "bestMap": "Meilleure carte",
-      "bestMapWinrate": "{{percent}}% de victoires"
+      "bestMapWinrate": "{{percent}}% de victoires",
+      "regularity": "Régularité (K/D)",
+      "regularityValue": "±{{cv}}%",
+      "regularityHint": "Moy. K/D {{mean}} sur {{count}} matchs"
     },
     "series": {
       "kd": "K/D",
@@ -33,6 +36,13 @@
       "headshots": "Headshots"
     },
     "heatmapTitle": "Performance par créneau (heure locale)",
+    "sideWinrate": {
+      "title": "Winrate Attaque vs Défense",
+      "description": "Basé sur les {{count}} matchs déjà consultés en détail (round par round) — les matchs jamais ouverts en détail ne sont pas comptés.",
+      "attack": "Round win % — Attaque",
+      "defense": "Round win % — Défense",
+      "roundsHint": "{{n}} rounds"
+    },
     "seasonComparison": {
       "title": "Comparaison par saison",
       "description": "Approximation par saison (Henrik n'expose pas le patch exact par match sans appel réseau supplémentaire par match) — basé sur l'historique RR déjà en cache.",
