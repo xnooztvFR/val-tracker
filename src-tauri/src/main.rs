@@ -105,6 +105,15 @@ fn main() {
                 );
             }
 
+            // Ctrl+Shift+Espace, maintenu : réaffiche l'overlay pendant qu'il est masqué
+            // par IN_GAME_OVERLAY_DURATION (voir poller::on_state_changed). Best-effort
+            // comme les autres raccourcis globaux ci-dessus.
+            if let Err(err) = overlay::window::register_recall_shortcut(&handle) {
+                applog!(
+                    "[overlay] raccourci global Ctrl+Shift+Espace indisponible (probablement déjà pris par une autre appli): {err}"
+                );
+            }
+
             // La fenêtre overlay (V2) est créée à la demande puis seulement masquée, jamais
             // détruite (voir `overlay::window::hide_overlay`) — elle reste donc « ouverte »
             // aux yeux de Tauri même invisible. Sans ce handler, fermer la fenêtre "main"
@@ -158,8 +167,12 @@ fn main() {
             commands::save_ui_density,
             commands::save_overlay_density,
             commands::save_overlay_layout,
+            commands::list_overlay_monitors,
+            commands::save_overlay_monitor,
             commands::save_loss_streak_alert_enabled,
             commands::save_loss_streak_alert_count,
+            commands::save_rank_gap_alert_enabled,
+            commands::save_rank_gap_alert_threshold,
             commands::save_inactivity_reminder_enabled,
             commands::save_inactivity_reminder_days,
             commands::verify_henrik_api_key,

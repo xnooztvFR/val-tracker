@@ -10,6 +10,7 @@
 //! jamais faire planter le reste. Désactivable depuis Paramètres (voir
 //! `settings::AppSettings::riot_local_disabled`).
 
+pub mod agents;
 pub mod client;
 pub mod lockfile;
 pub mod poller;
@@ -28,6 +29,10 @@ pub struct LivePlayer {
     pub puuid: String,
     /// "ally" | "enemy"
     pub team: String,
+    /// Nom d'agent résolu depuis le `CharacterID` pregame (voir `agents.rs`) — `None` tant
+    /// que l'agent n'est pas locké, hors pregame, ou si le schéma de champ de l'API locale a
+    /// changé (best-effort, jamais bloquant, voir doc de `agents.rs`).
+    pub agent: Option<String>,
 }
 
 /// Instantané de l'état de partie détecté, partagé entre le poller (écriture), la

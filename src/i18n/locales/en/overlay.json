@@ -11,6 +11,7 @@
   "team": "Team",
   "opponents": "Opponents",
   "topAgents": "Your best-performing agents",
+  "missingRole": "Missing role in the team",
   "shortcutInteractive": " — interactive mode: move the window then toggle back.",
   "shortcutStatic": " — move the overlay",
   "identifying": "Identifying…",

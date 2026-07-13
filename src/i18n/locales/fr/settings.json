@@ -73,6 +73,16 @@
       "detailed": "Détaillé (défaut)"
     },
     "densityHint": "« Compact » n'affiche que le badge de rang des joueurs détectés ; « Détaillé » (défaut) ajoute le nom du rang et le RR.",
+    "monitorLabel": "Écran d'affichage",
+    "monitor": {
+      "auto": "Automatique (dernier écran utilisé)",
+      "primary": "principal"
+    },
+    "monitorHint": "Par défaut, l'overlay réapparaît sur le dernier setup d'écrans utilisé. Choisir un écran explicite ici le fait toujours apparaître dessus, utile en config multi-moniteurs (ex. toujours sur l'écran de jeu).",
+    "rankGapAlertTitle": "Alerte d'écart de rang adverse",
+    "rankGapAlertLabel": "Jouer un son discret si un adversaire a un rang bien plus élevé que le mien",
+    "rankGapAlertUnit": "tiers d'écart minimum",
+    "rankGapAlertHint": "Chaque rang (Bronze, Or...) couvre 3 tiers Henrik — 9 (défaut) correspond à environ 3 rangs complets d'écart. Purement visuel sinon, facile à manquer en chargement de manche. Une seule alerte par partie détectée.",
     "shortcutConflictTitle": "Raccourci indisponible",
     "shortcutConflictBody": "<shortcut>Ctrl+Shift+V</shortcut> est déjà utilisé par une autre application sur cette machine (souvent un raccourci \"coller sans formatage\"). L'overlay reste cliquable au travers, mais impossible de le déplacer tant que ce conflit n'est pas résolu — libère le raccourci ailleurs puis redémarre l'app.",
     "shortcutLabel": "Raccourci",
@@ -156,6 +166,7 @@
     "description": "Liste centralisée de tous les raccourcis clavier de l'app. D'autres pourront s'y ajouter au fil des futures versions.",
     "ctrlShiftV": "Bascule l'overlay en jeu entre mode click-through (affichage seul) et mode interactif (déplaçable à la souris).",
     "ctrlShiftH": "Montre ou masque la fenêtre principale — fonctionne même quand Valorant a le focus.",
+    "ctrlShiftSpace": "Maintenir pour réafficher l'overlay pendant les 12s où il se masque automatiquement au lancement d'une manche (le temps de lire le roster ennemi) ; relâcher pour revenir à l'état masqué.",
     "ctrlShiftF": "Bascule le mode focus (masque titlebar/nav/bandeaux pour un partage d'écran propre). Fenêtre principale uniquement.",
     "ctrlK": "Ouvre la palette de commande (Rechercher un joueur, aller à un écran, sauter vers un joueur récent/favori). Fenêtre principale uniquement."
   },

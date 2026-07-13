@@ -9,6 +9,7 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use serde::Serialize;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
@@ -20,10 +21,20 @@ const TOGGLE_SHORTCUT: &str = "ctrl+shift+v";
 /// `Ctrl+Shift+H` fonctionne comme `Ctrl+Shift+V` (raccourci OS global via
 /// tauri-plugin-global-shortcut, indépendant du focus applicatif).
 const MAIN_WINDOW_TOGGLE_SHORTCUT: &str = "ctrl+shift+h";
+/// Réaffiche l'overlay tant que la touche est maintenue (voir `register_recall_shortcut`)
+/// — utile pendant `IN_GAME_OVERLAY_DURATION` où l'overlay se masque automatiquement au
+/// lancement de la manche pour ne pas gêner la visée, si 12s n'ont pas suffi à lire le
+/// roster ennemi en chargeant.
+const RECALL_SHORTCUT: &str = "ctrl+shift+space";
 const DEFAULT_POSITION: (f64, f64) = (24.0, 96.0);
 
 /// `true` tant que l'overlay ignore les clics (mode par défaut).
 static CLICK_THROUGH: AtomicBool = AtomicBool::new(true);
+/// `true` entre l'appui et le relâchement de `RECALL_SHORTCUT` quand celui-ci a
+/// effectivement déclenché l'affichage (overlay masqué au moment de l'appui) — distingue
+/// ce cas du cas où l'overlay était déjà visible (pregame, ou dans la fenêtre initiale des
+/// `IN_GAME_OVERLAY_DURATION`), pour ne jamais le masquer prématurément au relâchement.
+static PEEKING: AtomicBool = AtomicBool::new(false);
 
 /// Résultat de l'enregistrement du raccourci global au démarrage, exposé au frontend via
 /// `commands::get_overlay_shortcut_status` — `Ctrl+Shift+V` est un raccourci commun
@@ -35,6 +46,68 @@ impl ShortcutStatus {
     pub fn registered(value: bool) -> Self {
         Self(AtomicBool::new(value))
     }
+}
+
+/// Identifiant stable d'un moniteur pour le sélecteur d'écran explicite (backlog #76) —
+/// `Monitor::name()` (ex. `\\.\DISPLAY1` sous Windows) quand disponible, sinon une clé
+/// dérivée de sa résolution + position (mêmes composants que `monitor_signature`, mais pour
+/// un seul écran plutôt que l'ensemble du setup).
+fn monitor_id(m: &tauri::Monitor) -> String {
+    match m.name() {
+        Some(name) if !name.is_empty() => name.clone(),
+        _ => {
+            let size = m.size();
+            let pos = m.position();
+            format!("{}x{}@{},{}", size.width, size.height, pos.x, pos.y)
+        }
+    }
+}
+
+#[derive(Serialize)]
+pub struct MonitorInfo {
+    pub id: String,
+    pub width: u32,
+    pub height: u32,
+    pub is_primary: bool,
+}
+
+/// Liste les moniteurs connectés pour le sélecteur d'écran explicite de Paramètres →
+/// Overlay (backlog #76). Le "principal" est approximé par la position `(0, 0)` — Tauri
+/// n'expose pas directement le moniteur principal du système, mais c'est la convention
+/// Windows/X11 la plus courante.
+pub fn list_monitors(app_handle: &AppHandle) -> Vec<MonitorInfo> {
+    let monitors = app_handle
+        .get_webview_window("main")
+        .and_then(|w| w.available_monitors().ok())
+        .unwrap_or_default();
+
+    monitors
+        .iter()
+        .map(|m| {
+            let size = m.size();
+            let pos = m.position();
+            MonitorInfo {
+                id: monitor_id(m),
+                width: size.width,
+                height: size.height,
+                is_primary: pos.x == 0 && pos.y == 0,
+            }
+        })
+        .collect()
+}
+
+/// Position par défaut de l'overlay sur un moniteur choisi explicitement (backlog #76) —
+/// coin haut-gauche du moniteur + le même décalage que `DEFAULT_POSITION`. `None` si le
+/// moniteur choisi n'est plus connecté (débranché depuis) : l'appelant retombe alors sur le
+/// comportement "auto" par signature d'écran.
+fn explicit_monitor_position(app_handle: &AppHandle, monitor_id_pref: &str) -> Option<(f64, f64)> {
+    let monitors = app_handle
+        .get_webview_window("main")?
+        .available_monitors()
+        .ok()?;
+    let target = monitors.iter().find(|m| monitor_id(m) == monitor_id_pref)?;
+    let pos = target.position();
+    Some((pos.x as f64 + DEFAULT_POSITION.0, pos.y as f64 + DEFAULT_POSITION.1))
 }
 
 /// Backlog #76 : signature textuelle de la configuration d'écran courante (résolution +
@@ -121,13 +194,24 @@ fn create_overlay_window(app_handle: &AppHandle, position: Option<(f64, f64)>) -
 
 pub async fn show_overlay(app_handle: &AppHandle) {
     if app_handle.get_webview_window(OVERLAY_LABEL).is_none() {
-        let signature = monitor_signature(app_handle);
         let position = match app_handle.try_state::<AppState>() {
             Some(state) => {
                 let conn = state.db.lock().await;
-                crate::settings::get_overlay_position(&conn, &signature)
+                let explicit_monitor = crate::settings::get_overlay_monitor(&conn)
                     .ok()
                     .flatten()
+                    .filter(|id| id != "auto");
+                match explicit_monitor.and_then(|id| explicit_monitor_position(app_handle, &id)) {
+                    Some(position) => Some(position),
+                    // Pas de préférence explicite, ou moniteur choisi débranché depuis :
+                    // repli sur la dernière position mémorisée pour ce setup d'écrans.
+                    None => {
+                        let signature = monitor_signature(app_handle);
+                        crate::settings::get_overlay_position(&conn, &signature)
+                            .ok()
+                            .flatten()
+                    }
+                }
             }
             None => None,
         };
@@ -172,6 +256,37 @@ pub fn register_toggle_shortcut(app_handle: &AppHandle) -> anyhow::Result<()> {
             if event.state() == ShortcutState::Pressed {
                 let ignore = !CLICK_THROUGH.load(Ordering::Relaxed);
                 let _ = set_click_through(app, ignore);
+            }
+        })?;
+    Ok(())
+}
+
+/// Enregistre `Ctrl+Shift+Espace` → maintien pour réafficher l'overlay pendant qu'il est
+/// masqué par `IN_GAME_OVERLAY_DURATION` (voir `poller::on_state_changed`), relâchement
+/// pour revenir à l'état masqué. Sans effet si l'overlay était déjà visible à l'appui
+/// (pregame, ou fenêtre initiale d'affichage en in-game) : voir `PEEKING`.
+pub fn register_recall_shortcut(app_handle: &AppHandle) -> anyhow::Result<()> {
+    app_handle
+        .global_shortcut()
+        .on_shortcut(RECALL_SHORTCUT, |app, _shortcut, event| match event.state() {
+            ShortcutState::Pressed => {
+                let already_visible = app
+                    .get_webview_window(OVERLAY_LABEL)
+                    .and_then(|w| w.is_visible().ok())
+                    .unwrap_or(false);
+                if already_visible {
+                    return;
+                }
+                PEEKING.store(true, Ordering::Relaxed);
+                let app = app.clone();
+                tauri::async_runtime::spawn(async move {
+                    show_overlay(&app).await;
+                });
+            }
+            ShortcutState::Released => {
+                if PEEKING.swap(false, Ordering::Relaxed) {
+                    hide_overlay(app);
+                }
             }
         })?;
     Ok(())

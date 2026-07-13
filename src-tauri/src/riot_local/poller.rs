@@ -236,9 +236,11 @@ async fn tick(app: &AppHandle, ctx: &mut PollContext) {
                     .await
                     .unwrap_or_default()
                     .into_iter()
-                    .map(|puuid| LivePlayer {
-                        puuid,
+                    .map(|p| LivePlayer {
+                        puuid: p.puuid,
                         team: "ally".to_string(),
+                        agent: super::agents::agent_name_from_character_id(&p.character_id)
+                            .map(str::to_string),
                     })
                     .collect::<Vec<_>>(),
                     GameState::InGame => {
@@ -267,6 +269,10 @@ async fn tick(app: &AppHandle, ctx: &mut PollContext) {
                                     None => "inconnu".to_string(),
                                 },
                                 puuid: p.puuid,
+                                // Le core-game n'expose pas le `CharacterID` par ce même
+                                // endpoint (contrairement au pregame) — pas nécessaire de
+                                // toute façon, le contre-pick ne s'affiche qu'en pregame.
+                                agent: None,
                             })
                             .collect()
                     }
@@ -482,8 +488,11 @@ async fn read_settings(app: &AppHandle) -> crate::settings::AppSettings {
         ui_density: "comfortable".to_string(),
         overlay_density: "detailed".to_string(),
         overlay_layout: "full".to_string(),
+        overlay_monitor: "auto".to_string(),
         loss_streak_alert_enabled: false,
         loss_streak_alert_count: 3,
+        rank_gap_alert_enabled: false,
+        rank_gap_alert_threshold: 9,
         inactivity_reminder_enabled: false,
         inactivity_reminder_days: 3,
         notes_pin_enabled: false,

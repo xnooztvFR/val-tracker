@@ -280,15 +280,22 @@ async fn get_glz_json(
     response.json().await.context("parse glz")
 }
 
-/// PUUID des joueurs visibles en pregame (sélection d'agent — équipe alliée uniquement,
-/// c'est tout ce que le pregame expose).
+/// Un joueur allié visible en pregame, avec son `CharacterID` (UUID d'agent Riot, vide tant
+/// que l'agent n'est pas locké) — voir `super::agents` pour la résolution en nom d'agent.
+pub struct PregamePlayer {
+    pub puuid: String,
+    pub character_id: String,
+}
+
+/// Joueurs visibles en pregame (sélection d'agent — équipe alliée uniquement, c'est tout ce
+/// que le pregame expose).
 pub async fn fetch_pregame_player_puuids(
     client: &reqwest::Client,
     lockfile: &LockfileInfo,
     local_puuid: &str,
     region: &str,
     client_version: &str,
-) -> anyhow::Result<Vec<String>> {
+) -> anyhow::Result<Vec<PregamePlayer>> {
     let entitlements = fetch_entitlements(client, lockfile).await?;
     let base = glz_base(region);
 
@@ -313,15 +320,23 @@ pub async fn fetch_pregame_player_puuids(
     )
     .await?;
 
-    let mut puuids = Vec::new();
-    if let Some(players) = game.pointer("/AllyTeam/Players").and_then(|p| p.as_array()) {
-        for p in players {
+    let mut players = Vec::new();
+    if let Some(raw_players) = game.pointer("/AllyTeam/Players").and_then(|p| p.as_array()) {
+        for p in raw_players {
             if let Some(subject) = p.get("Subject").and_then(|s| s.as_str()) {
-                puuids.push(subject.to_string());
+                let character_id = p
+                    .get("CharacterID")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                players.push(PregamePlayer {
+                    puuid: subject.to_string(),
+                    character_id,
+                });
             }
         }
     }
-    Ok(puuids)
+    Ok(players)
 }
 
 /// Un joueur de la partie core-game, avec son `TeamID` Riot ("Blue"/"Red") — nécessaire

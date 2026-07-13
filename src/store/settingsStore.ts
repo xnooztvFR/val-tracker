@@ -21,8 +21,11 @@ interface SettingsState {
   setUiDensity: (density: string) => Promise<void>;
   setOverlayDensity: (density: string) => Promise<void>;
   setOverlayLayout: (layout: string) => Promise<void>;
+  setOverlayMonitor: (monitorId: string) => Promise<void>;
   setLossStreakAlertEnabled: (enabled: boolean) => Promise<void>;
   setLossStreakAlertCount: (count: number) => Promise<void>;
+  setRankGapAlertEnabled: (enabled: boolean) => Promise<void>;
+  setRankGapAlertThreshold: (threshold: number) => Promise<void>;
   setInactivityReminderEnabled: (enabled: boolean) => Promise<void>;
   setInactivityReminderDays: (days: number) => Promise<void>;
   setNotesPin: (pin: string) => Promise<void>;
@@ -114,6 +117,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     await get().refresh();
   },
 
+  setOverlayMonitor: async (monitorId: string) => {
+    await tauriApi.saveOverlayMonitor(monitorId);
+    await get().refresh();
+  },
+
   setLossStreakAlertEnabled: async (enabled: boolean) => {
     await tauriApi.saveLossStreakAlertEnabled(enabled);
     await get().refresh();
@@ -121,6 +129,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   setLossStreakAlertCount: async (count: number) => {
     await tauriApi.saveLossStreakAlertCount(count);
+    await get().refresh();
+  },
+
+  setRankGapAlertEnabled: async (enabled: boolean) => {
+    await tauriApi.saveRankGapAlertEnabled(enabled);
+    await get().refresh();
+  },
+
+  setRankGapAlertThreshold: async (threshold: number) => {
+    await tauriApi.saveRankGapAlertThreshold(threshold);
     await get().refresh();
   },
 

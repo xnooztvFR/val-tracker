@@ -11,6 +11,7 @@
   "team": "Équipe",
   "opponents": "Adversaires",
   "topAgents": "Tes agents les plus performants",
+  "missingRole": "Rôle manquant dans l'équipe",
   "shortcutInteractive": " — mode interactif : déplace la fenêtre puis rebascule.",
   "shortcutStatic": " — déplacer l'overlay",
   "identifying": "Identification…",

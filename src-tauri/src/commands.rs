@@ -335,6 +335,28 @@ pub async fn save_loss_streak_alert_count(
     Ok(())
 }
 
+/// Toggle + seuil de l'alerte sonore d'écart de rang adverse dans l'overlay (voir
+/// `Overlay.tsx`).
+#[tauri::command]
+pub async fn save_rank_gap_alert_enabled(
+    state: State<'_, AppState>,
+    enabled: bool,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::set_rank_gap_alert_enabled(&conn, enabled)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn save_rank_gap_alert_threshold(
+    state: State<'_, AppState>,
+    threshold: i64,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::set_rank_gap_alert_threshold(&conn, threshold)?;
+    Ok(())
+}
+
 /// Backlog #32 : toggle + seuil (en jours) du rappel d'inactivité — voir
 /// `inactivity_reminder.rs`.
 #[tauri::command]
@@ -1085,6 +1107,25 @@ pub fn get_overlay_shortcut_status(
     status: State<'_, crate::overlay::window::ShortcutStatus>,
 ) -> bool {
     status.0.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+/// Backlog #76 : liste les moniteurs connectés pour le sélecteur d'écran explicite de
+/// Paramètres → Overlay, plutôt que de ne dépendre que de la dernière signature d'écran
+/// mémorisée (voir `overlay::window::list_monitors`).
+#[tauri::command]
+pub fn list_overlay_monitors(app: tauri::AppHandle) -> Vec<crate::overlay::window::MonitorInfo> {
+    crate::overlay::window::list_monitors(&app)
+}
+
+/// `"auto"` (défaut) ou l'identifiant d'un moniteur choisi explicitement.
+#[tauri::command]
+pub async fn save_overlay_monitor(
+    state: State<'_, AppState>,
+    monitor_id: String,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::set_overlay_monitor(&conn, &monitor_id)?;
+    Ok(())
 }
 
 // ---- V3 : stats de duo/squad (party_id) ----

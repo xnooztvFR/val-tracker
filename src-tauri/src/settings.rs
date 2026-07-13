@@ -20,6 +20,11 @@ const KEY_DEFAULT_REGION: &str = "default_region";
 const KEY_AUTO_UPDATE: &str = "auto_update_enabled";
 const KEY_LOOKUP_ONLY_MODE: &str = "riot_local_disabled";
 const KEY_OVERLAY_POSITION: &str = "overlay_position";
+/// Backlog #76 : sélecteur d'écran explicite pour l'overlay — `"auto"` (défaut, comportement
+/// historique par signature d'écran mémorisée, voir `KEY_OVERLAY_POSITION`) ou l'identifiant
+/// d'un moniteur (`overlay::window::monitor_id`) sur lequel toujours faire apparaître
+/// l'overlay, indépendamment du dernier setup utilisé.
+const KEY_OVERLAY_MONITOR: &str = "overlay_monitor";
 const KEY_DISCORD_RPC_ENABLED: &str = "discord_rpc_enabled";
 const KEY_DISCORD_RPC_CLIENT_ID: &str = "discord_rpc_client_id";
 const KEY_STATUS_WATCHER_ENABLED: &str = "status_watcher_enabled";
@@ -32,6 +37,8 @@ const KEY_OVERLAY_DENSITY: &str = "overlay_density";
 const KEY_OVERLAY_LAYOUT: &str = "overlay_layout";
 const KEY_LOSS_STREAK_ALERT_ENABLED: &str = "loss_streak_alert_enabled";
 const KEY_LOSS_STREAK_ALERT_COUNT: &str = "loss_streak_alert_count";
+const KEY_RANK_GAP_ALERT_ENABLED: &str = "rank_gap_alert_enabled";
+const KEY_RANK_GAP_ALERT_THRESHOLD: &str = "rank_gap_alert_threshold";
 const KEY_INACTIVITY_REMINDER_ENABLED: &str = "inactivity_reminder_enabled";
 const KEY_INACTIVITY_REMINDER_DAYS: &str = "inactivity_reminder_days";
 const KEY_NOTES_PIN_ENABLED: &str = "notes_pin_enabled";
@@ -64,6 +71,11 @@ const DEFAULT_OVERLAY_DENSITY: &str = "detailed";
 const DEFAULT_OVERLAY_LAYOUT: &str = "full";
 const DEFAULT_LOSS_STREAK_ALERT_COUNT: i64 = 3;
 const DEFAULT_INACTIVITY_REMINDER_DAYS: i64 = 3;
+/// Écart de `currenttier` Henrik à partir duquel l'alerte sonore se déclenche (voir
+/// `rank_gap_alert_enabled`) — chaque rang (Bronze, Or...) couvre 3 tiers consécutifs, donc
+/// 9 correspond à environ 3 rangs complets d'écart, un seuil assez large pour ne signaler
+/// que les écarts vraiment suspects plutôt qu'une variation normale de lobby.
+const DEFAULT_RANK_GAP_ALERT_THRESHOLD: i64 = 9;
 
 const DEFAULT_REGION: &str = "eu";
 
@@ -139,10 +151,18 @@ pub struct AppSettings {
     /// `"mini"` (résumé minimal coin d'écran : juste les badges de rang, sans nom/RR ni
     /// recommandation d'agent, pour un encombrement visuel minimal en jeu).
     pub overlay_layout: String,
+    /// Backlog #76 : `"auto"` (défaut, position mémorisée par signature d'écran) ou
+    /// l'identifiant d'un moniteur choisi explicitement (voir `overlay::window::monitor_id`).
+    pub overlay_monitor: String,
     /// Backlog #24 : notifie quand un joueur "à soi" (`tracked_players.is_self`) enchaîne
     /// `loss_streak_alert_count` défaites d'affilée. Désactivé par défaut.
     pub loss_streak_alert_enabled: bool,
     pub loss_streak_alert_count: i64,
+    /// Alerte sonore discrète (opt-in) quand un adversaire détecté en overlay a un
+    /// `currenttier` Henrik supérieur au joueur local d'au moins `rank_gap_alert_threshold`
+    /// (voir `Overlay.tsx`) — facile à manquer visuellement en chargement de manche.
+    pub rank_gap_alert_enabled: bool,
+    pub rank_gap_alert_threshold: i64,
     /// Backlog #32 : rappel doux "tu n'as pas joué depuis X jours" (opt-in, jamais agressif)
     /// — voir `status_watcher.rs` pour le pattern de tâche de fond réutilisé.
     pub inactivity_reminder_enabled: bool,
@@ -181,8 +201,11 @@ impl fmt::Debug for AppSettings {
             .field("ui_density", &self.ui_density)
             .field("overlay_density", &self.overlay_density)
             .field("overlay_layout", &self.overlay_layout)
+            .field("overlay_monitor", &self.overlay_monitor)
             .field("loss_streak_alert_enabled", &self.loss_streak_alert_enabled)
             .field("loss_streak_alert_count", &self.loss_streak_alert_count)
+            .field("rank_gap_alert_enabled", &self.rank_gap_alert_enabled)
+            .field("rank_gap_alert_threshold", &self.rank_gap_alert_threshold)
             .field(
                 "inactivity_reminder_enabled",
                 &self.inactivity_reminder_enabled,
@@ -299,12 +322,20 @@ pub fn load_settings(conn: &Connection) -> rusqlite::Result<AppSettings> {
         .unwrap_or_else(|| DEFAULT_OVERLAY_DENSITY.to_string());
     let overlay_layout = get_raw(conn, KEY_OVERLAY_LAYOUT)?
         .unwrap_or_else(|| DEFAULT_OVERLAY_LAYOUT.to_string());
+    let overlay_monitor =
+        get_raw(conn, KEY_OVERLAY_MONITOR)?.unwrap_or_else(|| "auto".to_string());
     let loss_streak_alert_enabled = get_raw(conn, KEY_LOSS_STREAK_ALERT_ENABLED)?
         .map(|v| v == "true")
         .unwrap_or(false);
     let loss_streak_alert_count = get_raw(conn, KEY_LOSS_STREAK_ALERT_COUNT)?
         .and_then(|v| v.parse::<i64>().ok())
         .unwrap_or(DEFAULT_LOSS_STREAK_ALERT_COUNT);
+    let rank_gap_alert_enabled = get_raw(conn, KEY_RANK_GAP_ALERT_ENABLED)?
+        .map(|v| v == "true")
+        .unwrap_or(false);
+    let rank_gap_alert_threshold = get_raw(conn, KEY_RANK_GAP_ALERT_THRESHOLD)?
+        .and_then(|v| v.parse::<i64>().ok())
+        .unwrap_or(DEFAULT_RANK_GAP_ALERT_THRESHOLD);
     let inactivity_reminder_enabled = get_raw(conn, KEY_INACTIVITY_REMINDER_ENABLED)?
         .map(|v| v == "true")
         .unwrap_or(false);
@@ -334,8 +365,11 @@ pub fn load_settings(conn: &Connection) -> rusqlite::Result<AppSettings> {
         ui_density,
         overlay_density,
         overlay_layout,
+        overlay_monitor,
         loss_streak_alert_enabled,
         loss_streak_alert_count,
+        rank_gap_alert_enabled,
+        rank_gap_alert_threshold,
         inactivity_reminder_enabled,
         inactivity_reminder_days,
         notes_pin_enabled,
@@ -422,6 +456,15 @@ pub fn set_overlay_position(
     set_raw(conn, &key, &format!("{x},{y}"))
 }
 
+/// Backlog #76 : `"auto"` (défaut) ou l'identifiant d'un moniteur choisi explicitement.
+pub fn get_overlay_monitor(conn: &Connection) -> rusqlite::Result<Option<String>> {
+    get_raw(conn, KEY_OVERLAY_MONITOR)
+}
+
+pub fn set_overlay_monitor(conn: &Connection, monitor_id: &str) -> rusqlite::Result<()> {
+    set_raw(conn, KEY_OVERLAY_MONITOR, monitor_id)
+}
+
 pub fn set_discord_rpc_enabled(conn: &Connection, enabled: bool) -> rusqlite::Result<()> {
     set_raw(
         conn,
@@ -502,6 +545,23 @@ pub fn set_inactivity_reminder_enabled(conn: &Connection, enabled: bool) -> rusq
 
 pub fn set_inactivity_reminder_days(conn: &Connection, days: i64) -> rusqlite::Result<()> {
     set_raw(conn, KEY_INACTIVITY_REMINDER_DAYS, &days.max(1).to_string())
+}
+
+/// Backlog Overlay : toggle + seuil de l'alerte sonore d'écart de rang adverse.
+pub fn set_rank_gap_alert_enabled(conn: &Connection, enabled: bool) -> rusqlite::Result<()> {
+    set_raw(
+        conn,
+        KEY_RANK_GAP_ALERT_ENABLED,
+        if enabled { "true" } else { "false" },
+    )
+}
+
+pub fn set_rank_gap_alert_threshold(conn: &Connection, threshold: i64) -> rusqlite::Result<()> {
+    set_raw(
+        conn,
+        KEY_RANK_GAP_ALERT_THRESHOLD,
+        &threshold.max(1).to_string(),
+    )
 }
 
 /// Backlog #99 : active le verrou et enregistre le PIN (chiffré via DPAPI, comme la clé API
@@ -789,6 +849,15 @@ mod tests {
     }
 
     #[test]
+    fn overlay_monitor_default_then_round_trip() {
+        let conn = memory_conn();
+        assert_eq!(load_settings(&conn).unwrap().overlay_monitor, "auto");
+
+        set_overlay_monitor(&conn, "\\\\.\\DISPLAY2").unwrap();
+        assert_eq!(load_settings(&conn).unwrap().overlay_monitor, "\\\\.\\DISPLAY2");
+    }
+
+    #[test]
     fn loss_streak_alert_defaults_then_round_trip() {
         let conn = memory_conn();
         let defaults = load_settings(&conn).unwrap();
@@ -801,6 +870,21 @@ mod tests {
         let settings = load_settings(&conn).unwrap();
         assert!(settings.loss_streak_alert_enabled);
         assert_eq!(settings.loss_streak_alert_count, 5);
+    }
+
+    #[test]
+    fn rank_gap_alert_defaults_then_round_trip() {
+        let conn = memory_conn();
+        let defaults = load_settings(&conn).unwrap();
+        assert!(!defaults.rank_gap_alert_enabled);
+        assert_eq!(defaults.rank_gap_alert_threshold, 9);
+
+        set_rank_gap_alert_enabled(&conn, true).unwrap();
+        set_rank_gap_alert_threshold(&conn, 6).unwrap();
+
+        let settings = load_settings(&conn).unwrap();
+        assert!(settings.rank_gap_alert_enabled);
+        assert_eq!(settings.rank_gap_alert_threshold, 6);
     }
 
     #[test]

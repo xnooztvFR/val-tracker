@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useQueries, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import { listen } from "@tauri-apps/api/event";
 import { useTranslation } from "react-i18next";
@@ -8,6 +8,7 @@ import { useLiveDetectionState } from "../hooks/useLiveState";
 import { useSettingsStore } from "../store/settingsStore";
 import { rankInfo } from "../lib/format";
 import { computeAgentWinrates } from "../lib/stats";
+import { agentRole, AGENT_ROLE_ORDER, agentRoleLabel } from "../lib/agentRoles";
 
 const OWN_MATCHES_SAMPLE_SIZE = 20;
 
@@ -97,18 +98,19 @@ export default function Overlay() {
     [players, mmrQueries],
   );
 
-  // Backlog #22 : recommandation d'agent perso pendant la sélection — juste "quels sont mes
-  // agents les plus performants", pas une analyse de la comp adverse/alliée (non fiable
-  // avec les données actuellement disponibles, voir TODO.md #22). `fetchMatches` passe par
-  // le même cache/rate-limiter que le reste : entrer plusieurs fois en pregame dans la
-  // fenêtre de TTL ne redéclenche pas d'appel réseau.
+  // Backlog #22 : recommandation d'agent perso pendant la sélection — "quels sont mes
+  // agents les plus performants". `fetchMatches` passe par le même cache/rate-limiter que
+  // le reste : entrer plusieurs fois en pregame dans la fenêtre de TTL ne redéclenche pas
+  // d'appel réseau.
   const isPregame = snapshot?.state === "pregame";
   const isFullLayout = layout === "full";
+  // Lecture locale bon marché (pas d'appel Henrik) : utilisée pour la reco d'agent (layout
+  // "full" uniquement, voir plus bas) et pour identifier le joueur local dans le lobby afin
+  // de calculer l'écart de rang adverse (tous layouts, voir `rankGapAlertEnabled` ci-dessous).
   const selfAccounts = useQuery({
     queryKey: ["overlay-self-accounts"],
     queryFn: () => tauriApi.listSelfAccounts(),
     staleTime: 5 * 60_000,
-    enabled: isFullLayout,
   });
   const self = selfAccounts.data?.[0];
   const ownMatches = useQuery({
@@ -117,10 +119,57 @@ export default function Overlay() {
     enabled: isFullLayout && Boolean(self) && isPregame,
     staleTime: 10 * 60_000,
   });
-  const recommendedAgents =
-    isFullLayout && self && ownMatches.data
-      ? computeAgentWinrates(ownMatches.data.data, self.puuid, 2).slice(0, 3)
-      : [];
+  const ownAgentWinrates =
+    isFullLayout && self && ownMatches.data ? computeAgentWinrates(ownMatches.data.data, self.puuid, 2) : [];
+  const recommendedAgents = ownAgentWinrates.slice(0, 3);
+
+  // Contre-pick / rôle manquant : croise les agents déjà lockés par l'équipe alliée
+  // (`player.agent`, résolu côté Rust depuis le pregame local — best-effort, voir
+  // `riot_local/agents.rs`) avec `agentRoles.ts` pour repérer un rôle absent de la comp, et
+  // met en avant le meilleur agent perso (par winrate) qui couvre ce rôle.
+  const alliedRoles = useMemo(
+    () =>
+      new Set(
+        allies
+          .map(({ player }) => agentRole(player.agent))
+          .filter((role): role is NonNullable<typeof role> => role != null),
+      ),
+    [allies],
+  );
+  // N'affiche rien tant qu'aucun coéquipier n'a encore locké (sinon "rôle manquant" serait
+  // vrai pour les 4 rôles dès l'entrée en pregame, un signal sans intérêt).
+  const missingRole =
+    isFullLayout && isPregame && alliedRoles.size > 0
+      ? AGENT_ROLE_ORDER.find((role) => !alliedRoles.has(role))
+      : undefined;
+  const rolePick = missingRole
+    ? ownAgentWinrates.find((agent) => agentRole(agent.name) === missingRole)
+    : undefined;
+
+  // Signal audio discret (opt-in) : alerte si un adversaire a un `currenttier` Henrik au
+  // moins `rank_gap_alert_threshold` au-dessus du joueur local — facile à manquer
+  // visuellement en chargement de manche (alerte "smurf").
+  const rankGapAlertEnabled = settings?.rank_gap_alert_enabled ?? false;
+  const rankGapAlertThreshold = settings?.rank_gap_alert_threshold ?? 9;
+  const selfEntry = allies.find(({ player }) => player.puuid === self?.puuid);
+  const selfTier = selfEntry?.query?.data?.data?.current_data?.currenttier;
+  const alertFiredRef = useRef(false);
+  useEffect(() => {
+    if (!isActiveGame) {
+      alertFiredRef.current = false;
+    }
+  }, [isActiveGame]);
+  useEffect(() => {
+    if (!rankGapAlertEnabled || alertFiredRef.current || selfTier == null) return;
+    const hasBigGap = enemies.some(({ query }) => {
+      const tier = query?.data?.data?.current_data?.currenttier;
+      return tier != null && tier - selfTier >= rankGapAlertThreshold;
+    });
+    if (hasBigGap) {
+      alertFiredRef.current = true;
+      playRankGapAlert();
+    }
+  }, [rankGapAlertEnabled, rankGapAlertThreshold, selfTier, enemies]);
 
   const stateLabel =
     snapshot?.state === "pregame"
@@ -180,6 +229,23 @@ export default function Overlay() {
                 </div>
               )}
             </div>
+
+            {isPregame && missingRole && (
+              <div className="border-t border-line px-2 py-1.5">
+                <p className="hud-label pointer-events-none mb-1 text-[9px] text-lo">
+                  {t("missingRole")}
+                </p>
+                <p className="pointer-events-none text-[10px] text-hi">
+                  {agentRoleLabel(missingRole)}
+                  {rolePick && (
+                    <>
+                      {" — "}
+                      {rolePick.name} <span className="text-accent">{Math.round(rolePick.winPercent)}%</span>
+                    </>
+                  )}
+                </p>
+              </div>
+            )}
 
             {isPregame && recommendedAgents.length > 0 && (
               <div className="border-t border-line px-2 py-1.5">
@@ -253,6 +319,35 @@ function MiniRankIcon({ query }: { query: UseQueryResult<Fetched<MmrData>> | und
   const data = query?.data?.data;
   const info = rankInfo(data?.current_data?.currenttier);
   return <img src={info.iconUrl} alt="" className="h-4 w-4 shrink-0 object-contain" />;
+}
+
+/** Deux bips discrets synthétisés via Web Audio (pas de fichier son à embarquer/whitelister
+ * dans la CSP) — signal d'écart de rang adverse important, best-effort : une erreur (API
+ * indisponible, contexte audio bloqué) ne doit jamais faire planter l'overlay. */
+function playRankGapAlert() {
+  try {
+    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const beepAt = (start: number) => {
+      const now = ctx.currentTime + start;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(880, now);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.2);
+    };
+    beepAt(0);
+    beepAt(0.25);
+    setTimeout(() => ctx.close(), 600);
+  } catch {
+    // best-effort — pas de son plutôt qu'un crash de l'overlay.
+  }
 }
 
 interface PlayerGroupEntry {

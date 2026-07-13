@@ -4,7 +4,7 @@ import { Trans, useTranslation } from "react-i18next";
 import { getVersion } from "@tauri-apps/api/app";
 
 import { useSettingsStore } from "../store/settingsStore";
-import { tauriApi, type UsageMetricsSummary } from "../lib/tauriApi";
+import { tauriApi, type MonitorInfo, type UsageMetricsSummary } from "../lib/tauriApi";
 import { getRegions } from "../lib/format";
 import { useUpdater } from "../hooks/useUpdater";
 import StatCard from "../components/StatCard";
@@ -40,6 +40,9 @@ export default function Settings() {
     setUiDensity,
     setOverlayDensity,
     setOverlayLayout,
+    setOverlayMonitor,
+    setRankGapAlertEnabled,
+    setRankGapAlertThreshold,
     setLossStreakAlertEnabled,
     setLossStreakAlertCount,
     setInactivityReminderEnabled,
@@ -113,6 +116,12 @@ export default function Settings() {
               onChangeDensity={setOverlayDensity}
               layout={settings?.overlay_layout ?? "full"}
               onChangeLayout={setOverlayLayout}
+              rankGapAlertEnabled={settings?.rank_gap_alert_enabled ?? false}
+              rankGapAlertThreshold={settings?.rank_gap_alert_threshold ?? 9}
+              onChangeRankGapAlertEnabled={setRankGapAlertEnabled}
+              onChangeRankGapAlertThreshold={setRankGapAlertThreshold}
+              monitorId={settings?.overlay_monitor ?? "auto"}
+              onChangeMonitor={setOverlayMonitor}
             />
             <SectionDivider />
             <DiscordSection
@@ -470,6 +479,12 @@ function OverlaySection({
   onChangeDensity,
   layout,
   onChangeLayout,
+  rankGapAlertEnabled,
+  rankGapAlertThreshold,
+  onChangeRankGapAlertEnabled,
+  onChangeRankGapAlertThreshold,
+  monitorId,
+  onChangeMonitor,
 }: {
   disabled: boolean;
   onChange: (disabled: boolean) => Promise<void>;
@@ -477,15 +492,29 @@ function OverlaySection({
   onChangeDensity: (density: string) => Promise<void>;
   layout: string;
   onChangeLayout: (layout: string) => Promise<void>;
+  rankGapAlertEnabled: boolean;
+  rankGapAlertThreshold: number;
+  onChangeRankGapAlertEnabled: (enabled: boolean) => Promise<void>;
+  onChangeRankGapAlertThreshold: (threshold: number) => Promise<void>;
+  monitorId: string;
+  onChangeMonitor: (monitorId: string) => Promise<void>;
 }) {
   const { t } = useTranslation("settings");
   const [shortcutRegistered, setShortcutRegistered] = useState<boolean | null>(null);
+  const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
 
   useEffect(() => {
     tauriApi
       .getOverlayShortcutStatus()
       .then(setShortcutRegistered)
       .catch(() => setShortcutRegistered(null));
+  }, []);
+
+  useEffect(() => {
+    tauriApi
+      .listOverlayMonitors()
+      .then(setMonitors)
+      .catch(() => setMonitors([]));
   }, []);
 
   return (
@@ -546,6 +575,50 @@ function OverlaySection({
           <p className="text-xs text-lo">{t("overlay.densityHint")}</p>
         </section>
       )}
+
+      <section className="space-y-2">
+        <h2 className="hud-label">{t("overlay.monitorLabel")}</h2>
+        <select
+          value={monitorId}
+          onChange={(e) => onChangeMonitor(e.target.value)}
+          className={INPUT_CLASS}
+        >
+          <option value="auto">{t("overlay.monitor.auto")}</option>
+          {monitors.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.width}×{m.height}
+              {m.is_primary ? ` — ${t("overlay.monitor.primary")}` : ""}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-lo">{t("overlay.monitorHint")}</p>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="hud-label">{t("overlay.rankGapAlertTitle")}</h2>
+        <label className="flex items-center gap-2.5 text-sm text-hi">
+          <input
+            type="checkbox"
+            checked={rankGapAlertEnabled}
+            onChange={(e) => onChangeRankGapAlertEnabled(e.target.checked)}
+            className="h-4 w-4 border-line bg-surface accent-accent"
+          />
+          {t("overlay.rankGapAlertLabel")}
+        </label>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min={1}
+            max={24}
+            value={rankGapAlertThreshold}
+            onChange={(e) => onChangeRankGapAlertThreshold(Number(e.target.value))}
+            disabled={!rankGapAlertEnabled}
+            className={`w-20 disabled:opacity-50 ${INPUT_CLASS}`}
+          />
+          <span className="text-sm text-lo">{t("overlay.rankGapAlertUnit")}</span>
+        </div>
+        <p className="text-xs text-lo">{t("overlay.rankGapAlertHint")}</p>
+      </section>
 
       {shortcutRegistered === false && (
         <div className="relative border border-crit/30 bg-crit/5 py-2.5 pl-4 pr-3 text-xs text-hi">
@@ -1013,10 +1086,11 @@ function DataSection() {
   );
 }
 
-const SHORTCUT_KEYS = ["Ctrl+Shift+V", "Ctrl+Shift+H", "Ctrl+Shift+F", "Ctrl+K"] as const;
+const SHORTCUT_KEYS = ["Ctrl+Shift+V", "Ctrl+Shift+H", "Ctrl+Shift+Space", "Ctrl+Shift+F", "Ctrl+K"] as const;
 const SHORTCUT_DESCRIPTION_KEYS: Record<(typeof SHORTCUT_KEYS)[number], string> = {
   "Ctrl+Shift+V": "shortcuts.ctrlShiftV",
   "Ctrl+Shift+H": "shortcuts.ctrlShiftH",
+  "Ctrl+Shift+Space": "shortcuts.ctrlShiftSpace",
   "Ctrl+Shift+F": "shortcuts.ctrlShiftF",
   "Ctrl+K": "shortcuts.ctrlK",
 };

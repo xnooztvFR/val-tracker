@@ -42,6 +42,9 @@ export interface MmrData {
 export interface LivePlayer {
   puuid: string;
   team: "ally" | "enemy" | "inconnu";
+  /** Nom d'agent résolu depuis le `CharacterID` pregame — `null` tant qu'il n'est pas
+   * locké, hors pregame, ou si l'UUID est absent de la table statique côté Rust. */
+  agent: string | null;
 }
 
 /** Instantané de la détection de partie V2 (commande get_live_state + event
@@ -737,9 +740,16 @@ export interface AppSettings {
   /** Backlog #75 : `"full"` (défaut, liste alliés/adversaires) | `"mini"` (résumé coin
    * d'écran, juste les badges de rang). */
   overlay_layout: string;
+  /** Backlog #76 : `"auto"` (défaut, position mémorisée par signature d'écran) ou
+   * l'identifiant d'un moniteur choisi explicitement. */
+  overlay_monitor: string;
   /** Backlog #24 : alerte "N défaites d'affilée" (comptes "à soi" uniquement). */
   loss_streak_alert_enabled: boolean;
   loss_streak_alert_count: number;
+  /** Alerte sonore discrète (opt-in) en overlay quand un adversaire détecté a un rang au
+   * moins `rank_gap_alert_threshold` tiers au-dessus du joueur local. */
+  rank_gap_alert_enabled: boolean;
+  rank_gap_alert_threshold: number;
   /** Backlog #32 : rappel doux si aucun compte "à soi" consulté depuis X jours. */
   inactivity_reminder_enabled: boolean;
   inactivity_reminder_days: number;
@@ -755,6 +765,14 @@ export interface UsageMetricsSummary {
   cache_hits: number;
   network_fetches: number;
   api_errors: number;
+}
+
+/** Backlog #76 : un moniteur connecté, pour le sélecteur d'écran explicite de l'overlay. */
+export interface MonitorInfo {
+  id: string;
+  width: number;
+  height: number;
+  is_primary: boolean;
 }
 
 export interface TrackedPlayer {
@@ -891,6 +909,10 @@ export const tauriApi = {
     invoke<void>("save_loss_streak_alert_enabled", { enabled }),
   saveLossStreakAlertCount: (count: number) =>
     invoke<void>("save_loss_streak_alert_count", { count }),
+  saveRankGapAlertEnabled: (enabled: boolean) =>
+    invoke<void>("save_rank_gap_alert_enabled", { enabled }),
+  saveRankGapAlertThreshold: (threshold: number) =>
+    invoke<void>("save_rank_gap_alert_threshold", { threshold }),
   saveInactivityReminderEnabled: (enabled: boolean) =>
     invoke<void>("save_inactivity_reminder_enabled", { enabled }),
   saveInactivityReminderDays: (days: number) =>
@@ -917,6 +939,9 @@ export const tauriApi = {
     invoke<Fetched<MmrData>>("fetch_mmr_by_puuid", { puuid, region }),
   getLiveState: () => invoke<LiveSnapshot>("get_live_state"),
   getOverlayShortcutStatus: () => invoke<boolean>("get_overlay_shortcut_status"),
+  listOverlayMonitors: () => invoke<MonitorInfo[]>("list_overlay_monitors"),
+  saveOverlayMonitor: (monitorId: string) =>
+    invoke<void>("save_overlay_monitor", { monitorId }),
 
   fetchMmrHistory: (region: string, name: string, tag: string, force = false) =>
     invoke<Fetched<MmrHistoryData>>("fetch_mmr_history", { region, name, tag, force }),

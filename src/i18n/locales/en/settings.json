@@ -73,6 +73,16 @@
       "detailed": "Detailed (default)"
     },
     "densityHint": "\"Compact\" only shows detected players' rank badge; \"Detailed\" (default) adds the rank name and RR.",
+    "monitorLabel": "Display screen",
+    "monitor": {
+      "auto": "Automatic (last used screen)",
+      "primary": "primary"
+    },
+    "monitorHint": "By default, the overlay reappears on the last screen setup used. Picking an explicit screen here always shows it there — useful in multi-monitor setups (e.g. always on the game screen).",
+    "rankGapAlertTitle": "Opponent rank gap alert",
+    "rankGapAlertLabel": "Play a discreet sound if an opponent's rank is much higher than mine",
+    "rankGapAlertUnit": "minimum tier gap",
+    "rankGapAlertHint": "Each rank (Bronze, Gold...) spans 3 Henrik tiers — 9 (default) is roughly 3 full ranks apart. Purely visual otherwise, easy to miss during round load. Fires at most once per detected match.",
     "shortcutConflictTitle": "Shortcut unavailable",
     "shortcutConflictBody": "<shortcut>Ctrl+Shift+V</shortcut> is already used by another application on this machine (often a \"paste without formatting\" shortcut). The overlay stays click-through, but it can't be moved until this conflict is resolved — free the shortcut elsewhere then restart the app.",
     "shortcutLabel": "Shortcut",
@@ -156,6 +166,7 @@
     "description": "Centralized list of all the app's keyboard shortcuts. More may be added in future versions.",
     "ctrlShiftV": "Toggles the in-game overlay between click-through mode (display only) and interactive mode (movable with the mouse).",
     "ctrlShiftH": "Shows or hides the main window — works even when Valorant has focus.",
+    "ctrlShiftSpace": "Hold to bring the overlay back during the 12s window where it auto-hides at round start (long enough to read the enemy roster); release to return to hidden.",
     "ctrlShiftF": "Toggles focus mode (hides titlebar/nav/banners for a clean screen share). Main window only.",
     "ctrlK": "Opens the command palette (search a player, jump to a screen, jump to a recent/favorite player). Main window only."
   },
