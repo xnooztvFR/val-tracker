@@ -1,15 +1,23 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Skeleton } from "../components/Skeleton";
 import { useNavigate } from "react-router-dom";
+import { FixedSizeList, type ListChildComponentProps } from "react-window";
 
 import { useLeaderboard } from "../hooks/useMeta";
 import ErrorState from "../components/ErrorState";
 import StaleDataBanner from "../components/StaleDataBanner";
 import Panel from "../components/Panel";
 import { playerCardIconUrl, rankIconUrl, rankInfo, getRegions, splitRiotId } from "../lib/format";
+import type { LeaderboardPlayer } from "../lib/tauriApi";
 
 const PAGE_SIZE = 50;
+const ROW_HEIGHT = 45;
+// Backlog #83 : au-delà de ce seuil, react-window prend le relais du rendu natif du tableau
+// — pour PAGE_SIZE=50 le gain est marginal, mais évite un re-render coûteux si la taille de
+// page grossit un jour (ex. recherche croisée région entière).
+const VIRTUALIZE_THRESHOLD = 30;
 
 export default function Leaderboard() {
   const { t } = useTranslation("competitive");
@@ -101,66 +109,38 @@ export default function Leaderboard() {
 
       {players.length > 0 && (
         <Panel className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b border-line text-left">
-              <tr>
-                <th className="hud-label px-4 py-3 font-semibold">{t("leaderboard.columns.rank")}</th>
-                <th className="hud-label px-4 py-3 font-semibold">{t("leaderboard.columns.player")}</th>
-                <th className="hud-label px-4 py-3 font-semibold">{t("leaderboard.columns.tier")}</th>
-                <th className="hud-label px-4 py-3 font-semibold">{t("leaderboard.columns.rr")}</th>
-                <th className="hud-label px-4 py-3 font-semibold">{t("leaderboard.columns.wins")}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line/60">
-              {players.map((p) => {
-                const info = rankInfo(p.tier);
-                return (
-                  <tr
+          <div className="min-w-[640px]">
+            <div className={`${GRID_COLUMNS} border-b border-line text-left`}>
+              <span className="hud-label px-4 py-3 font-semibold">{t("leaderboard.columns.rank")}</span>
+              <span className="hud-label px-4 py-3 font-semibold">{t("leaderboard.columns.player")}</span>
+              <span className="hud-label px-4 py-3 font-semibold">{t("leaderboard.columns.tier")}</span>
+              <span className="hud-label px-4 py-3 font-semibold">{t("leaderboard.columns.rr")}</span>
+              <span className="hud-label px-4 py-3 font-semibold">{t("leaderboard.columns.wins")}</span>
+            </div>
+            {players.length > VIRTUALIZE_THRESHOLD ? (
+              <FixedSizeList
+                height={Math.min(players.length, 12) * ROW_HEIGHT}
+                itemCount={players.length}
+                itemSize={ROW_HEIGHT}
+                width="100%"
+                itemData={{ players, region, navigate, t }}
+              >
+                {LeaderboardVirtualRow}
+              </FixedSizeList>
+            ) : (
+              <div className="divide-y divide-line/60">
+                {players.map((p) => (
+                  <LeaderboardRow
                     key={`${p.leaderboard_rank}-${p.name}`}
-                    className="cursor-pointer text-hi/90 transition-colors hover:bg-raised/50"
-                    onClick={() => !p.is_anonymized && navigate(`/joueur/${region}/${p.name}/${p.tag}`)}
-                  >
-                    <td className="stat-value px-4 py-2.5 text-lo">#{p.leaderboard_rank ?? "—"}</td>
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-3">
-                        {p.card ? (
-                          <img
-                            src={playerCardIconUrl(p.card)}
-                            alt=""
-                            className="h-7 w-7 border border-line object-cover"
-                            onError={(e) => {
-                              (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
-                            }}
-                          />
-                        ) : (
-                          <div className="h-7 w-7 border border-line bg-base" />
-                        )}
-                        <span className="font-medium">
-                          {p.is_anonymized ? t("leaderboard.anonymousPlayer") : p.name}
-                          {!p.is_anonymized && <span className="text-lo">#{p.tag}</span>}
-                        </span>
-                        {p.is_banned && (
-                          <span className="border border-crit/40 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-crit">
-                            {t("leaderboard.banned")}
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <img src={rankIconUrl(p.tier ?? 0)} alt="" className="h-5 w-5" />
-                        <span className={`font-display text-xs font-semibold uppercase tracking-hud ${info.colorClass}`}>
-                          {info.name}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="stat-value px-4 py-2.5">{p.rr ?? "—"}</td>
-                    <td className="stat-value px-4 py-2.5">{p.wins ?? "—"}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    player={p}
+                    region={region}
+                    navigate={navigate}
+                    t={t}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </Panel>
       )}
 
@@ -184,6 +164,85 @@ export default function Leaderboard() {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+const GRID_COLUMNS = "grid grid-cols-[90px_1fr_180px_90px_90px] items-center";
+
+type TFunc = TFunction<"competitive">;
+
+function LeaderboardRow({
+  player: p,
+  region,
+  navigate,
+  t,
+}: {
+  player: LeaderboardPlayer;
+  region: string;
+  navigate: ReturnType<typeof useNavigate>;
+  t: TFunc;
+}) {
+  const info = rankInfo(p.tier);
+  return (
+    <div
+      className={`${GRID_COLUMNS} h-[45px] cursor-pointer text-hi/90 transition-colors hover:bg-raised/50`}
+      onClick={() => !p.is_anonymized && navigate(`/joueur/${region}/${p.name}/${p.tag}`)}
+    >
+      <span className="stat-value px-4 text-lo">#{p.leaderboard_rank ?? "—"}</span>
+      <div className="flex min-w-0 items-center gap-3 px-4">
+        {p.card ? (
+          <img
+            src={playerCardIconUrl(p.card)}
+            alt=""
+            className="h-7 w-7 shrink-0 border border-line object-cover"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
+            }}
+          />
+        ) : (
+          <div className="h-7 w-7 shrink-0 border border-line bg-base" />
+        )}
+        <span className="truncate font-medium">
+          {p.is_anonymized ? t("leaderboard.anonymousPlayer") : p.name}
+          {!p.is_anonymized && <span className="text-lo">#{p.tag}</span>}
+        </span>
+        {p.is_banned && (
+          <span className="shrink-0 border border-crit/40 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-crit">
+            {t("leaderboard.banned")}
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-2 px-4">
+        <img src={rankIconUrl(p.tier ?? 0)} alt="" className="h-5 w-5" />
+        <span className={`font-display text-xs font-semibold uppercase tracking-hud ${info.colorClass}`}>
+          {info.name}
+        </span>
+      </div>
+      <span className="stat-value px-4">{p.rr ?? "—"}</span>
+      <span className="stat-value px-4">{p.wins ?? "—"}</span>
+    </div>
+  );
+}
+
+/** Backlog #83 : rendu de ligne pour `FixedSizeList` (react-window) — au-delà de
+ * `VIRTUALIZE_THRESHOLD` joueurs, seules les lignes visibles à l'écran sont montées dans le
+ * DOM, pour éviter le lag si `PAGE_SIZE` grossit un jour. */
+function LeaderboardVirtualRow({
+  index,
+  style,
+  data,
+}: ListChildComponentProps<{
+  players: LeaderboardPlayer[];
+  region: string;
+  navigate: ReturnType<typeof useNavigate>;
+  t: TFunc;
+}>) {
+  const { players, region, navigate, t } = data;
+  const p = players[index];
+  return (
+    <div style={style} className="border-b border-line/60">
+      <LeaderboardRow player={p} region={region} navigate={navigate} t={t} />
     </div>
   );
 }

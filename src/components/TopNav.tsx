@@ -1,15 +1,22 @@
 import { useMemo, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { useActivePlayerStore } from "../store/activePlayerStore";
 import { useTabOrderStore, resolveTabOrder } from "../store/tabOrderStore";
 import { useAccount, useMmr } from "../hooks/usePlayer";
 import { playerCardIconUrl, rankGlowColor, rankInfo } from "../lib/format";
+import { tauriApi } from "../lib/tauriApi";
 import DetectionStatusBadge from "./DetectionStatusBadge";
 import ApiStatusBadge from "./ApiStatusBadge";
 import AccountSwitcher from "./AccountSwitcher";
 import logo from "../assets/logo.png";
+
+// Backlog #85 : même taille d'échantillon que MatchHistory.tsx (MATCH_HISTORY_SIZE) — le
+// prefetch doit produire la même queryKey que useMatches() pour que React Query serve le
+// cache au lieu de refetch à l'arrivée sur l'écran.
+const MATCH_HISTORY_PREFETCH_SIZE = 20;
 
 const GLOBAL_TABS = [
   { to: "/classement", key: "leaderboard" },
@@ -38,9 +45,19 @@ export default function TopNav() {
   const { t } = useTranslation("componentsCore");
   const { player, clear } = useActivePlayerStore();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const tabOrder = useTabOrderStore((s) => s.order);
   const reorderTabs = useTabOrderStore((s) => s.reorder);
   const [draggedTabKey, setDraggedTabKey] = useState<string | null>(null);
+
+  function prefetchMatchHistory() {
+    if (!player) return;
+    const { region, name, tag } = player;
+    queryClient.prefetchQuery({
+      queryKey: ["matches", region, name, tag, MATCH_HISTORY_PREFETCH_SIZE],
+      queryFn: () => tauriApi.fetchMatches(region, name, tag, MATCH_HISTORY_PREFETCH_SIZE),
+    });
+  }
 
   const account = useAccount(player?.name, player?.tag);
   const puuid = account.data?.data.puuid;
@@ -75,6 +92,7 @@ export default function TopNav() {
               to={`/joueur/${player.region}/${player.name}/${player.tag}${tab.to}`}
               end={tab.end}
               draggable
+              onMouseEnter={tab.key === "history" ? prefetchMatchHistory : undefined}
               onDragStart={() => setDraggedTabKey(tab.key)}
               onDragOver={(e) => e.preventDefault()}
               onDrop={() => {

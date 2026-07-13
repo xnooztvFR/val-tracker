@@ -47,6 +47,7 @@ fn main() {
 
             let db_path = db::resolve_db_path(&handle)?;
             let conn = db::init_db(&db_path)?;
+            db::maybe_vacuum(&conn, &db_path);
 
             let rate_limiter = Arc::new(RateLimiter::new());
             let henrik = HenrikClient::new(rate_limiter);

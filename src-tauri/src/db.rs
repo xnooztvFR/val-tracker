@@ -147,6 +147,12 @@ pub(crate) fn run_migrations(conn: &Connection) -> rusqlite::Result<()> {
 
         CREATE INDEX IF NOT EXISTS idx_usage_metrics_events_occurred_at
             ON usage_metrics_events (occurred_at);
+
+        -- Backlog #88 : nécessaire pour que la purge des entrées expirées avant VACUUM
+        -- (voir maybe_vacuum) ne fasse pas un scan complet de api_cache à mesure qu'il
+        -- grossit.
+        CREATE INDEX IF NOT EXISTS idx_api_cache_expires_at
+            ON api_cache (expires_at);
         "#,
     )?;
 
@@ -167,6 +173,34 @@ pub(crate) fn run_migrations(conn: &Connection) -> rusqlite::Result<()> {
     add_column_if_missing(conn, "tracked_players", "sort_order", "INTEGER NOT NULL DEFAULT 0")?;
 
     Ok(())
+}
+
+const VACUUM_THRESHOLD_BYTES: u64 = 100 * 1024 * 1024;
+
+/// Backlog #88 : purge les entrées expirées de `api_cache` puis `VACUUM` la base si le
+/// fichier dépasse `VACUUM_THRESHOLD_BYTES` — même esprit que la troncature périodique de
+/// `val-tracker.log` (voir `applog.rs`). Sans la purge, `VACUUM` seul ne libère rien : les
+/// lignes expirées ne sont jamais supprimées ailleurs (juste écrasées par `ON CONFLICT` si
+/// la même URL est re-fetchée). Best-effort : ne doit jamais empêcher le démarrage de
+/// l'app si le fichier est inaccessible ou si la purge/le VACUUM échoue.
+pub fn maybe_vacuum(conn: &Connection, db_path: &Path) {
+    maybe_vacuum_with_threshold(conn, db_path, VACUUM_THRESHOLD_BYTES);
+}
+
+fn maybe_vacuum_with_threshold(conn: &Connection, db_path: &Path, threshold_bytes: u64) {
+    let Ok(meta) = std::fs::metadata(db_path) else {
+        return;
+    };
+    if meta.len() <= threshold_bytes {
+        return;
+    }
+    let now = chrono::Utc::now().timestamp();
+    if let Err(e) = conn.execute("DELETE FROM api_cache WHERE expires_at < ?1", [now]) {
+        crate::applog!("Purge api_cache avant VACUUM échouée: {e}");
+    }
+    if let Err(e) = conn.execute_batch("VACUUM") {
+        crate::applog!("VACUUM SQLite échoué: {e}");
+    }
 }
 
 /// `ALTER TABLE ADD COLUMN` n'a pas de variante `IF NOT EXISTS` en SQLite : on vérifie donc
@@ -1040,5 +1074,58 @@ mod tests {
 
         assert_eq!(list_squad_stats(&conn, "me", 2).unwrap().len(), 0);
         assert_eq!(list_squad_stats(&conn, "me", 1).unwrap().len(), 1);
+    }
+
+    /// Backlog #88 : `maybe_vacuum` a besoin d'un fichier réel sur disque (pas
+    /// `:memory:`) pour vérifier sa taille — connexion de test dédiée dans un dossier
+    /// temporaire unique, nettoyée en fin de test.
+    fn file_conn(path: &Path) -> Connection {
+        let conn = Connection::open(path).unwrap();
+        run_migrations(&conn).unwrap();
+        conn
+    }
+
+    #[test]
+    fn maybe_vacuum_purges_expired_cache_below_threshold_forces_run() {
+        let path = std::env::temp_dir().join(format!(
+            "val-tracker-test-vacuum-{}.db",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_file(&path);
+        let conn = file_conn(&path);
+
+        let now = chrono::Utc::now().timestamp();
+        conn.execute(
+            "INSERT INTO api_cache (url, payload, expires_at) VALUES ('expired', 'x', ?1)",
+            [now - 3600],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO api_cache (url, payload, expires_at) VALUES ('fresh', 'y', ?1)",
+            [now + 3600],
+        )
+        .unwrap();
+
+        // Seuil au-dessus de la taille réelle du fichier : ne doit rien purger.
+        maybe_vacuum_with_threshold(&conn, &path, u64::MAX);
+        let remaining: i64 = conn
+            .query_row("SELECT COUNT(*) FROM api_cache", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(remaining, 2);
+
+        // Seuil à 0 : force la purge + VACUUM, l'entrée expirée doit disparaître, la
+        // fraîche doit rester.
+        maybe_vacuum_with_threshold(&conn, &path, 0);
+        let urls: Vec<String> = conn
+            .prepare("SELECT url FROM api_cache ORDER BY url")
+            .unwrap()
+            .query_map([], |row| row.get(0))
+            .unwrap()
+            .collect::<rusqlite::Result<_>>()
+            .unwrap();
+        assert_eq!(urls, vec!["fresh".to_string()]);
+
+        drop(conn);
+        let _ = std::fs::remove_file(&path);
     }
 }
