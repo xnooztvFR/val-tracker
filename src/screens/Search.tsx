@@ -107,7 +107,7 @@ export default function Search() {
         <OnboardingWizard apiKeyAlreadySet={!apiKeyMissing} onFinish={finishWizard} />
       ) : (
         <form onSubmit={handleSubmit} className="mt-8 w-full">
-          <div className="panel-clip flex items-stretch gap-2 p-1.5 transition-shadow focus-within:[box-shadow:inset_0_0_0_1px_rgb(var(--color-accent))]">
+          <div className="panel-clip flex items-stretch gap-2 p-1.5 transition-shadow focus-within:[box-shadow:inset_0_0_0_1px_rgb(var(--accent-rgb))]">
             <div className="flex flex-1 items-center gap-2 pl-3">
               <SearchIcon />
               <input
@@ -130,7 +130,7 @@ export default function Search() {
             </select>
             <button
               type="submit"
-              className="btn-clip shrink-0 bg-accent px-6 font-display text-sm font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#FF5969] disabled:cursor-not-allowed disabled:opacity-50"
+              className="btn-clip shrink-0 bg-accent px-6 font-display text-sm font-bold uppercase tracking-hud text-base transition-colors hover:bg-accent-dim disabled:cursor-not-allowed disabled:opacity-50"
             >
               {t("form.submit")}
             </button>

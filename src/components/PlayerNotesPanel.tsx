@@ -28,7 +28,7 @@ export default function PlayerNotesPanel({ puuid, initialNotes }: PlayerNotesPan
   const [unlocked, setUnlocked] = useState(!notesPinEnabled);
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Le panneau est monté une fois par profil (puuid change entraîne un remount via `key`
   // côté Home.tsx) — pas besoin de resynchroniser `value` à chaque refetch de la liste.

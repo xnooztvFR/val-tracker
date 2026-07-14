@@ -31,10 +31,10 @@ export default function PerformanceHeatmap({ cells }: { cells: HeatmapCell[] }) 
               const intensity = matches > 0 ? Math.min(1, matches / maxMatches) : 0;
               const color =
                 winPercent === null
-                  ? "rgb(var(--color-line) / 0.4)"
+                  ? "rgb(var(--line-rgb) / 0.4)"
                   : winPercent >= 50
-                    ? `rgb(var(--color-accent) / ${0.25 + intensity * 0.65})`
-                    : `rgb(var(--color-crit) / ${0.25 + intensity * 0.65})`;
+                    ? `rgb(var(--accent-rgb) / ${0.25 + intensity * 0.65})`
+                    : `rgb(var(--crit-rgb) / ${0.25 + intensity * 0.65})`;
               return (
                 <div
                   key={`${day}-${hour}`}

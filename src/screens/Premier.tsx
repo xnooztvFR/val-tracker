@@ -133,7 +133,7 @@ export default function Premier() {
                     <div className="flex items-center gap-2.5">
                       <span
                         className="h-6 w-6 shrink-0 border border-line"
-                        style={{ backgroundColor: team.customization?.primary ?? "#22282F" }}
+                        style={{ backgroundColor: team.customization?.primary ?? "rgb(var(--line-rgb))" }}
                       />
                       <span className="font-medium">
                         {team.name} <span className="text-lo">#{team.tag}</span>

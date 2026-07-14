@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
 // Config Vite adaptée aux conventions Tauri : port fixe 1420 (voir tauri.conf.json
 // build.devUrl), pas de clear du terminal pour garder les logs Rust visibles, et on
@@ -7,8 +8,13 @@ import react from "@vitejs/plugin-react";
 // Les tests (vitest) ont leur propre config minimale dans vitest.config.ts, pour ne pas
 // mélanger les types "vitest/config" avec ceux-ci (conflit de types sur
 // `build.rolldownOptions.output` sinon).
+// Tailwind v4 : plugin Vite dédié (@tailwindcss/vite) plutôt que la chaîne PostCSS
+// classique (tailwindcss + autoprefixer via postcss.config.js) — plus simple, et c'est le
+// chemin recommandé par Tailwind pour un projet Vite. Lightning CSS (intégré au plugin)
+// gère déjà le vendor-prefixing ; postcss.config.js a été supprimé, et autoprefixer/postcss
+// retirés de package.json (audit dependencies 2026-07-14 : dépendances déclarées mortes).
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   clearScreen: false,
   server: {
     port: 1420,

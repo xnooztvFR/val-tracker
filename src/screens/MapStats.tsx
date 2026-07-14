@@ -92,32 +92,32 @@ export default function MapStats() {
           <p className="hud-label mb-2">{t("mapStats.winratePanelTitle")}</p>
           <ResponsiveContainer width="100%" height="90%">
             <BarChart data={chartData} margin={{ top: 4, right: 12, bottom: 0, left: 0 }} barCategoryGap="35%">
-              <CartesianGrid stroke="rgb(var(--color-lo) / 0.15)" vertical={false} />
+              <CartesianGrid stroke="rgb(var(--lo-rgb) / 0.15)" vertical={false} />
               <XAxis
                 dataKey="map"
-                tick={{ fontSize: 10, fill: "rgb(var(--color-lo))", fontFamily: MONO }}
+                tick={{ fontSize: 10, fill: "rgb(var(--lo-rgb))", fontFamily: MONO }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
-                tick={{ fontSize: 10, fill: "rgb(var(--color-lo))", fontFamily: MONO }}
+                tick={{ fontSize: 10, fill: "rgb(var(--lo-rgb))", fontFamily: MONO }}
                 domain={[0, 100]}
                 tickFormatter={(v) => `${v}%`}
                 axisLine={false}
                 tickLine={false}
               />
               <Tooltip
-                cursor={{ fill: "rgb(var(--color-lo) / 0.12)" }}
+                cursor={{ fill: "rgb(var(--lo-rgb) / 0.12)" }}
                 contentStyle={{
-                  background: "rgb(var(--color-raised))",
-                  border: "1px solid rgb(var(--color-line))",
+                  background: "rgb(var(--raised-rgb))",
+                  border: "1px solid rgb(var(--line-rgb))",
                   borderRadius: 0,
                   fontSize: 12,
                   fontFamily: MONO,
                 }}
-                formatter={(value: number) => [`${value}%`, t("mapStats.tooltipWinrate")]}
+                formatter={(value) => [`${value}%`, t("mapStats.tooltipWinrate")]}
               />
-              <Bar dataKey="winPercent" fill="rgb(var(--color-accent))" fillOpacity={0.85} maxBarSize={22} />
+              <Bar dataKey="winPercent" fill="rgb(var(--accent-rgb))" fillOpacity={0.85} maxBarSize={22} />
             </BarChart>
           </ResponsiveContainer>
         </Panel>

@@ -927,6 +927,11 @@ export const tauriApi = {
   getAutostartEnabled: () => invoke<boolean>("get_autostart_enabled"),
   saveAutostartEnabled: (enabled: boolean) =>
     invoke<void>("save_autostart_enabled", { enabled }),
+  logUpdaterTrace: (step: string) => invoke<void>("log_updater_trace", { step }),
+  setPendingChangelog: (version: string, notes: string) =>
+    invoke<void>("set_pending_changelog", { version, notes }),
+  verifyUpdateHash: (url: string, expectedSha256: string) =>
+    invoke<boolean>("verify_update_hash", { url, expectedSha256 }),
 
   fetchAccount: (name: string, tag: string, force = false) =>
     invoke<Fetched<AccountData>>("fetch_account", { name, tag, force }),

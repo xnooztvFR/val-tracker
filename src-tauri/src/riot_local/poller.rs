@@ -13,6 +13,26 @@
 //! `MAX_LOCAL_FAILURES` échecs consécutifs de l'API locale (lockfile présent mais
 //! injoignable), on republie l'état hors-jeu et on force une reconnexion complète au lieu
 //! de rester bloqué indéfiniment sur le dernier état connu (voir `on_local_api_failure`).
+//!
+//! Cas distinct observé en pratique (2026-07-14) : l'API locale répond `200` à chaque tick
+//! (donc `MAX_LOCAL_FAILURES` ne se déclenche jamais) mais ne reflète plus jamais la vraie
+//! partie en cours — `hors_jeu` en boucle alors que le joueur est en pregame/in-game. Seul
+//! un redémarrage complet de l'app (nouveau process, nouveau client HTTP, nouvelle lecture
+//! du lockfile) débloquait la détection, ce qui pointe vers une session/connexion figée côté
+//! client local plutôt qu'un vrai état hors-jeu. `STUCK_RESET_THRESHOLD` reproduit cet effet
+//! de redémarrage sans intervention utilisateur : après un nombre prolongé de ticks
+//! consécutifs résolus en `hors_jeu` alors que le lockfile reste joignable, on force la même
+//! reconnexion complète que `on_local_api_failure` (voir le bloc dédié dans `tick`).
+//!
+//! Suite constatée le même jour : ce mécanisme de reconnexion fonctionnait, mais mettait
+//! jusqu'à ~2 minutes à se déclencher (`STUCK_RESET_THRESHOLD` ticks à `IDLE_INTERVAL`,
+//! puisque l'état résolu hors_jeu bascule l'intervalle sur le rythme lent) — trop long pour
+//! rattraper la toute première partie qui suit un lancement d'app si elle est plus courte
+//! que ça. `STARTUP_GRACE_TICKS` force le rythme rapide (`ACTIVE_INTERVAL`) pendant un moment
+//! après toute (re)connexion, même si l'état résolu est hors_jeu — l'API locale Riot met
+//! parfois ce genre de délai à stabiliser sa présence de chat juste après un démarrage, sans
+//! que ce soit un vrai hors-jeu confirmé ; autant le détecter vite plutôt que d'attendre au
+//! rythme lent conçu pour un hors-jeu déjà établi de longue date.
 
 use std::time::Duration;
 
@@ -34,6 +54,15 @@ const IDLE_INTERVAL: Duration = Duration::from_millis(8000);
 const DEEP_IDLE_INTERVAL: Duration = Duration::from_millis(60_000);
 const DEEP_IDLE_THRESHOLD: u32 = 10;
 const MAX_LOCAL_FAILURES: u32 = 3;
+/// Nombre de ticks consécutifs résolus en `hors_jeu` (lockfile joignable, requêtes en
+/// succès) au-delà duquel on force une reconnexion complète — voir la note de module sur le
+/// cas du 2026-07-14. À `IDLE_INTERVAL` (8s/tick), ça représente environ 2 minutes.
+const STUCK_RESET_THRESHOLD: u32 = 15;
+/// Ticks restants à forcer `ACTIVE_INTERVAL` après toute (re)connexion, même si l'état
+/// résolu est hors_jeu/menu — voir la note de module sur le délai de stabilisation de l'API
+/// locale Riot après un démarrage. ~2 minutes à `ACTIVE_INTERVAL` (2,5s/tick), pour couvrir
+/// le pire cas observé en pratique.
+const STARTUP_GRACE_TICKS: u32 = 48;
 /// Durée d'affichage de l'overlay une fois la manche lancée, le temps de lire le roster
 /// ennemi (voir `on_state_changed`) avant de se masquer pour ne pas gêner la visée.
 const IN_GAME_OVERLAY_DURATION: Duration = Duration::from_secs(12);
@@ -82,6 +111,9 @@ async fn run_loop(app: AppHandle, mut stop_rx: watch::Receiver<bool>) {
 /// après `DEEP_IDLE_THRESHOLD` ticks — `Menu` reste à `IDLE_INTERVAL` puisque le client est
 /// ouvert et une mise en file d'attente peut survenir à tout moment.
 fn next_interval(ctx: &PollContext) -> Duration {
+    if ctx.startup_grace_ticks > 0 {
+        return ACTIVE_INTERVAL;
+    }
     match ctx.previous_state {
         Some(GameState::HorsJeu) if ctx.idle_ticks >= DEEP_IDLE_THRESHOLD => DEEP_IDLE_INTERVAL,
         Some(GameState::HorsJeu) | Some(GameState::Menu) => IDLE_INTERVAL,
@@ -106,6 +138,12 @@ struct PollContext {
     local_failures: u32,
     /// Ticks consécutifs sans lockfile (client fermé) — voir `next_interval` et backlog #78.
     idle_ticks: u32,
+    /// Ticks consécutifs résolus en `hors_jeu` alors que le lockfile reste joignable (API
+    /// locale en succès) — voir `STUCK_RESET_THRESHOLD` et la note de module du 2026-07-14.
+    stuck_ticks: u32,
+    /// Compte à rebours de polling rapide forcé après une (re)connexion — voir
+    /// `STARTUP_GRACE_TICKS` et `next_interval`. Décrémenté une fois par tick dans `tick`.
+    startup_grace_ticks: u32,
     /// Roster mis en cache pour la phase de jeu en cours (pregame OU in-game) : le roster
     /// ne change pas une fois connu pour cette phase, pas besoin de refaire
     /// entitlements + 2 requêtes GLZ à chaque tick tant qu'on y est encore.
@@ -124,6 +162,8 @@ impl PollContext {
         self.region = None;
         self.client_version = None;
         self.local_failures = 0;
+        self.stuck_ticks = 0;
+        self.startup_grace_ticks = STARTUP_GRACE_TICKS;
         self.clear_roster();
     }
 
@@ -133,40 +173,68 @@ impl PollContext {
     }
 }
 
-async fn tick(app: &AppHandle, ctx: &mut PollContext) {
-    let settings = read_settings(app).await;
-    let disabled = settings.riot_local_disabled;
-    let default_region = settings.default_region.clone();
-
-    if disabled {
-        if ctx.previous_state.is_some() {
-            crate::applog!("[riot_local] détection désactivée dans les réglages");
-        }
-        publish(app, ctx, &settings, LiveSnapshot::disabled());
-        crate::overlay::window::hide_overlay(app);
-        ctx.previous_state = None;
-        ctx.clear_roster();
-        return;
+/// Réplique désactivée dans les réglages (`riot_local_disabled`) : republie l'état
+/// "disabled", masque l'overlay et réinitialise le contexte de transition. Renvoie `true`
+/// si `tick` doit s'arrêter là (c'était bien le cas désactivé).
+fn handle_disabled(app: &AppHandle, ctx: &mut PollContext, settings: &crate::settings::AppSettings) -> bool {
+    if !settings.riot_local_disabled {
+        return false;
     }
+    if ctx.previous_state.is_some() {
+        crate::applog!("[riot_local] détection désactivée dans les réglages");
+    }
+    publish(app, ctx, settings, LiveSnapshot::disabled());
+    crate::overlay::window::hide_overlay(app);
+    ctx.previous_state = None;
+    ctx.clear_roster();
+    true
+}
 
-    let lockfile = match lockfile::read_lockfile() {
-        Ok(Some(info)) => info,
+/// Tente de lire le lockfile ; si absent/illisible, republie l'état hors-jeu et met à jour
+/// les compteurs d'idle. Renvoie `None` dans ce cas (appelant doit s'arrêter là), sinon
+/// `Some(lockfile)` et remet `ctx.idle_ticks` à zéro (client joignable).
+fn handle_lockfile_read(
+    app: &AppHandle,
+    ctx: &mut PollContext,
+    settings: &crate::settings::AppSettings,
+) -> Option<LockfileInfo> {
+    match lockfile::read_lockfile() {
+        Ok(Some(info)) => {
+            // Le lockfile est là : le client vient de (re)démarrer ou tournait déjà, dans
+            // les deux cas on n'est plus dans le "long hors-jeu" que `DEEP_IDLE_INTERVAL` cible.
+            ctx.idle_ticks = 0;
+            Some(info)
+        }
         other => {
             if ctx.previous_state != Some(GameState::HorsJeu) {
                 crate::applog!("[riot_local] lockfile introuvable/illisible: {other:?}");
             }
-            publish(app, ctx, &settings, LiveSnapshot::offline());
+            publish(app, ctx, settings, LiveSnapshot::offline());
             crate::overlay::window::hide_overlay(app);
             ctx.previous_state = Some(GameState::HorsJeu);
             ctx.local_failures = 0;
             ctx.idle_ticks = ctx.idle_ticks.saturating_add(1);
             ctx.clear_roster();
-            return;
+            None
         }
+    }
+}
+
+async fn tick(app: &AppHandle, ctx: &mut PollContext) {
+    if ctx.startup_grace_ticks > 0 {
+        ctx.startup_grace_ticks -= 1;
+    }
+
+    let settings = read_settings(app).await;
+    let default_region = settings.default_region.clone();
+
+    if handle_disabled(app, ctx, &settings) {
+        return;
+    }
+
+    let Some(lockfile) = handle_lockfile_read(app, ctx, &settings) else {
+        return;
     };
-    // Le lockfile est là : le client vient de (re)démarrer ou tournait déjà, dans les deux
-    // cas on n'est plus dans le "long hors-jeu" que `DEEP_IDLE_INTERVAL` cible.
-    ctx.idle_ticks = 0;
 
     // (Re)construit le client local et invalide le contexte si le Riot Client a
     // redémarré (port/mot de passe différents).
@@ -209,6 +277,23 @@ async fn tick(app: &AppHandle, ctx: &mut PollContext) {
     };
     ctx.local_failures = 0;
 
+    if state == GameState::HorsJeu {
+        ctx.stuck_ticks = ctx.stuck_ticks.saturating_add(1);
+        if ctx.stuck_ticks >= STUCK_RESET_THRESHOLD {
+            crate::applog!(
+                "[riot_local] hors_jeu prolongé malgré une API locale joignable ({} ticks) — reconnexion forcée",
+                ctx.stuck_ticks
+            );
+            ctx.reset_session();
+            publish(app, ctx, &settings, LiveSnapshot::offline());
+            crate::overlay::window::hide_overlay(app);
+            ctx.previous_state = Some(GameState::HorsJeu);
+            return;
+        }
+    } else {
+        ctx.stuck_ticks = 0;
+    }
+
     if ctx.region.is_none() && matches!(state, GameState::Pregame | GameState::InGame) {
         ctx.region = client::fetch_deployment_region(&http, &lockfile)
             .await
@@ -220,85 +305,7 @@ async fn tick(app: &AppHandle, ctx: &mut PollContext) {
     // Roster best-effort, mis en cache par phase (voir doc de `PollContext::roster`) :
     // liste vide si les endpoints GLZ ne répondent pas comme attendu — l'overlay affiche
     // alors juste l'état de la partie.
-    let players = match state {
-        GameState::Pregame | GameState::InGame => {
-            if ctx.roster_state == Some(state) && !ctx.roster.is_empty() {
-                ctx.roster.clone()
-            } else if let Some(client_version) = ctx.client_version.clone() {
-                let fetched = match state {
-                    GameState::Pregame => client::fetch_pregame_player_puuids(
-                        &http,
-                        &lockfile,
-                        &local_puuid,
-                        &region,
-                        &client_version,
-                    )
-                    .await
-                    .unwrap_or_default()
-                    .into_iter()
-                    .map(|p| LivePlayer {
-                        puuid: p.puuid,
-                        team: "ally".to_string(),
-                        agent: super::agents::agent_name_from_character_id(&p.character_id)
-                            .map(str::to_string),
-                    })
-                    .collect::<Vec<_>>(),
-                    GameState::InGame => {
-                        let core_players = client::fetch_coregame_player_puuids(
-                            &http,
-                            &lockfile,
-                            &local_puuid,
-                            &region,
-                            &client_version,
-                        )
-                        .await
-                        .unwrap_or_default();
-                        let own_team_id = core_players
-                            .iter()
-                            .find(|p| p.puuid == local_puuid)
-                            .map(|p| p.team_id.clone());
-                        core_players
-                            .into_iter()
-                            .map(|p| LivePlayer {
-                                team: match &own_team_id {
-                                    Some(own) if *own == p.team_id => "ally".to_string(),
-                                    Some(_) => "enemy".to_string(),
-                                    // Équipe locale inconnue (endpoint /players sans notre
-                                    // propre entrée) : mieux vaut ne pas deviner que
-                                    // d'étiqueter à tort un ennemi comme allié.
-                                    None => "inconnu".to_string(),
-                                },
-                                puuid: p.puuid,
-                                // Le core-game n'expose pas le `CharacterID` par ce même
-                                // endpoint (contrairement au pregame) — pas nécessaire de
-                                // toute façon, le contre-pick ne s'affiche qu'en pregame.
-                                agent: None,
-                            })
-                            .collect()
-                    }
-                    _ => unreachable!(),
-                };
-                if fetched.is_empty() {
-                    // Pas encore prêt côté GLZ (ex: juste après la transition) : on garde
-                    // roster_state à None pour retenter au prochain tick sans rester
-                    // bloqué sur un roster vide mis en cache.
-                    Vec::new()
-                } else {
-                    ctx.roster_state = Some(state);
-                    ctx.roster = fetched.clone();
-                    fetched
-                }
-            } else {
-                // Version du client pas encore connue (premier tick de la session) —
-                // retentera dès qu'un tick aura lu la presence avec succès.
-                Vec::new()
-            }
-        }
-        _ => {
-            ctx.clear_roster();
-            Vec::new()
-        }
-    };
+    let players = resolve_roster(&http, &lockfile, &local_puuid, &region, state, ctx).await;
 
     if ctx.previous_state != Some(state) {
         crate::applog!(
@@ -323,6 +330,114 @@ async fn tick(app: &AppHandle, ctx: &mut PollContext) {
             region: Some(region),
         },
     );
+}
+
+/// Résout le roster (allié en pregame, allié+ennemi en in-game) pour l'état de jeu courant,
+/// en réutilisant `ctx.roster` tant qu'il reste valide pour cette même phase (voir doc de
+/// `PollContext::roster`). Hors pregame/in-game, vide le roster en cache et renvoie une
+/// liste vide.
+async fn resolve_roster(
+    http: &reqwest::Client,
+    lockfile: &LockfileInfo,
+    local_puuid: &str,
+    region: &str,
+    state: GameState,
+    ctx: &mut PollContext,
+) -> Vec<LivePlayer> {
+    match state {
+        GameState::Pregame | GameState::InGame => {
+            if ctx.roster_state == Some(state) && !ctx.roster.is_empty() {
+                return ctx.roster.clone();
+            }
+            let Some(client_version) = ctx.client_version.clone() else {
+                // Version du client pas encore connue (premier tick de la session) —
+                // retentera dès qu'un tick aura lu la presence avec succès.
+                return Vec::new();
+            };
+
+            let fetched = match state {
+                GameState::Pregame => {
+                    fetch_pregame_roster(http, lockfile, local_puuid, region, &client_version).await
+                }
+                GameState::InGame => {
+                    fetch_ingame_roster(http, lockfile, local_puuid, region, &client_version).await
+                }
+                _ => unreachable!(),
+            };
+
+            if fetched.is_empty() {
+                // Pas encore prêt côté GLZ (ex: juste après la transition) : on garde
+                // roster_state à None pour retenter au prochain tick sans rester
+                // bloqué sur un roster vide mis en cache.
+                Vec::new()
+            } else {
+                ctx.roster_state = Some(state);
+                ctx.roster = fetched.clone();
+                fetched
+            }
+        }
+        _ => {
+            ctx.clear_roster();
+            Vec::new()
+        }
+    }
+}
+
+/// Roster allié de la phase de sélection d'agents (pregame) — voir
+/// `client::fetch_pregame_player_puuids`.
+async fn fetch_pregame_roster(
+    http: &reqwest::Client,
+    lockfile: &LockfileInfo,
+    local_puuid: &str,
+    region: &str,
+    client_version: &str,
+) -> Vec<LivePlayer> {
+    client::fetch_pregame_player_puuids(http, lockfile, local_puuid, region, client_version)
+        .await
+        .unwrap_or_default()
+        .into_iter()
+        .map(|p| LivePlayer {
+            puuid: p.puuid,
+            team: "ally".to_string(),
+            agent: super::agents::agent_name_from_character_id(&p.character_id).map(str::to_string),
+        })
+        .collect()
+}
+
+/// Roster complet (allié + ennemi) de la manche en cours (in-game) — voir
+/// `client::fetch_coregame_player_puuids`.
+async fn fetch_ingame_roster(
+    http: &reqwest::Client,
+    lockfile: &LockfileInfo,
+    local_puuid: &str,
+    region: &str,
+    client_version: &str,
+) -> Vec<LivePlayer> {
+    let core_players =
+        client::fetch_coregame_player_puuids(http, lockfile, local_puuid, region, client_version)
+            .await
+            .unwrap_or_default();
+    let own_team_id = core_players
+        .iter()
+        .find(|p| p.puuid == local_puuid)
+        .map(|p| p.team_id.clone());
+    core_players
+        .into_iter()
+        .map(|p| LivePlayer {
+            team: match &own_team_id {
+                Some(own) if *own == p.team_id => "ally".to_string(),
+                Some(_) => "enemy".to_string(),
+                // Équipe locale inconnue (endpoint /players sans notre propre entrée) :
+                // mieux vaut ne pas deviner que d'étiqueter à tort un ennemi comme allié.
+                None => "inconnu".to_string(),
+            },
+            puuid: p.puuid,
+            // Le core-game n'expose pas le `CharacterID` par ce même endpoint
+            // (contrairement au pregame) — pas nécessaire de toute façon, le contre-pick
+            // ne s'affiche qu'en pregame.
+            agent: None,
+        })
+        .collect()
 }
 
 /// Après `MAX_LOCAL_FAILURES` échecs consécutifs vers l'API locale (lockfile présent mais
@@ -510,6 +625,32 @@ mod tests {
         ctx.previous_state = Some(GameState::HorsJeu);
         assert_eq!(next_interval(&ctx), IDLE_INTERVAL);
         ctx.previous_state = Some(GameState::Menu);
+        assert_eq!(next_interval(&ctx), IDLE_INTERVAL);
+    }
+
+    #[test]
+    fn reset_session_clears_stuck_ticks() {
+        let mut ctx = PollContext::default();
+        ctx.stuck_ticks = STUCK_RESET_THRESHOLD;
+        ctx.reset_session();
+        assert_eq!(ctx.stuck_ticks, 0);
+    }
+
+    #[test]
+    fn reset_session_arms_startup_grace() {
+        let mut ctx = PollContext::default();
+        assert_eq!(ctx.startup_grace_ticks, 0);
+        ctx.reset_session();
+        assert_eq!(ctx.startup_grace_ticks, STARTUP_GRACE_TICKS);
+    }
+
+    #[test]
+    fn next_interval_stays_active_during_startup_grace_even_when_hors_jeu() {
+        let mut ctx = PollContext::default();
+        ctx.previous_state = Some(GameState::HorsJeu);
+        ctx.startup_grace_ticks = 1;
+        assert_eq!(next_interval(&ctx), ACTIVE_INTERVAL);
+        ctx.startup_grace_ticks = 0;
         assert_eq!(next_interval(&ctx), IDLE_INTERVAL);
     }
 

@@ -84,4 +84,16 @@ mod tests {
     fn garbage_input_fails_cleanly() {
         assert!(unprotect("not-valid-base64-or-blob!!!").is_err());
     }
+
+    /// Contrairement à `garbage_input_fails_cleanly` (base64 invalide), ici l'entrée est du
+    /// base64 parfaitement valide, mais les octets décodés ne forment pas un vrai blob
+    /// protégé par DPAPI (ex: un secret d'une autre app, ou une valeur corrompue qui reste
+    /// un base64 valide par coïncidence) — `CryptUnprotectData` doit échouer proprement
+    /// plutôt que paniquer.
+    #[test]
+    fn valid_base64_but_not_a_dpapi_blob_fails_cleanly() {
+        let not_a_real_blob =
+            base64::engine::general_purpose::STANDARD.encode(b"just some random bytes, not DPAPI");
+        assert!(unprotect(&not_a_real_blob).is_err());
+    }
 }

@@ -89,7 +89,7 @@ export default function MatchDetail() {
         {puuid && (
           <Link
             to={`/joueur/${region}/${name}/${tag}/matchs/${matchId}/rapport`}
-            className="btn-clip mt-1 shrink-0 bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#FF5969]"
+            className="btn-clip mt-1 shrink-0 bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-accent-dim"
           >
             {t("detail.reportButton")}
           </Link>

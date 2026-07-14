@@ -34,16 +34,6 @@ pub fn get_stale(conn: &Connection, url: &str) -> rusqlite::Result<Option<(Strin
     .optional()
 }
 
-/// Backlog #52 : liste les payloads dont l'URL commence par `prefix` (même expirés — même
-/// esprit que `get_stale`, on ne recalcule qu'à partir de ce qui est déjà en cache, aucun
-/// fetch réseau). Utilisé pour agréger les détails de match déjà consultés sans lister
-/// chaque `match_id` un par un.
-pub fn list_by_prefix(conn: &Connection, prefix: &str) -> rusqlite::Result<Vec<String>> {
-    let mut stmt = conn.prepare("SELECT payload FROM api_cache WHERE url LIKE ?1")?;
-    let like_pattern = format!("{prefix}%");
-    let rows = stmt.query_map([like_pattern], |row| row.get::<_, String>(0))?;
-    rows.collect()
-}
 
 pub fn set(conn: &Connection, url: &str, payload: &str, ttl: TtlSeconds) -> rusqlite::Result<()> {
     let expires_at = now_unix() + ttl.0;
@@ -101,17 +91,5 @@ mod tests {
         set(&conn, "https://api/c", "v2", TtlSeconds(3600)).unwrap();
 
         assert_eq!(get_fresh(&conn, "https://api/c").unwrap().unwrap().0, "v2");
-    }
-
-    #[test]
-    fn list_by_prefix_returns_only_matching_urls_even_if_expired() {
-        let conn = memory_conn();
-        set(&conn, "/valorant/v2/match/m1", "payload-1", TtlSeconds(-3600)).unwrap();
-        set(&conn, "/valorant/v2/match/m2", "payload-2", TtlSeconds(3600)).unwrap();
-        set(&conn, "/valorant/v2/account/foo", "payload-3", TtlSeconds(3600)).unwrap();
-
-        let mut payloads = list_by_prefix(&conn, "/valorant/v2/match/").unwrap();
-        payloads.sort();
-        assert_eq!(payloads, vec!["payload-1", "payload-2"]);
     }
 }

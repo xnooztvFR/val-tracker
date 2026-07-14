@@ -114,7 +114,7 @@ impl HenrikClient {
                 // bloquer tout le reste de l'app pendant 60s pour une raison qui n'a rien à
                 // voir avec une panne réseau/API.
                 self.rate_limiter.record_success().await;
-                let message = response.text().await.unwrap_or_default();
+                let message = response_error_message(response).await;
                 return Err(HenrikError::Api {
                     status: status.as_u16(),
                     message,
@@ -127,7 +127,7 @@ impl HenrikClient {
                     sleep(backoff_delay(attempt)).await;
                     continue;
                 }
-                let message = response.text().await.unwrap_or_default();
+                let message = response_error_message(response).await;
                 return Err(HenrikError::Api {
                     status: status.as_u16(),
                     message,
@@ -136,7 +136,7 @@ impl HenrikClient {
 
             if !status.is_success() {
                 self.rate_limiter.record_failure().await;
-                let message = response.text().await.unwrap_or_default();
+                let message = response_error_message(response).await;
                 return Err(HenrikError::Api {
                     status: status.as_u16(),
                     message,
@@ -223,6 +223,18 @@ impl HenrikClient {
         }
 
         unreachable!("la boucle de retry renvoie toujours avant d'épuiser MAX_ATTEMPTS")
+    }
+}
+
+/// Corps brut d'une réponse d'erreur Henrik, pour `HenrikError::Api.message` — même
+/// philosophie debug-only que `endpoints.rs::fetch_with_cache` (grep `cfg!(debug_assertions)`
+/// dans ce fichier) : un corps d'erreur peut contenir des détails internes de l'API amont, on
+/// ne veut pas les exposer dans un binaire de release, mais ils restent utiles en dev.
+async fn response_error_message(response: reqwest::Response) -> String {
+    if cfg!(debug_assertions) {
+        response.text().await.unwrap_or_default()
+    } else {
+        "<redacted in release build>".to_string()
     }
 }
 

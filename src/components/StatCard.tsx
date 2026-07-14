@@ -22,7 +22,7 @@ export default function StatCard({
   value,
   hint,
   gaugePercent,
-  gaugeColor = "rgb(var(--color-accent))",
+  gaugeColor = "rgb(var(--accent-rgb))",
   icon,
   emphasis = false,
   tooltip,

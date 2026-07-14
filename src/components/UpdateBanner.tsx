@@ -49,7 +49,7 @@ export default function UpdateBanner() {
                 <button
                   type="button"
                   onClick={() => installNow()}
-                  className="btn-clip bg-accent px-4 py-1.5 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#FF5969]"
+                  className="btn-clip bg-accent px-4 py-1.5 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-accent-dim"
                 >
                   {t("updateBanner.installNow")}
                 </button>

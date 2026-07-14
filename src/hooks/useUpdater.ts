@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
-import { invoke } from "@tauri-apps/api/core";
+import { tauriApi } from "../lib/tauriApi";
 
 export type UpdaterStatus =
   | "idle"
@@ -74,10 +74,7 @@ export function useUpdater(): UpdaterState {
       return;
     }
     try {
-      const hashOk = await invoke<boolean>("verify_update_hash", {
-        url: platform.url,
-        expectedSha256: platform.sha256,
-      });
+      const hashOk = await tauriApi.verifyUpdateHash(platform.url, platform.sha256);
       if (!hashOk) {
         setStatus("error");
         setError("Échec de la vérification d'intégrité de l'installeur téléchargé.");
@@ -99,15 +96,16 @@ export function useUpdater(): UpdaterState {
     // Contrepartie : si le téléchargement/installation échoue ensuite, une entrée orpheline
     // reste en base pour une version jamais installée — `ChangelogModal` s'en protège en
     // comparant la version lue à `getVersion()` avant d'afficher quoi que ce soit.
-    void invoke("log_updater_trace", { step: `installNow: avant set_pending_changelog (${update.version})` }).catch(() => {});
+    void tauriApi
+      .logUpdaterTrace(`installNow: avant set_pending_changelog (${update.version})`)
+      .catch(() => {});
     try {
-      await invoke("set_pending_changelog", {
-        version: update.version,
-        notes: update.body ?? "",
-      });
-      void invoke("log_updater_trace", { step: "installNow: set_pending_changelog OK" }).catch(() => {});
+      await tauriApi.setPendingChangelog(update.version, update.body ?? "");
+      void tauriApi.logUpdaterTrace("installNow: set_pending_changelog OK").catch(() => {});
     } catch (err) {
-      void invoke("log_updater_trace", { step: `installNow: set_pending_changelog ÉCHEC: ${String(err)}` }).catch(() => {});
+      void tauriApi
+        .logUpdaterTrace(`installNow: set_pending_changelog ÉCHEC: ${String(err)}`)
+        .catch(() => {});
     }
 
     let downloaded = 0;
@@ -129,7 +127,9 @@ export function useUpdater(): UpdaterState {
         }
       });
       setStatus("ready");
-      void invoke("log_updater_trace", { step: "installNow: downloadAndInstall terminé, avant relaunch" }).catch(() => {});
+      void tauriApi
+        .logUpdaterTrace("installNow: downloadAndInstall terminé, avant relaunch")
+        .catch(() => {});
       await relaunch();
     } catch (err) {
       setStatus("error");

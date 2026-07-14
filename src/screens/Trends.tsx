@@ -30,11 +30,11 @@ const MONO = '"JetBrains Mono", Consolas, monospace';
 // Séries cyan/rouge/gris selon la métrique : positif = cyan, négatif = rouge,
 // contexte = nuances de gris.
 const SERIES = [
-  { key: "kd", color: "rgb(var(--color-accent))" },
-  { key: "kills", color: "#A3333E" },
-  { key: "deaths", color: "#C4646E" },
-  { key: "assists", color: "rgb(var(--color-lo))" },
-  { key: "headshots", color: "#C8D0D6" },
+  { key: "kd", color: "rgb(var(--accent-rgb))" },
+  { key: "kills", color: "rgb(var(--chart-kills-rgb))" },
+  { key: "deaths", color: "rgb(var(--crit-rgb))" },
+  { key: "assists", color: "rgb(var(--lo-rgb))" },
+  { key: "headshots", color: "rgb(var(--chart-headshots-rgb))" },
 ] as const;
 
 type SeriesKey = (typeof SERIES)[number]["key"];
@@ -177,23 +177,23 @@ export default function Trends() {
           <Panel className="h-72 p-4">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={trends.perMatch} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
-                <CartesianGrid stroke="rgb(var(--color-lo) / 0.15)" vertical={false} />
+                <CartesianGrid stroke="rgb(var(--lo-rgb) / 0.15)" vertical={false} />
                 <XAxis
                   dataKey="date"
-                  tick={{ fontSize: 10, fill: "rgb(var(--color-lo))", fontFamily: MONO }}
+                  tick={{ fontSize: 10, fill: "rgb(var(--lo-rgb))", fontFamily: MONO }}
                   minTickGap={20}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 10, fill: "rgb(var(--color-lo))", fontFamily: MONO }}
+                  tick={{ fontSize: 10, fill: "rgb(var(--lo-rgb))", fontFamily: MONO }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <Tooltip
                   contentStyle={{
-                    background: "rgb(var(--color-raised))",
-                    border: "1px solid rgb(var(--color-line))",
+                    background: "rgb(var(--raised-rgb))",
+                    border: "1px solid rgb(var(--line-rgb))",
                     borderRadius: 0,
                     fontSize: 12,
                     fontFamily: MONO,
@@ -206,8 +206,8 @@ export default function Trends() {
                     <span
                       style={{
                         color: hidden.has((entry as { dataKey?: SeriesKey }).dataKey ?? "kd")
-                          ? "#3A424B"
-                          : "rgb(var(--color-hi))",
+                          ? "rgb(var(--chart-muted-rgb))"
+                          : "rgb(var(--hi-rgb))",
                         textDecoration: hidden.has((entry as { dataKey?: SeriesKey }).dataKey ?? "kd")
                           ? "line-through"
                           : "none",

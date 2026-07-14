@@ -187,7 +187,7 @@ export default function Overlay() {
       <div
         data-tauri-drag-region={interactive || undefined}
         className={`panel-clip flex flex-col overflow-hidden bg-surface/90 ${
-          interactive ? "cursor-move [box-shadow:inset_0_0_0_1px_rgb(var(--color-accent))]" : ""
+          interactive ? "cursor-move [box-shadow:inset_0_0_0_1px_rgb(var(--accent-rgb))]" : ""
         }`}
       >
         {layout === "mini" ? (

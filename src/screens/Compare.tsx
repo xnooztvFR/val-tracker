@@ -6,6 +6,8 @@ import { useMatches } from "../hooks/useMatches";
 import { Skeleton } from "../components/Skeleton";
 import Panel from "../components/Panel";
 import ErrorState from "../components/ErrorState";
+import EmptyState from "../components/EmptyState";
+import StaleDataBanner from "../components/StaleDataBanner";
 import SampleSizeSwitch, { type SampleSize } from "../components/SampleSizeSwitch";
 import { computeOverview, type Overview } from "../lib/stats";
 import { formatPercent, getRegions, splitRiotId } from "../lib/format";
@@ -66,7 +68,7 @@ export default function Compare() {
         />
         <button
           type="submit"
-          className="btn-clip col-span-full bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#FF5969]"
+          className="btn-clip col-span-full bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-accent-dim"
         >
           {t("compare.form.submit")}
         </button>
@@ -141,10 +143,11 @@ function PlayerColumn({ side, sampleSize }: { side: Side; sampleSize: SampleSize
         {side.name}
         <span className="text-lo">#{side.tag}</span>
       </p>
-      {overview ? (
+      {matches.data?.stale && <StaleDataBanner cachedAt={matches.data.cached_at} />}
+      {overview && overview.played > 0 ? (
         <OverviewRows overview={overview} />
       ) : (
-        <p className="text-sm text-lo">{t("compare.column.noData")}</p>
+        <EmptyState icon="match" title={t("compare.column.noData")} />
       )}
     </Panel>
   );

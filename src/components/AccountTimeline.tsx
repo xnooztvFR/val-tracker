@@ -40,8 +40,8 @@ export default function AccountTimeline({ events }: AccountTimelineProps) {
 
 function dotColor(event: AccountTimelineEvent): string {
   if (event.event_type === "rank_change") return rankGlowColor(event.tier);
-  if (event.event_type === "goal_achieved") return "rgb(var(--color-accent))";
-  return "rgb(var(--color-lo))";
+  if (event.event_type === "goal_achieved") return "rgb(var(--accent-rgb))";
+  return "rgb(var(--lo-rgb))";
 }
 
 function eventLabel(event: AccountTimelineEvent, t: (key: string, opts?: Record<string, unknown>) => string): string {

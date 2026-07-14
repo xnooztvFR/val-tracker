@@ -8,15 +8,36 @@ const WIDTH = 900;
 const HEIGHT = 506;
 const CUT = 28;
 
-// Même palette figée volontairement que RecapCardModal.tsx (voir sa note) : image
-// exportée/partagée, pas une surface d'UI qui doit suivre le thème/accent live.
-const COLORS = {
+// Palette lue depuis les variables CSS live, même approche que RecapCardModal.tsx (voir sa
+// note) : image exportée/partagée mais qui doit désormais suivre le thème/accent choisi par
+// l'utilisateur, avec les valeurs du thème HUD d'origine en repli si une variable est
+// absente (le rendu canvas ne doit jamais planter pour ça).
+const FALLBACK_COLORS = {
   base: "#0B0E11",
   line: "#22282F",
   accent: "#7CE8D3",
   hi: "#E8ECEF",
   lo: "#7A8590",
 };
+
+function cssVarColor(varName: string, fallbackHex: string): string {
+  if (typeof window === "undefined") return fallbackHex;
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+  if (!raw) return fallbackHex;
+  const parts = raw.split(/\s+/).map(Number);
+  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return fallbackHex;
+  return `rgb(${parts[0]} ${parts[1]} ${parts[2]})`;
+}
+
+function resolvePalette() {
+  return {
+    base: cssVarColor("--base-rgb", FALLBACK_COLORS.base),
+    line: cssVarColor("--line-rgb", FALLBACK_COLORS.line),
+    accent: cssVarColor("--accent-rgb", FALLBACK_COLORS.accent),
+    hi: cssVarColor("--hi-rgb", FALLBACK_COLORS.hi),
+    lo: cssVarColor("--lo-rgb", FALLBACK_COLORS.lo),
+  };
+}
 
 function drawClippedPanel(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, fill: string) {
   ctx.beginPath();
@@ -35,6 +56,8 @@ async function draw(canvas: HTMLCanvasElement, data: ProfileCardData, t: TFuncti
   if (!ctx) return;
 
   await document.fonts.ready.catch(() => {});
+
+  const COLORS = resolvePalette();
 
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
   drawClippedPanel(ctx, 0, 0, WIDTH, HEIGHT, COLORS.base);

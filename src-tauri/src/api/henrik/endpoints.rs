@@ -538,6 +538,78 @@ pub async fn get_crosshair_preview(
     Ok(encoded)
 }
 
+/// Relit un détail de match déjà en cache (aucun appel réseau) et le décode, pour un usage
+/// hors du chemin `fetch_with_cache` habituel (ex: `commands::record_party_from_match`, qui
+/// relit un détail déjà mis en cache par `fetch_match_detail` juste avant). `None` en cas de
+/// cache-miss ou de payload qui ne parse plus (schéma Henrik changé) — no-op silencieux dans
+/// les deux cas, comme le comportement d'origine.
+pub fn get_cached_match_detail(
+    conn: &Connection,
+    match_id: &str,
+) -> rusqlite::Result<Option<MatchDetailData>> {
+    let path = format!("/valorant/v2/match/{}", encode(match_id));
+    let Some((payload, _)) = cache::get_stale(conn, &path)? else {
+        return Ok(None);
+    };
+    let decoded = serde_json::from_str::<HenrikEnvelope<MatchDetailData>>(&payload)
+        .ok()
+        .map(|envelope| envelope.data);
+    Ok(decoded)
+}
+
+/// Détails de match déjà en cache pour tous les `match_id` que `puuid` a côtoyés (via
+/// `db::party_matches`, alimentée par `record_party_from_match`) — borne le scan au sous-
+/// ensemble pertinent plutôt qu'à tout le cache `api_cache` de l'app (backlog perf, voir
+/// `commands::get_side_winrate`). Aucun appel réseau : matchs absents du cache ou dont le
+/// payload ne parse plus sont simplement omis du résultat.
+pub fn get_cached_match_details_for_puuid(
+    conn: &Connection,
+    puuid: &str,
+) -> rusqlite::Result<Vec<MatchDetailData>> {
+    let match_ids = crate::db::list_match_ids_for_puuid(conn, puuid)?;
+    let mut details = Vec::with_capacity(match_ids.len());
+    for match_id in match_ids {
+        if let Some(detail) = get_cached_match_detail(conn, &match_id)? {
+            details.push(detail);
+        }
+    }
+    Ok(details)
+}
+
+#[cfg(test)]
+mod redact_ids_tests {
+    use super::*;
+
+    #[test]
+    fn masks_well_formed_uuid_segment() {
+        let path = "/valorant/v2/by-puuid/account/2a4d1e3f-8b7c-4e2a-9f1d-6c5b4a3e2d1f";
+        assert_eq!(
+            redact_ids(path),
+            "/valorant/v2/by-puuid/account/<id>"
+        );
+    }
+
+    #[test]
+    fn leaves_non_uuid_segments_untouched() {
+        assert!(!is_uuid_like("match"));
+        assert!(!is_uuid_like("account"));
+        assert!(!is_uuid_like("Ascent"));
+        assert_eq!(redact_ids("/valorant/v2/match"), "/valorant/v2/match");
+    }
+
+    #[test]
+    fn masks_all_uuid_segments_when_path_has_several() {
+        let path = "/valorant/v2/match/2a4d1e3f-8b7c-4e2a-9f1d-6c5b4a3e2d1f/player/7c1e9d2a-3f4b-4a5c-8d6e-1f2a3b4c5d6e";
+        assert_eq!(redact_ids(path), "/valorant/v2/match/<id>/player/<id>");
+    }
+
+    #[test]
+    fn path_without_uuid_segments_is_returned_unchanged() {
+        let path = "/valorant/v1/status/eu";
+        assert_eq!(redact_ids(path), path);
+    }
+}
+
 #[cfg(test)]
 mod stored_fallback_tests {
     use super::*;

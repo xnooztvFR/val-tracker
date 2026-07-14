@@ -91,13 +91,32 @@ function resolveTokenId(token, env) {
       return null;
     }
     for (const [id, value] of Object.entries(tokens)) {
-      if (value === token) return id;
+      if (constantTimeEqual(value, token)) return id;
     }
     return null;
   }
 
-  if (env.PROXY_TOKEN && token === env.PROXY_TOKEN) return "default";
+  if (env.PROXY_TOKEN && constantTimeEqual(env.PROXY_TOKEN, token)) return "default";
   return null;
+}
+
+/**
+ * Comparaison à temps constant de deux chaînes, même esprit que
+ * `settings.rs::constant_time_eq` côté Rust (XOR-accumulate sur toute la longueur, sans
+ * retour anticipé sur une différence de longueur pour ne pas fuiter la longueur exacte via
+ * le timing).
+ */
+function constantTimeEqual(a, b) {
+  const bytesA = new TextEncoder().encode(a);
+  const bytesB = new TextEncoder().encode(b);
+  let diff = bytesA.length ^ bytesB.length;
+  const maxLength = Math.max(bytesA.length, bytesB.length);
+  for (let i = 0; i < maxLength; i += 1) {
+    const byteA = i < bytesA.length ? bytesA[i] : 0;
+    const byteB = i < bytesB.length ? bytesB[i] : 0;
+    diff |= byteA ^ byteB;
+  }
+  return diff === 0;
 }
 
 const DEFAULT_RATE_LIMIT_PER_MINUTE = 20;

@@ -42,6 +42,16 @@ impl GameState {
 
 /// Construit un client reqwest dédié à l'API locale, avec acceptation du certificat
 /// auto-signé scopée à ce client uniquement.
+///
+/// Risque accepté (audit sécurité 2026-07-14) : `danger_accept_invalid_certs` désactive la
+/// validation TLS pour ce client, donc un autre processus local écoutant sur le port du
+/// lockfile pendant la fenêtre de connexion pourrait en théorie MITM ces appels. Un vrai
+/// pinning par empreinte SPKI n'a volontairement pas été implémenté ici : le certificat
+/// auto-signé du Riot Client n'est pas documenté officiellement par Riot (voir limitation
+/// connue dans `CLAUDE.md`), et coder en dur une empreinte non vérifiée casserait la
+/// détection de partie pour tout le monde si elle s'avérait fausse ou changeait d'une
+/// version du Riot Client à l'autre — un risque disproportionné pour une mitigation dont la
+/// portée réelle est déjà bornée (ce client ne parle qu'à `127.0.0.1`, jamais au réseau).
 pub fn build_local_client() -> anyhow::Result<reqwest::Client> {
     reqwest::Client::builder()
         .danger_accept_invalid_certs(true)

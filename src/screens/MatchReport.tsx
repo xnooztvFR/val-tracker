@@ -61,7 +61,7 @@ export default function MatchReport() {
           <button
             type="button"
             onClick={() => setShowRecap(true)}
-            className="btn-clip mt-1 shrink-0 bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#FF5969]"
+            className="btn-clip mt-1 shrink-0 bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-accent-dim"
           >
             {t("report.recapButton")}
           </button>

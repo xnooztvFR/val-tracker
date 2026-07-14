@@ -34,9 +34,12 @@ export default function PremierTeamDetail() {
       <Panel className="flex flex-wrap items-center gap-5 px-5 py-4">
         <div
           className="flex h-16 w-16 shrink-0 items-center justify-center border"
-          style={{ backgroundColor: c?.primary ?? "#22282F", borderColor: c?.secondary ?? "#22282F" }}
+          style={{
+            backgroundColor: c?.primary ?? "rgb(var(--line-rgb))",
+            borderColor: c?.secondary ?? "rgb(var(--line-rgb))",
+          }}
         >
-          <span className="font-display text-lg font-bold" style={{ color: c?.tertiary ?? "#fff" }}>
+          <span className="font-display text-lg font-bold" style={{ color: c?.tertiary ?? "rgb(var(--hi-rgb))" }}>
             {data.tag}
           </span>
         </div>

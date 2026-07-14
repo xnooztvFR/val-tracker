@@ -192,34 +192,54 @@ fn create_overlay_window(app_handle: &AppHandle, position: Option<(f64, f64)>) -
     Ok(())
 }
 
-pub async fn show_overlay(app_handle: &AppHandle) {
-    if app_handle.get_webview_window(OVERLAY_LABEL).is_none() {
-        let position = match app_handle.try_state::<AppState>() {
-            Some(state) => {
-                let conn = state.db.lock().await;
-                let explicit_monitor = crate::settings::get_overlay_monitor(&conn)
-                    .ok()
-                    .flatten()
-                    .filter(|id| id != "auto");
-                match explicit_monitor.and_then(|id| explicit_monitor_position(app_handle, &id)) {
-                    Some(position) => Some(position),
-                    // Pas de préférence explicite, ou moniteur choisi débranché depuis :
-                    // repli sur la dernière position mémorisée pour ce setup d'écrans.
-                    None => {
-                        let signature = monitor_signature(app_handle);
-                        crate::settings::get_overlay_position(&conn, &signature)
-                            .ok()
-                            .flatten()
-                    }
+/// Crée la fenêtre overlay (masquée) si elle n'existe pas déjà, sans la montrer — appelée
+/// à la fois par `show_overlay` (au moment réel d'affichage) et en warm-up au démarrage de
+/// l'app (voir `warm_up`) pour sortir la création de fenêtre du chemin critique de la
+/// première partie détectée.
+async fn ensure_overlay_window(app_handle: &AppHandle) {
+    if app_handle.get_webview_window(OVERLAY_LABEL).is_some() {
+        return;
+    }
+    let position = match app_handle.try_state::<AppState>() {
+        Some(state) => {
+            let conn = state.db.lock().await;
+            let explicit_monitor = crate::settings::get_overlay_monitor(&conn)
+                .ok()
+                .flatten()
+                .filter(|id| id != "auto");
+            match explicit_monitor.and_then(|id| explicit_monitor_position(app_handle, &id)) {
+                Some(position) => Some(position),
+                // Pas de préférence explicite, ou moniteur choisi débranché depuis :
+                // repli sur la dernière position mémorisée pour ce setup d'écrans.
+                None => {
+                    let signature = monitor_signature(app_handle);
+                    crate::settings::get_overlay_position(&conn, &signature)
+                        .ok()
+                        .flatten()
                 }
             }
-            None => None,
-        };
-        if let Err(err) = create_overlay_window(app_handle, position) {
-            crate::applog!("[overlay] création de la fenêtre overlay impossible: {err}");
-            return;
         }
+        None => None,
+    };
+    if let Err(err) = create_overlay_window(app_handle, position) {
+        crate::applog!("[overlay] création de la fenêtre overlay impossible: {err}");
     }
+}
+
+/// Crée la fenêtre overlay par anticipation, juste après le démarrage de l'app (voir
+/// `main.rs::setup`), plutôt que d'attendre la toute première partie détectée. Avant ce
+/// warm-up, la création de fenêtre (WebView2 + enregistrement Tauri) partageait son tout
+/// premier appel avec la course de démarrage de l'app elle-même — bug constaté en session
+/// (2026-07-14) : l'overlay ne s'affichait pas sur la toute première partie qui suivait un
+/// lancement d'app fraîchement démarrée, mais fonctionnait normalement dès la partie
+/// suivante (fenêtre déjà créée). Sortir la création du chemin de la première détection
+/// élimine cette fenêtre de course.
+pub async fn warm_up(app_handle: AppHandle) {
+    ensure_overlay_window(&app_handle).await;
+}
+
+pub async fn show_overlay(app_handle: &AppHandle) {
+    ensure_overlay_window(app_handle).await;
     if let Some(window) = app_handle.get_webview_window(OVERLAY_LABEL) {
         let _ = window.show();
     }

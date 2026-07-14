@@ -22,7 +22,16 @@ export default function ProgressionGoalPanel({ puuid, currentTier, currentRr }: 
     queryFn: () => tauriApi.getProgressionGoal(puuid),
   });
   const [editing, setEditing] = useState(false);
-  const [selectedTier, setSelectedTier] = useState(getFullTierLabels()[15].tier); // Diamant 1
+  // Défaut : Diamant 1 (tier 18 dans le référentiel Henrik/Riot — voir FULL_TIER_KEYS dans
+  // lib/format.ts). On cherche par valeur de tier plutôt que par position dans le tableau
+  // renvoyé par getFullTierLabels(), pour ne jamais dépendre de son ordre. Repli sur le
+  // dernier tier disponible (le plus élevé, donc le plus "sûr" comme objectif par défaut)
+  // si jamais le tier 18 disparaissait du référentiel, pour ne jamais planter.
+  const DEFAULT_GOAL_TIER = 18;
+  const [selectedTier, setSelectedTier] = useState(() => {
+    const labels = getFullTierLabels();
+    return labels.find((tier) => tier.tier === DEFAULT_GOAL_TIER)?.tier ?? labels[labels.length - 1]?.tier ?? 0;
+  });
   const [targetRr, setTargetRr] = useState(0);
 
   async function handleSave() {

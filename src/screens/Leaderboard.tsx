@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { Skeleton } from "../components/Skeleton";
 import { useNavigate } from "react-router-dom";
-import { FixedSizeList, type ListChildComponentProps } from "react-window";
+import { List, type RowComponentProps } from "react-window";
 
 import { useLeaderboard } from "../hooks/useMeta";
 import ErrorState from "../components/ErrorState";
@@ -118,15 +118,13 @@ export default function Leaderboard() {
               <span className="hud-label px-4 py-3 font-semibold">{t("leaderboard.columns.wins")}</span>
             </div>
             {players.length > VIRTUALIZE_THRESHOLD ? (
-              <FixedSizeList
-                height={Math.min(players.length, 12) * ROW_HEIGHT}
-                itemCount={players.length}
-                itemSize={ROW_HEIGHT}
-                width="100%"
-                itemData={{ players, region, navigate, t }}
-              >
-                {LeaderboardVirtualRow}
-              </FixedSizeList>
+              <List
+                rowComponent={LeaderboardVirtualRow}
+                rowCount={players.length}
+                rowHeight={ROW_HEIGHT}
+                rowProps={{ players, region, navigate, t }}
+                style={{ height: Math.min(players.length, 12) * ROW_HEIGHT, width: "100%" }}
+              />
             ) : (
               <div className="divide-y divide-line/60">
                 {players.map((p) => (
@@ -225,20 +223,22 @@ function LeaderboardRow({
   );
 }
 
-/** Backlog #83 : rendu de ligne pour `FixedSizeList` (react-window) — au-delà de
+/** Backlog #83 : rendu de ligne pour `List` (react-window v2) — au-delà de
  * `VIRTUALIZE_THRESHOLD` joueurs, seules les lignes visibles à l'écran sont montées dans le
  * DOM, pour éviter le lag si `PAGE_SIZE` grossit un jour. */
 function LeaderboardVirtualRow({
   index,
   style,
-  data,
-}: ListChildComponentProps<{
+  players,
+  region,
+  navigate,
+  t,
+}: RowComponentProps<{
   players: LeaderboardPlayer[];
   region: string;
   navigate: ReturnType<typeof useNavigate>;
   t: TFunc;
 }>) {
-  const { players, region, navigate, t } = data;
   const p = players[index];
   return (
     <div style={style} className="border-b border-line/60">

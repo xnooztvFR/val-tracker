@@ -4,7 +4,7 @@ import { useApiHealthStore } from "../store/apiHealthStore";
 
 const DOT_CLASSES: Record<string, string> = {
   ok: "bg-accent",
-  rate_limited: "bg-[#F5C542]",
+  rate_limited: "bg-warn",
   circuit_open: "bg-crit",
   network: "bg-crit",
 };

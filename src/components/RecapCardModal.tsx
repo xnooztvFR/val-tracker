@@ -8,11 +8,12 @@ const WIDTH = 900;
 const HEIGHT = 506;
 const CUT = 28;
 
-// Palette figée volontairement (pas de rgb(var(--color-*))) : cette carte est une image
-// exportée/partagée (canvas 2D, `fillStyle` ne résout pas les custom properties CSS de
-// toute façon), pensée comme un visuel de marque cohérent quel que soit le thème/accent
-// choisi dans Paramètres — pas une surface d'UI qui doit suivre les préférences live.
-const COLORS = {
+// Palette lue depuis les variables CSS live (voir `:root`/`[data-theme]`/`[data-accent]`
+// dans index.css, `fillStyle` ne résout pas les custom properties CSS directement donc on
+// les résout nous-mêmes via getComputedStyle) pour que la carte exportée reflète le
+// thème/accent réellement choisi par l'utilisateur, avec les valeurs par défaut du thème HUD
+// d'origine en repli si une variable est absente (le rendu canvas ne doit jamais planter).
+const FALLBACK_COLORS = {
   base: "#0B0E11",
   surface: "#12161B",
   line: "#22282F",
@@ -21,6 +22,27 @@ const COLORS = {
   hi: "#E8ECEF",
   lo: "#7A8590",
 };
+
+function cssVarColor(varName: string, fallbackHex: string): string {
+  if (typeof window === "undefined") return fallbackHex;
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+  if (!raw) return fallbackHex;
+  const parts = raw.split(/\s+/).map(Number);
+  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return fallbackHex;
+  return `rgb(${parts[0]} ${parts[1]} ${parts[2]})`;
+}
+
+function resolvePalette() {
+  return {
+    base: cssVarColor("--base-rgb", FALLBACK_COLORS.base),
+    surface: cssVarColor("--surface-rgb", FALLBACK_COLORS.surface),
+    line: cssVarColor("--line-rgb", FALLBACK_COLORS.line),
+    accent: cssVarColor("--accent-rgb", FALLBACK_COLORS.accent),
+    crit: cssVarColor("--crit-rgb", FALLBACK_COLORS.crit),
+    hi: cssVarColor("--hi-rgb", FALLBACK_COLORS.hi),
+    lo: cssVarColor("--lo-rgb", FALLBACK_COLORS.lo),
+  };
+}
 
 /** Trace le contour "coin coupé" du design system (voir `.panel-clip` dans index.css)
  * agrandi pour le canvas, et le remplit avec `fillStyle`. */
@@ -44,6 +66,8 @@ async function draw(canvas: HTMLCanvasElement, data: MatchRecapData) {
   // reste de l'UI les utilise déjà), mais on attend explicitement pour éviter un rendu
   // canvas avec la police système par défaut si la modale s'ouvre très tôt.
   await document.fonts.ready.catch(() => {});
+
+  const COLORS = resolvePalette();
 
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
   drawClippedPanel(ctx, 0, 0, WIDTH, HEIGHT, COLORS.base);
@@ -192,7 +216,7 @@ export default function RecapCardModal({ data, onClose }: RecapCardModalProps) {
           <button
             type="button"
             onClick={handleCopy}
-            className="btn-clip bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-[#FF5969]"
+            className="btn-clip bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-accent-dim"
           >
             {t("recapCardModal.copyImage")}
           </button>
