@@ -103,22 +103,58 @@ export default function Agents() {
   const { t } = useTranslation("stats");
   const { region, name, tag } = useParams<{ region: string; name: string; tag: string }>();
   const [sampleSize, setSampleSize] = useState<SampleSize>(20);
+  const [mapFilter, setMapFilter] = useState<string>("all");
 
   const account = useAccount(name, tag);
   const puuid = account.data?.data.puuid;
   const matches = useMatches({ region, name, tag, size: sampleSize });
 
+  // TODO stats & analyse joueur : croisement MapStats × Agents ("Jett sur Ascent" vs "Jett
+  // globalement") — même agrégation que computeAgentStats, appliquée à un sous-ensemble des
+  // matchs déjà en cache filtré par carte plutôt qu'à une commande dédiée.
+  const mapNames = useMemo(() => {
+    if (!matches.data) return [];
+    const seen = new Set<string>();
+    for (const match of matches.data.data) {
+      const mapName = match.metadata.map?.name;
+      if (mapName) seen.add(mapName);
+    }
+    return [...seen].sort((a, b) => a.localeCompare(b));
+  }, [matches.data]);
+
+  const filteredMatches = useMemo(() => {
+    if (!matches.data) return [];
+    if (mapFilter === "all") return matches.data.data;
+    return matches.data.data.filter((m) => m.metadata.map?.name === mapFilter);
+  }, [matches.data, mapFilter]);
+
   const rows = useMemo(
-    () => (matches.data && puuid ? computeAgentStats(matches.data.data, puuid) : []),
-    [matches.data, puuid],
+    () => (puuid ? computeAgentStats(filteredMatches, puuid) : []),
+    [filteredMatches, puuid],
   );
   const roleRows = useMemo(() => computeRoleStats(rows), [rows]);
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <h1 className="hud-label text-sm">{t("agents.title")}</h1>
-        <SampleSizeSwitch value={sampleSize} onChange={setSampleSize} />
+        <div className="flex items-center gap-3">
+          {mapNames.length > 0 && (
+            <select
+              value={mapFilter}
+              onChange={(e) => setMapFilter(e.target.value)}
+              className="hud-label border border-line bg-raised px-2 py-1.5 text-xs text-hi"
+            >
+              <option value="all">{t("agents.mapFilter.all")}</option>
+              {mapNames.map((mapName) => (
+                <option key={mapName} value={mapName}>
+                  {mapName}
+                </option>
+              ))}
+            </select>
+          )}
+          <SampleSizeSwitch value={sampleSize} onChange={setSampleSize} />
+        </div>
       </div>
 
       {matches.isError && <ErrorState error={matches.error} />}

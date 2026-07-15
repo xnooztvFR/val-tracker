@@ -66,6 +66,9 @@
     "title": "Estatísticas por agente",
     "unknownAgent": "Agente desconhecido",
     "roleStats": "{{count}} partidas · K/D {{kd}}",
+    "mapFilter": {
+      "all": "Todos os mapas"
+    },
     "table": {
       "agent": "Agente",
       "time": "Tempo",
