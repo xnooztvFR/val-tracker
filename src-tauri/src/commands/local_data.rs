@@ -82,6 +82,18 @@ pub async fn save_player_notes(
     Ok(crate::db::set_player_notes(&conn, &puuid, &notes)?)
 }
 
+/// TODO stats & analyse joueur : tags structurés sur un joueur suivi (smurf/toxique/carry/duo
+/// régulier), complément du texte libre de `save_player_notes` — voir `db::ALLOWED_TAGS`.
+#[tauri::command]
+pub async fn save_player_tags(
+    state: State<'_, AppState>,
+    puuid: String,
+    tags: Vec<String>,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    Ok(crate::db::set_player_tags(&conn, &puuid, &tags)?)
+}
+
 /// Backlog #13 : objectif de progression ("atteindre Diamant 2") pour un joueur suivi.
 #[tauri::command]
 pub async fn get_progression_goal(

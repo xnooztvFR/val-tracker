@@ -1,3 +1,5 @@
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Skeleton } from "../components/Skeleton";
@@ -7,6 +9,7 @@ import Panel from "../components/Panel";
 import ErrorState from "../components/ErrorState";
 import EmptyState from "../components/EmptyState";
 import { formatPercent } from "../lib/format";
+import { PLAYER_TAGS, tauriApi, type PlayerTag } from "../lib/tauriApi";
 
 /** Winrate en duo/squad (V3), calculé à partir des `party_id` accumulés localement à
  * chaque consultation de match (voir hooks/usePlayer::useDuoStats) — grandit au fil de la
@@ -21,23 +24,67 @@ export default function Duo() {
   const squad = useSquadStats(puuid);
   const rivalry = useRivalryStats(puuid);
 
+  // TODO stats & analyse joueur : filtre par tag structuré (voir PlayerNotesPanel.tsx) sur
+  // ces trois listes — les tags ne sont posés que sur des joueurs déjà suivis
+  // (`tracked_players`), donc un coéquipier/adversaire jamais recherché séparément ne
+  // matchera simplement aucun filtre plutôt que de planter.
+  const [tagFilter, setTagFilter] = useState<PlayerTag | "all">("all");
+  const trackedPlayers = useQuery({
+    queryKey: ["tracked_players_for_tags"],
+    queryFn: () => tauriApi.listTrackedPlayers(500),
+  });
+  const tagsByPuuid = useMemo(() => {
+    const map = new Map<string, PlayerTag[]>();
+    for (const p of trackedPlayers.data ?? []) map.set(p.puuid, p.tags);
+    return map;
+  }, [trackedPlayers.data]);
+  const hasTag = (puuidToCheck: string) =>
+    tagFilter === "all" || (tagsByPuuid.get(puuidToCheck) ?? []).includes(tagFilter);
+
+  const filteredDuo = useMemo(
+    () => (duo.data ?? []).filter((d) => hasTag(d.teammate_puuid)),
+    [duo.data, tagFilter, tagsByPuuid],
+  );
+  const filteredSquad = useMemo(
+    () => (squad.data ?? []).filter((s) => hasTag(s.teammate_a_puuid) || hasTag(s.teammate_b_puuid)),
+    [squad.data, tagFilter, tagsByPuuid],
+  );
+  const filteredRivalry = useMemo(
+    () => (rivalry.data ?? []).filter((r) => hasTag(r.opponent_puuid)),
+    [rivalry.data, tagFilter, tagsByPuuid],
+  );
+
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="hud-label text-sm">{t("duo.title")}</h1>
-        <p className="mt-1 text-xs text-lo">{t("duo.description")}</p>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h1 className="hud-label text-sm">{t("duo.title")}</h1>
+          <p className="mt-1 text-xs text-lo">{t("duo.description")}</p>
+        </div>
+        <select
+          value={tagFilter}
+          onChange={(e) => setTagFilter(e.target.value as PlayerTag | "all")}
+          className="hud-label border border-line bg-raised px-2 py-1.5 text-xs text-hi"
+        >
+          <option value="all">{t("duo.tagFilter.all")}</option>
+          {PLAYER_TAGS.map((t2) => (
+            <option key={t2} value={t2}>
+              {t(`duo.tagFilter.tags.${t2}`)}
+            </option>
+          ))}
+        </select>
       </div>
 
       {duo.isError && <ErrorState error={duo.error} />}
       {duo.isLoading && <Skeleton className="h-32 w-full" />}
 
-      {duo.data && duo.data.length === 0 && (
+      {duo.data && filteredDuo.length === 0 && (
         <EmptyState icon="team" title={t("duo.emptyMessage")} />
       )}
 
-      {duo.data && duo.data.length > 0 && (
+      {duo.data && filteredDuo.length > 0 && (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {duo.data.map((teammate) => {
+          {filteredDuo.map((teammate) => {
             const winPercent = Math.round((teammate.matches_won / teammate.matches_played) * 100);
             return (
               <Panel key={teammate.teammate_puuid} className="p-4">
@@ -63,14 +110,14 @@ export default function Duo() {
         </div>
       )}
 
-      {squad.data && squad.data.length > 0 && (
+      {squad.data && filteredSquad.length > 0 && (
         <div className="space-y-2">
           <div>
             <h2 className="hud-label text-sm">{t("duo.squad.title")}</h2>
             <p className="mt-1 text-xs text-lo">{t("duo.squad.description")}</p>
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {squad.data.map((s) => {
+            {filteredSquad.map((s) => {
               const winPercent = Math.round((s.matches_won / s.matches_played) * 100);
               return (
                 <Panel key={`${s.teammate_a_puuid}-${s.teammate_b_puuid}`} className="p-4">
@@ -100,7 +147,7 @@ export default function Duo() {
         </div>
       )}
 
-      {squad.data && squad.data.length === 0 && (
+      {squad.data && filteredSquad.length === 0 && (
         <div className="space-y-2">
           <div>
             <h2 className="hud-label text-sm">{t("duo.squad.title")}</h2>
@@ -110,14 +157,14 @@ export default function Duo() {
         </div>
       )}
 
-      {rivalry.data && rivalry.data.length > 0 && (
+      {rivalry.data && filteredRivalry.length > 0 && (
         <div className="space-y-2">
           <div>
             <h2 className="hud-label text-sm">{t("duo.rivalry.title")}</h2>
             <p className="mt-1 text-xs text-lo">{t("duo.rivalry.description")}</p>
           </div>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {rivalry.data.map((opponent) => {
+            {filteredRivalry.map((opponent) => {
               const winPercent = Math.round((opponent.matches_won / opponent.matches_played) * 100);
               return (
                 <Panel key={opponent.opponent_puuid} className="p-4">
@@ -144,7 +191,7 @@ export default function Duo() {
         </div>
       )}
 
-      {rivalry.data && rivalry.data.length === 0 && (
+      {rivalry.data && filteredRivalry.length === 0 && (
         <div className="space-y-2">
           <div>
             <h2 className="hud-label text-sm">{t("duo.rivalry.title")}</h2>

@@ -204,6 +204,13 @@ pub(crate) fn run_migrations(conn: &Connection) -> rusqlite::Result<()> {
     // Backlog #57 : date de dernière modification de la note perso, voir `set_player_notes`.
     add_column_if_missing(conn, "tracked_players", "notes_updated_at", "INTEGER")?;
 
+    // TODO stats & analyse joueur : tags structurés à côté du texte libre de `notes` (voir
+    // `set_player_tags`) — liste de slugs fixes séparés par des virgules (ex.
+    // "smurf,duo_regulier"), filtrables depuis les écrans duo/rivalité. Stocké en clair
+    // (contrairement à `notes`) : ce sont des étiquettes courtes d'une liste fermée, pas du
+    // texte libre pouvant contenir des informations sensibles.
+    add_column_if_missing(conn, "tracked_players", "tags", "TEXT NOT NULL DEFAULT ''")?;
+
     // Histogramme de latence du dashboard santé : durée en ms des évènements
     // NetworkFetch/ApiError (NULL pour CacheHit, qui n'a pas de latence réseau) — voir
     // `metrics::usage_metrics_summary`.

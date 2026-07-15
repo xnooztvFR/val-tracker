@@ -55,7 +55,13 @@
     "pinLocked": "Too many incorrect attempts. Try again in {{seconds}}s.",
     "saved": "Saved",
     "saving": "…",
-    "notesPlaceholder": "Smurf, regular duo, worth replaying..."
+    "notesPlaceholder": "Smurf, regular duo, worth replaying...",
+    "tags": {
+      "smurf": "Smurf",
+      "toxic": "Toxic",
+      "carry": "Carry",
+      "regular_duo": "Regular duo"
+    }
   },
   "onboardingWizard": {
     "step1": {

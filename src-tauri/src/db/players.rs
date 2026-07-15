@@ -58,6 +58,18 @@ pub struct TrackedPlayer {
     /// Backlog #12 : note libre attachée à ce joueur, éditable depuis Home.tsx. `None` si
     /// jamais renseignée.
     pub notes: Option<String>,
+    /// TODO stats & analyse joueur : tags structurés (smurf/toxique/carry/duo régulier...),
+    /// liste de slugs fixes — voir `set_player_tags`/`ALLOWED_TAGS`.
+    pub tags: Vec<String>,
+}
+
+/// Liste fermée de tags autorisés — un slug hors de cette liste est rejeté par
+/// `set_player_tags` plutôt que stocké tel quel, pour garder les filtres des écrans
+/// duo/rivalité prévisibles (pas de texte libre ici, contrairement à `notes`).
+pub const ALLOWED_TAGS: &[&str] = &["smurf", "toxic", "carry", "regular_duo"];
+
+fn parse_tags(raw: String) -> Vec<String> {
+    raw.split(',').map(str::trim).filter(|s| !s.is_empty()).map(str::to_string).collect()
 }
 
 fn map_tracked_player(row: &rusqlite::Row) -> rusqlite::Result<TrackedPlayer> {
@@ -70,6 +82,7 @@ fn map_tracked_player(row: &rusqlite::Row) -> rusqlite::Result<TrackedPlayer> {
         last_viewed_at: row.get(5)?,
         is_self: row.get::<_, i64>(6)? != 0,
         notes: decrypt_notes(row.get(7)?),
+        tags: parse_tags(row.get(8)?),
     })
 }
 
@@ -97,7 +110,7 @@ pub fn upsert_tracked_player(
 /// Historique des dernières recherches, favoris en tête puis par date de consultation.
 pub fn list_recent_players(conn: &Connection, limit: i64) -> rusqlite::Result<Vec<TrackedPlayer>> {
     let mut stmt = conn.prepare(
-        "SELECT puuid, name, tag, region, is_favorite, last_viewed_at, is_self, notes
+        "SELECT puuid, name, tag, region, is_favorite, last_viewed_at, is_self, notes, tags
          FROM tracked_players
          ORDER BY is_favorite DESC, last_viewed_at DESC
          LIMIT ?1",
@@ -111,7 +124,7 @@ pub fn list_recent_players(conn: &Connection, limit: i64) -> rusqlite::Result<Ve
 /// de fin de partie (backlog #81 ; voir `riot_local::poller::on_state_changed`).
 pub fn find_tracked_player(conn: &Connection, puuid: &str) -> rusqlite::Result<Option<TrackedPlayer>> {
     conn.query_row(
-        "SELECT puuid, name, tag, region, is_favorite, last_viewed_at, is_self, notes
+        "SELECT puuid, name, tag, region, is_favorite, last_viewed_at, is_self, notes, tags
          FROM tracked_players WHERE puuid = ?1",
         [puuid],
         map_tracked_player,
@@ -133,7 +146,7 @@ pub fn set_self_account(conn: &Connection, puuid: &str, is_self: bool) -> rusqli
 /// consulté/switché en premier) — alimente le sélecteur de comptes de TopNav.
 pub fn list_self_accounts(conn: &Connection) -> rusqlite::Result<Vec<TrackedPlayer>> {
     let mut stmt = conn.prepare(
-        "SELECT puuid, name, tag, region, is_favorite, last_viewed_at, is_self, notes
+        "SELECT puuid, name, tag, region, is_favorite, last_viewed_at, is_self, notes, tags
          FROM tracked_players
          WHERE is_self = 1
          ORDER BY last_viewed_at DESC",
@@ -159,6 +172,22 @@ pub fn set_player_notes(conn: &Connection, puuid: &str, notes: &str) -> rusqlite
         "UPDATE tracked_players SET notes = ?2, notes_updated_at = ?3 WHERE puuid = ?1",
         (puuid, value, updated_at),
     )?;
+    Ok(())
+}
+
+/// TODO stats & analyse joueur : enregistre les tags structurés d'un joueur suivi (liste
+/// fermée, voir `ALLOWED_TAGS`) — tags hors liste silencieusement ignorés plutôt que de faire
+/// échouer toute la sauvegarde pour une valeur obsolète (ex. renommage futur d'un slug).
+pub fn set_player_tags(conn: &Connection, puuid: &str, tags: &[String]) -> rusqlite::Result<()> {
+    let mut deduped: Vec<&str> = tags
+        .iter()
+        .map(String::as_str)
+        .filter(|t| ALLOWED_TAGS.contains(t))
+        .collect();
+    deduped.sort_unstable();
+    deduped.dedup();
+    let value = deduped.join(",");
+    conn.execute("UPDATE tracked_players SET tags = ?2 WHERE puuid = ?1", (puuid, value))?;
     Ok(())
 }
 
@@ -209,7 +238,7 @@ pub fn toggle_favorite(conn: &Connection, puuid: &str) -> rusqlite::Result<bool>
 /// Search.tsx — distinct de `list_recent_players` qui trie par date de consultation.
 pub fn list_favorite_players(conn: &Connection) -> rusqlite::Result<Vec<TrackedPlayer>> {
     let mut stmt = conn.prepare(
-        "SELECT puuid, name, tag, region, is_favorite, last_viewed_at, is_self, notes
+        "SELECT puuid, name, tag, region, is_favorite, last_viewed_at, is_self, notes, tags
          FROM tracked_players
          WHERE is_favorite = 1
          ORDER BY sort_order ASC, last_viewed_at DESC",
@@ -331,6 +360,32 @@ mod tests {
 
         set_player_notes(&conn, "puuid-1", "   ").unwrap();
         assert!(list_recent_players(&conn, 10).unwrap()[0].notes.is_none());
+    }
+
+    #[test]
+    fn player_tags_round_trip_deduped_sorted_and_filters_unknown_slugs() {
+        let conn = memory_conn();
+        upsert_tracked_player(&conn, "puuid-1", "Player1", "1234", "eu").unwrap();
+        assert!(list_recent_players(&conn, 10).unwrap()[0].tags.is_empty());
+
+        set_player_tags(
+            &conn,
+            "puuid-1",
+            &[
+                "carry".to_string(),
+                "smurf".to_string(),
+                "smurf".to_string(),
+                "not_a_real_tag".to_string(),
+            ],
+        )
+        .unwrap();
+        assert_eq!(
+            list_recent_players(&conn, 10).unwrap()[0].tags,
+            vec!["carry".to_string(), "smurf".to_string()]
+        );
+
+        set_player_tags(&conn, "puuid-1", &[]).unwrap();
+        assert!(list_recent_players(&conn, 10).unwrap()[0].tags.is_empty());
     }
 
     #[test]

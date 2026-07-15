@@ -22,6 +22,7 @@ vi.mock("../lib/tauriApi", async (importOriginal) => {
       ...actual.tauriApi,
       verifyNotesPin: (...args: unknown[]) => verifyNotesPin(...args),
       savePlayerNotes: vi.fn().mockResolvedValue(undefined),
+      savePlayerTags: vi.fn().mockResolvedValue(undefined),
     },
   };
 });
@@ -37,7 +38,7 @@ describe("PlayerNotesPanel — PIN unlock", () => {
   });
 
   it("hides the notes behind a PIN prompt when notes_pin_enabled is true", () => {
-    render(<PlayerNotesPanel puuid="abc" initialNotes="secret note" />);
+    render(<PlayerNotesPanel puuid="abc" initialNotes="secret note" initialTags={[]} />);
 
     expect(screen.getByText("Verrouillé")).toBeInTheDocument();
     expect(screen.queryByText("secret note")).not.toBeInTheDocument();
@@ -47,7 +48,7 @@ describe("PlayerNotesPanel — PIN unlock", () => {
     verifyNotesPin.mockResolvedValue(true);
     const user = userEvent.setup();
 
-    render(<PlayerNotesPanel puuid="abc" initialNotes="secret note" />);
+    render(<PlayerNotesPanel puuid="abc" initialNotes="secret note" initialTags={[]} />);
 
     await user.type(screen.getByPlaceholderText("PIN"), "1234");
     await user.click(screen.getByRole("button", { name: "Déverrouiller" }));
@@ -60,7 +61,7 @@ describe("PlayerNotesPanel — PIN unlock", () => {
     verifyNotesPin.mockResolvedValue(false);
     const user = userEvent.setup();
 
-    render(<PlayerNotesPanel puuid="abc" initialNotes="secret note" />);
+    render(<PlayerNotesPanel puuid="abc" initialNotes="secret note" initialTags={[]} />);
 
     await user.type(screen.getByPlaceholderText("PIN"), "0000");
     await user.click(screen.getByRole("button", { name: "Déverrouiller" }));
@@ -71,7 +72,7 @@ describe("PlayerNotesPanel — PIN unlock", () => {
 
   it("skips the PIN prompt entirely when notes_pin_enabled is false", () => {
     notesPinEnabled = false;
-    render(<PlayerNotesPanel puuid="abc" initialNotes="secret note" />);
+    render(<PlayerNotesPanel puuid="abc" initialNotes="secret note" initialTags={[]} />);
 
     expect(screen.queryByText("Verrouillé")).not.toBeInTheDocument();
     expect(screen.getByDisplayValue("secret note")).toBeInTheDocument();

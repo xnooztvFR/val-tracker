@@ -845,7 +845,13 @@ export interface TrackedPlayer {
   is_self: boolean;
   /** Backlog #12 : note libre (tags "smurf"/"toxique"/"duo régulier"...), `null` si vide. */
   notes: string | null;
+  /** TODO stats & analyse joueur : tags structurés, liste fermée — voir `PLAYER_TAGS`. */
+  tags: PlayerTag[];
 }
+
+/** Miroir de `db::players::ALLOWED_TAGS` côté Rust. */
+export const PLAYER_TAGS = ["smurf", "toxic", "carry", "regular_duo"] as const;
+export type PlayerTag = (typeof PLAYER_TAGS)[number];
 
 /** Backlog #13 : objectif de progression ("atteindre Diamant 2") pour un joueur suivi.
  * Backlog #55 : étendu aux objectifs hebdo custom via `goal_type` — `target_tier`/
@@ -1096,6 +1102,7 @@ export const tauriApi = {
   resetLocalStats: () => invoke<void>("reset_local_stats"),
   savePlayerNotes: (puuid: string, notes: string) =>
     invoke<void>("save_player_notes", { puuid, notes }),
+  savePlayerTags: (puuid: string, tags: PlayerTag[]) => invoke<void>("save_player_tags", { puuid, tags }),
   getProgressionGoal: (puuid: string) =>
     invoke<ProgressionGoal | null>("get_progression_goal", { puuid }),
   saveProgressionGoal: (

@@ -216,6 +216,7 @@ fn main() {
             commands::list_rank_snapshots,
             commands::reset_local_stats,
             commands::save_player_notes,
+            commands::save_player_tags,
             commands::get_progression_goal,
             commands::save_progression_goal,
             commands::clear_progression_goal,

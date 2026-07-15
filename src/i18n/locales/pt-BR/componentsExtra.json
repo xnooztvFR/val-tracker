@@ -55,7 +55,13 @@
     "pinLocked": "Muitas tentativas incorretas. Tente novamente em {{seconds}}s.",
     "saved": "Salvo",
     "saving": "…",
-    "notesPlaceholder": "Smurf, duo frequente, jogar de novo..."
+    "notesPlaceholder": "Smurf, duo frequente, jogar de novo...",
+    "tags": {
+      "smurf": "Smurf",
+      "toxic": "Tóxico",
+      "carry": "Carry",
+      "regular_duo": "Duo frequente"
+    }
   },
   "onboardingWizard": {
     "step1": {

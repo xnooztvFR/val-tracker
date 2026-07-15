@@ -39,6 +39,7 @@ export default function HomeGoalsSection({
           key={`${puuid}-${trackedPlayerLoaded ? "loaded" : "pending"}`}
           puuid={puuid}
           initialNotes={trackedPlayer?.notes ?? null}
+          initialTags={trackedPlayer?.tags ?? []}
         />
         <WeeklyGoalsPanel key={`weekly-${puuid}`} puuid={puuid} matches={matches} />
       </div>

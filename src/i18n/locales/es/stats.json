@@ -132,6 +132,15 @@
     "title": "Duo y Squad",
     "description": "Winrate con tus compañeros de party, calculado a medida que consultas partidas en Historial — consulta más partidas para afinar estas estadísticas.",
     "emptyMessage": "Todavía no hay suficientes datos — abre algunas partidas en la pestaña Historial donde estuvieras en party para ver aparecer a tus compañeros aquí.",
+    "tagFilter": {
+      "all": "Todos los tags",
+      "tags": {
+        "smurf": "Smurf",
+        "toxic": "Tóxico",
+        "carry": "Carry",
+        "regular_duo": "Dúo habitual"
+      }
+    },
     "statsLine": "{{wins}} victorias / {{played}} partidas juntos",
     "squad": {
       "title": "Squad (3 jugadores)",

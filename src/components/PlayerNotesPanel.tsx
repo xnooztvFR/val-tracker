@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Panel from "./Panel";
-import { isCommandError, tauriApi } from "../lib/tauriApi";
+import { isCommandError, PLAYER_TAGS, tauriApi, type PlayerTag } from "../lib/tauriApi";
 import { useSettingsStore } from "../store/settingsStore";
 
 interface PlayerNotesPanelProps {
   puuid: string;
   initialNotes: string | null;
+  initialTags: PlayerTag[];
 }
 
 const SAVE_DEBOUNCE_MS = 800;
@@ -20,10 +21,11 @@ const SAVE_DEBOUNCE_MS = 800;
  * état local, pas persistant : redemandé à chaque remount (changement de profil via `key`
  * côté Home.tsx, ou fermeture/réouverture de l'app), pensé pour l'usage stream/écran
  * partagé plutôt que comme un vrai coffre-fort. */
-export default function PlayerNotesPanel({ puuid, initialNotes }: PlayerNotesPanelProps) {
+export default function PlayerNotesPanel({ puuid, initialNotes, initialTags }: PlayerNotesPanelProps) {
   const { t } = useTranslation("componentsExtra");
   const notesPinEnabled = useSettingsStore((s) => s.settings?.notes_pin_enabled ?? false);
   const [value, setValue] = useState(initialNotes ?? "");
+  const [tags, setTags] = useState<PlayerTag[]>(initialTags);
   const [saved, setSaved] = useState(true);
   const [unlocked, setUnlocked] = useState(!notesPinEnabled);
   const [pinInput, setPinInput] = useState("");
@@ -45,6 +47,12 @@ export default function PlayerNotesPanel({ puuid, initialNotes }: PlayerNotesPan
       await tauriApi.savePlayerNotes(puuid, next);
       setSaved(true);
     }, SAVE_DEBOUNCE_MS);
+  }
+
+  async function toggleTag(tag: PlayerTag) {
+    const next = tags.includes(tag) ? tags.filter((t) => t !== tag) : [...tags, tag];
+    setTags(next);
+    await tauriApi.savePlayerTags(puuid, next);
   }
 
   async function handleUnlock() {
@@ -126,6 +134,23 @@ export default function PlayerNotesPanel({ puuid, initialNotes }: PlayerNotesPan
         maxLength={2000}
         className="w-full resize-none border border-line bg-base px-2.5 py-2 text-sm text-hi placeholder:text-lo/60 focus:border-accent focus:outline-none"
       />
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {PLAYER_TAGS.map((tag) => {
+          const active = tags.includes(tag);
+          return (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => toggleTag(tag)}
+              className={`border px-2 py-1 text-[10px] uppercase tracking-hud transition-colors ${
+                active ? "border-accent text-accent" : "border-line text-lo hover:border-accent/60 hover:text-hi"
+              }`}
+            >
+              {t(`playerNotesPanel.tags.${tag}`)}
+            </button>
+          );
+        })}
+      </div>
     </Panel>
   );
 }
