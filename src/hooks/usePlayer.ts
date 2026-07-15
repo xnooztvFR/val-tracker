@@ -2,11 +2,19 @@ import { useQuery } from "@tanstack/react-query";
 
 import { tauriApi } from "../lib/tauriApi";
 
+// `staleTime` alignés sur les TTL SQLite côté Rust (`api/henrik/mod.rs::TTL_ACCOUNT`/
+// `TTL_MMR`) : sans ça, React Query considère la donnée périmée dès qu'un composant se
+// remonte (staleTime par défaut = 0) et redéclenche un `invoke()` alors que le cache Rust
+// aurait de toute façon servi la même donnée fraîche — un aller-retour IPC inutile.
+const ACCOUNT_STALE_TIME_MS = 60 * 60_000; // TTL_ACCOUNT = 1h
+const MMR_STALE_TIME_MS = 10 * 60_000; // TTL_MMR = 10 min
+
 export function useAccount(name: string | undefined, tag: string | undefined) {
   return useQuery({
     queryKey: ["account", name, tag],
     queryFn: () => tauriApi.fetchAccount(name!, tag!),
     enabled: Boolean(name && tag),
+    staleTime: ACCOUNT_STALE_TIME_MS,
   });
 }
 
@@ -21,6 +29,7 @@ export function useMmr(params: {
     queryKey: ["mmr", puuid, region, name, tag],
     queryFn: () => tauriApi.fetchMmr(puuid!, region!, name!, tag!),
     enabled: Boolean(puuid && region && name && tag),
+    staleTime: MMR_STALE_TIME_MS,
   });
 }
 

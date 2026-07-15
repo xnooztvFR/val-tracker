@@ -4,17 +4,36 @@
 //! (voir idée backlog #49).
 //!
 //! Pas de vraie rotation : un seul fichier, tronqué (recréé vide) au démarrage suivant
-//! s'il dépasse `MAX_LOG_BYTES` — suffisant pour du support/debug ponctuel sur un projet
-//! solo, pas pensé pour de la télémétrie long terme.
+//! s'il dépasse `MAX_LOG_BYTES`, ET vérifié périodiquement en cours de session (toutes les
+//! `SIZE_CHECK_EVERY` lignes écrites, voir `write_line`) pour qu'une session unique très
+//! verbeuse ne puisse pas dépasser la limite indéfiniment sans redémarrage — suffisant pour
+//! du support/debug ponctuel sur un projet solo, pas pensé pour de la télémétrie long terme.
 
 use std::io::Write;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::OnceLock;
 
 use tauri::{AppHandle, Manager};
 
 static LOG_PATH: OnceLock<PathBuf> = OnceLock::new();
 const MAX_LOG_BYTES: u64 = 2 * 1024 * 1024;
+
+/// Fréquence de la vérification de taille en cours de session — un `stat()` par ligne de
+/// log serait inutilement bavard, mais toutes les 200 lignes borne la dérive possible sans
+/// mesurer la taille à chaque écriture.
+const SIZE_CHECK_EVERY: u32 = 200;
+static WRITE_COUNT: AtomicU32 = AtomicU32::new(0);
+
+/// Tronque (recrée vide) le fichier de log s'il dépasse `MAX_LOG_BYTES`. Best-effort :
+/// toute erreur est ignorée, un logger ne doit jamais faire planter l'app.
+fn truncate_if_oversized(path: &PathBuf) {
+    if let Ok(meta) = std::fs::metadata(path) {
+        if meta.len() > MAX_LOG_BYTES {
+            let _ = std::fs::File::create(path);
+        }
+    }
+}
 
 /// À appeler une fois au démarrage (`main.rs::setup`), une fois le dossier de données de
 /// l'app connu. Best-effort : si le dossier est inaccessible, les logs restent
@@ -27,11 +46,7 @@ pub fn init(app: &AppHandle) {
         return;
     }
     let path = dir.join("val-tracker.log");
-    if let Ok(meta) = std::fs::metadata(&path) {
-        if meta.len() > MAX_LOG_BYTES {
-            let _ = std::fs::remove_file(&path);
-        }
-    }
+    truncate_if_oversized(&path);
     let _ = LOG_PATH.set(path);
 }
 
@@ -40,6 +55,11 @@ pub fn init(app: &AppHandle) {
 /// doit jamais faire planter l'app qu'il journalise.
 pub fn write_line(line: &str) {
     let Some(path) = LOG_PATH.get() else { return };
+
+    if WRITE_COUNT.fetch_add(1, Ordering::Relaxed) % SIZE_CHECK_EVERY == 0 {
+        truncate_if_oversized(path);
+    }
+
     let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open(path) else {
         return;
     };

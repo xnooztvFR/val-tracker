@@ -19,6 +19,14 @@ use crate::AppState;
 /// vraiment le réseau plutôt que de retrouver son propre cache encore frais.
 const WATCH_INTERVAL: Duration = Duration::from_secs(200);
 
+/// Cadence appliquée une fois la fenêtre principale restée hors focus pendant
+/// `DEEP_IDLE_THRESHOLD` ticks consécutifs — même philosophie que `DEEP_IDLE_INTERVAL` du
+/// poller `riot_local` (backlog #78) : ce watcher est le seul appel réseau périodique qui
+/// tourne même app en arrière-plan/minimisée, pas la peine de retaper le réseau toutes les
+/// 200s pendant des heures si personne ne regarde la fenêtre.
+const DEEP_IDLE_INTERVAL: Duration = Duration::from_secs(1200);
+const DEEP_IDLE_THRESHOLD: u32 = 5;
+
 pub fn start(app_handle: AppHandle) {
     tauri::async_runtime::spawn(run_loop(app_handle));
 }
@@ -26,7 +34,7 @@ pub fn start(app_handle: AppHandle) {
 async fn run_loop(app: AppHandle) {
     let mut ctx = WatchContext::default();
     loop {
-        tokio::time::sleep(WATCH_INTERVAL).await;
+        tokio::time::sleep(next_interval(&ctx)).await;
         tick(&app, &mut ctx).await;
     }
 }
@@ -39,9 +47,35 @@ struct WatchContext {
     /// initialise juste l'état connu, sinon un incident déjà en cours depuis avant le
     /// lancement de l'app déclencherait une notification à chaque redémarrage.
     initialized: bool,
+    /// Nombre de ticks consécutifs où la fenêtre principale n'avait pas le focus — bascule
+    /// vers `DEEP_IDLE_INTERVAL` au-delà de `DEEP_IDLE_THRESHOLD`, remis à zéro dès que la
+    /// fenêtre reprend le focus (voir mise à jour dans `tick`).
+    unfocused_ticks: u32,
+}
+
+fn next_interval(ctx: &WatchContext) -> Duration {
+    if ctx.unfocused_ticks >= DEEP_IDLE_THRESHOLD {
+        DEEP_IDLE_INTERVAL
+    } else {
+        WATCH_INTERVAL
+    }
+}
+
+/// `unwrap_or(true)` : si la fenêtre principale n'existe pas encore ou que l'état de focus
+/// n'est pas interrogeable (best-effort), on préfère rester à la cadence normale plutôt que
+/// de risquer de rater un incident faute d'avoir pu déterminer que l'app est bien au premier
+/// plan.
+fn is_main_window_focused(app: &AppHandle) -> bool {
+    app.get_webview_window("main").and_then(|w| w.is_focused().ok()).unwrap_or(true)
 }
 
 async fn tick(app: &AppHandle, ctx: &mut WatchContext) {
+    if is_main_window_focused(app) {
+        ctx.unfocused_ticks = 0;
+    } else {
+        ctx.unfocused_ticks = ctx.unfocused_ticks.saturating_add(1);
+    }
+
     let (enabled, api_key, region) = {
         let state = app.state::<AppState>();
         let conn = state.db.lock().await;

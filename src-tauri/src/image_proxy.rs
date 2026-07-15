@@ -16,6 +16,7 @@
 //! espace vide plutôt qu'un crash — cohérent avec le `onError` déjà en place sur ces images
 //! avant #100.
 
+use std::sync::OnceLock;
 use std::time::Duration;
 
 use anyhow::{bail, Context};
@@ -53,28 +54,34 @@ fn is_allowed_url(url: &reqwest::Url) -> bool {
         .any(|suffix| domain == *suffix || domain.ends_with(&format!(".{suffix}")))
 }
 
+static HTTP_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+
+fn http_client() -> &'static reqwest::Client {
+    HTTP_CLIENT.get_or_init(|| {
+        reqwest::Client::builder()
+            .timeout(FETCH_TIMEOUT)
+            .redirect(reqwest::redirect::Policy::custom(|attempt| {
+                // Re-valide chaque hop de redirection avec les mêmes règles que l'URL
+                // initiale — sans ça, un CDN autorisé pourrait rediriger vers un hôte
+                // arbitraire et contourner l'allowlist.
+                if attempt.previous().len() > 5 || !is_allowed_url(attempt.url()) {
+                    attempt.stop()
+                } else {
+                    attempt.follow()
+                }
+            }))
+            .build()
+            .expect("construction du client HTTP images externes")
+    })
+}
+
 pub async fn fetch_as_data_uri(url: &str) -> anyhow::Result<String> {
     let parsed = reqwest::Url::parse(url).context("URL d'image invalide")?;
     if !is_allowed_url(&parsed) {
         bail!("URL refusée (https + domaine autorisé requis)");
     }
 
-    let client = reqwest::Client::builder()
-        .timeout(FETCH_TIMEOUT)
-        .redirect(reqwest::redirect::Policy::custom(|attempt| {
-            // Re-valide chaque hop de redirection avec les mêmes règles que l'URL
-            // initiale — sans ça, un CDN autorisé pourrait rediriger vers un hôte
-            // arbitraire et contourner l'allowlist.
-            if attempt.previous().len() > 5 || !is_allowed_url(attempt.url()) {
-                attempt.stop()
-            } else {
-                attempt.follow()
-            }
-        }))
-        .build()
-        .context("construction du client HTTP images externes")?;
-
-    let response = client
+    let response = http_client()
         .get(parsed)
         .send()
         .await

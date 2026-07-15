@@ -28,9 +28,23 @@ pub fn list_account_timeline(
 ) -> rusqlite::Result<Vec<AccountTimelineEvent>> {
     let mut events = Vec::new();
 
+    // Dédup des paires (tier, rr) consécutives poussée en SQL via `LAG()` (SQLite ≥ 3.25,
+    // disponible depuis longtemps dans le feature `bundled` de rusqlite) plutôt qu'en
+    // mémoire côté Rust : un compte "à soi" suivi longtemps avec l'auto-refresh périodique
+    // peut accumuler des milliers de lignes dans `rank_snapshots`, la dédup n'a pas besoin
+    // de toutes les charger. `IS NOT` (et pas `!=`) traite deux NULL comme égaux, ce qui
+    // reproduit exactement la comparaison `Option<i64>` faite précédemment côté Rust.
     let mut stmt = conn.prepare(
-        "SELECT tier, tier_patched, rr, recorded_at FROM rank_snapshots
-         WHERE puuid = ?1 ORDER BY recorded_at ASC",
+        "SELECT tier, tier_patched, rr, recorded_at FROM (
+             SELECT tier, tier_patched, rr, recorded_at,
+                    LAG(tier) OVER w AS prev_tier,
+                    LAG(rr) OVER w AS prev_rr
+             FROM rank_snapshots
+             WHERE puuid = ?1
+             WINDOW w AS (ORDER BY recorded_at ASC)
+         )
+         WHERE prev_tier IS NOT tier OR prev_rr IS NOT rr
+         ORDER BY recorded_at ASC",
     )?;
     let snapshot_rows = stmt.query_map([puuid], |row| {
         Ok((
@@ -41,13 +55,8 @@ pub fn list_account_timeline(
         ))
     })?;
 
-    let mut last: Option<(i64, Option<i64>)> = None;
     for row in snapshot_rows {
         let (tier, tier_patched, rr, recorded_at) = row?;
-        if last == Some((tier, rr)) {
-            continue;
-        }
-        last = Some((tier, rr));
         events.push(AccountTimelineEvent {
             event_type: "rank_change".to_string(),
             occurred_at: recorded_at,
