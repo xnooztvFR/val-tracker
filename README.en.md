@@ -16,7 +16,7 @@ with a small overlay showing your lobby's ranks.
 - Search a player by Riot ID, full profile (current rank, RR history, peak rank reached)
 - Match history, match detail (economy, kills, accuracy per round)
 - Stats by map, by agent, and by agent role (Duelist/Initiator/Controller/Sentinel)
-- Progression goals ("reach Diamond 2") with a progress bar
+- Progression goals (example: "reach Diamond 2") with a progress bar
 - Automatic grouping of matches into play sessions
 - Performance heatmap by day of week / hour
 - Season-over-season progression comparison
