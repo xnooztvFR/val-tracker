@@ -15,22 +15,56 @@ automatique de partie avec un petit overlay affichant le rank de ton lobby.
 **Profil & progression**
 - Recherche d'un joueur par Riot ID, profil complet (rank actuel, historique de RR, plus
   haut rank atteint)
-- Historique de matchs, détail de match (économie, kills, précision par round)
-- Stats par carte, par agent et par rôle d'agent (Duelliste/Initiateur/Contrôleur/Sentinelle)
-- Objectifs de progression (exemple: "atteindre Diamant 2") avec barre de progression
+- Historique de matchs, détail de match (économie, kills, précision par round), winrate
+  Attaque/Défense par match, et rapport de match détaillé (éco/force/full buy round par
+  round, meilleurs/pires rounds)
+- Stats par carte, par agent et par rôle d'agent (Duelliste/Initiateur/Contrôleur/Sentinelle),
+  avec comparaison de tes stats du match à ta moyenne perso sur cette carte précise
+- Objectifs de progression (exemple: "atteindre Diamant 2") avec barre de progression, plus
+  des objectifs hebdomadaires personnalisés (ex. "10 matchs cette semaine", "winrate ≥ 55%")
 - Regroupement automatique des matchs par session de jeu
 - Heatmap de performance par jour de la semaine / heure
 - Comparaison de progression entre saisons
 - Comparaison côte à côte de deux joueurs (VS)
-- Winrate en duo et en squad (3 joueurs) basé sur les parties jouées ensemble
-- Notes personnelles sur un joueur suivi
+- Winrate en solo queue vs en party, en duo et en squad (3 joueurs) basé sur les parties
+  jouées ensemble, filtrable par récence (30j/90j/tout) et par tag posé sur tes coéquipiers
+  (smurf, toxique, carry, duo régulier...)
+- Stats de rivalité contre un adversaire donné (winrate face à lui), avec recherche
+  rétroactive par Riot ID qui repeuple l'historique depuis les matchs déjà en cache, sans
+  requête réseau supplémentaire
+- Frise chronologique des évènements marquants du compte suivi (changements de rank...)
+- Position dans le classement compétitif régional en percentile (ex. "Top 12% des
+  Immortal 2"), affichée pour les tiers Immortal/Radiant
+- Notes personnelles sur un joueur suivi, verrouillables par PIN (chiffré DPAPI) pour un
+  partage d'écran ou un stream sans exposer des tags sensibles
+- Suivi de plusieurs comptes "à soi" (pas de RSO Riot possible), avec suggestion automatique
+  basée sur le Riot ID détecté localement
+- Taille d'échantillon d'analyse (20/50/100 derniers matchs) réglable et cohérente sur les
+  écrans Accueil, Tendances, Agents et Cartes
 - Export CSV/JSON de l'historique de matchs
 
 **En jeu**
-- Détection automatique de partie via le client Riot local, sans rien lancer manuellement
-- Overlay always-on-top affichant le rank des joueurs détectés (mode compact ou détaillé)
+- Détection automatique de partie via le client Riot local, sans rien lancer manuellement,
+  avec un indicateur d'état permanent (désactivée / active hors-jeu / partie détectée) et un
+  bandeau d'état des files d'attente Riot (compétitif, non classé, swiftplay...)
+- Overlay always-on-top affichant le rank des joueurs détectés (mode compact, détaillé ou
+  mini), choix du moniteur d'affichage, alerte configurable en cas d'écart de rang important
+  avec un coéquipier
 - Suggestion de tes agents perso les plus performants pendant la sélection d'agents
-- Rich Presence Discord (montre ce que tu fais dans l'app comme statut Discord)
+- Rich Presence Discord (montre ce que tu fais dans l'app comme statut Discord), avec
+  possibilité d'utiliser ton propre Client ID Discord
+
+**Compétitif & esport**
+- Classement compétitif régional avec recherche directe d'un Riot ID dans tout le classement
+  (pas juste la page affichée), badges "banni" et joueurs anonymisés relayés depuis Riot
+- Mode Premier : recherche d'équipes par nom, fiche équipe avec couleurs de personnalisation,
+  bilan V/D et rounds gagnés/perdus, historique complet de saison (matchs de ligue et de
+  tournoi avec évolution des points match par match)
+- Explorateur esport VLR : calendrier des matchs pro par jour/ligue, navigateur d'événements
+  filtrable par région (12 régions/circuits) et statut, détail d'événement et de match
+  (boxscore par map : rating, ACS, K/D/A, ADR, KAST%, HS% par joueur), fiches joueurs pro
+  (stats par agent filtrables par période) et fiches équipes pro (roster, palmarès en
+  tournois, gains) — tout interconnecté par navigation
 
 **Confort**
 - Favoris et historique de recherche, réorganisables par glisser-déposer ; onglets de
@@ -39,14 +73,22 @@ automatique de partie avec un petit overlay affichant le rank de ton lobby.
 - Alertes configurables (série de défaites, rappel d'inactivité, changement de rank)
 - Filtres par résultat/agent/carte dans l'historique de matchs ; tooltips "?" sur les stats
   avancées (ADR, HS%, économie...)
-- Copier le Riot ID en un clic ; export d'une "carte de visite" du profil (image PNG,
-  partageable Discord) en plus du récap de match existant
+- Copier le Riot ID en un clic ; export en image PNG (copiable direct dans le presse-papiers
+  pour Discord, ou téléchargeable) d'une "carte de visite" du profil, d'un récap de match, ou
+  d'un récap de période (semaine/mois : bilan V/D, winrate, K/D, HS%, ACS, agent le plus
+  joué, évolution de rang sur la période) — cartes générées dans le thème/accent actifs
 - Thème clair/sombre, couleur d'accent et densité d'affichage (confortable/compacte)
-  personnalisables
+  personnalisables ; app disponible en français, anglais, espagnol et portugais (Brésil)
 - Démarrage automatique avec Windows ; raccourcis clavier globaux (afficher/masquer la
-  fenêtre principale, mode focus pour un partage d'écran propre)
-- Changelog "Quoi de neuf" affiché automatiquement après une mise à jour
-- Mise à jour automatique signée, classement compétitif, mode Premier, actualités esport (VLR)
+  fenêtre principale, mode focus pour un partage d'écran propre) reconfigurables pour éviter
+  les conflits avec d'autres applis
+- Prévisualisation d'un code de viseur (crosshair) Valorant collé
+- Changelog "Quoi de neuf" affiché automatiquement après une mise à jour, avec historique
+  complet consultable et wizard d'accueil rejouable à tout moment
+- Dashboard "Santé" (cache, latence réseau), diagnostics des tâches de fond et consultation
+  des logs récents, tous optionnels et 100% locaux
+- Export ou réinitialisation complète des données locales stockées
+- Mise à jour automatique signée (vérification double : signature Ed25519 + hash SHA256)
 
 ## Installation
 
