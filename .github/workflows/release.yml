@@ -56,10 +56,18 @@ jobs:
       # des variables d'env, pour rester un seul et même script entre CI et poste local.
       - name: Write updater signing key from secrets
         shell: pwsh
+        # Les secrets passent par `env:` (jamais interpolés directement dans `run:`) — une
+        # substitution `${{ }}` inline colle le texte brut dans le script avant exécution,
+        # ce qui casse dès qu'il contient un guillemet et ouvre une injection de commande
+        # si le contenu est un jour hostile. `$env:VAR` lit la valeur sans la repasser par
+        # le parseur PowerShell.
+        env:
+          TAURI_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           New-Item -ItemType Directory -Force "$env:USERPROFILE\.tauri" | Out-Null
-          Set-Content -Path "$env:USERPROFILE\.tauri\val-tracker.key" -Value "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" -NoNewline
-          Set-Content -Path "$env:USERPROFILE\.tauri\val-tracker.key.password.txt" -Value "${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}" -NoNewline
+          Set-Content -Path "$env:USERPROFILE\.tauri\val-tracker.key" -Value $env:TAURI_KEY -NoNewline
+          Set-Content -Path "$env:USERPROFILE\.tauri\val-tracker.key.password.txt" -Value $env:TAURI_KEY_PASSWORD -NoNewline
 
       # Le certificat Authenticode auto-signé (voir CLAUDE.md > Signature) doit être importé
       # dans le magasin Windows du runner avec le même thumbprint que celui déjà en dur dans
@@ -68,10 +76,13 @@ jobs:
       # généré à la volée.
       - name: Import Authenticode certificate from secrets
         shell: pwsh
+        env:
+          CODESIGN_PFX_BASE64: ${{ secrets.CODESIGN_PFX_BASE64 }}
+          CODESIGN_PFX_PASSWORD: ${{ secrets.CODESIGN_PFX_PASSWORD }}
         run: |
           $pfxPath = "$env:RUNNER_TEMP\val-tracker-codesign.pfx"
-          [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String("${{ secrets.CODESIGN_PFX_BASE64 }}"))
-          $securePassword = ConvertTo-SecureString "${{ secrets.CODESIGN_PFX_PASSWORD }}" -AsPlainText -Force
+          [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:CODESIGN_PFX_BASE64))
+          $securePassword = ConvertTo-SecureString $env:CODESIGN_PFX_PASSWORD -AsPlainText -Force
           Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $securePassword
           Remove-Item $pfxPath
 
@@ -98,9 +109,12 @@ jobs:
 
       - name: Write changelog notes
         shell: pwsh
+        env:
+          NOTES_FR: ${{ inputs.notes_fr }}
+          NOTES_EN: ${{ inputs.notes_en }}
         run: |
-          Set-Content -Path "$env:RUNNER_TEMP\notes-fr.md" -Value '${{ inputs.notes_fr }}' -NoNewline
-          Set-Content -Path "$env:RUNNER_TEMP\notes-en.md" -Value '${{ inputs.notes_en }}' -NoNewline
+          Set-Content -Path "$env:RUNNER_TEMP\notes-fr.md" -Value $env:NOTES_FR -NoNewline
+          Set-Content -Path "$env:RUNNER_TEMP\notes-en.md" -Value $env:NOTES_EN -NoNewline
 
       - name: Build and publish draft release
         shell: pwsh
