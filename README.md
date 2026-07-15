@@ -17,7 +17,7 @@ automatique de partie avec un petit overlay affichant le rank de ton lobby.
   haut rank atteint)
 - Historique de matchs, détail de match (économie, kills, précision par round)
 - Stats par carte, par agent et par rôle d'agent (Duelliste/Initiateur/Contrôleur/Sentinelle)
-- Objectifs de progression ("atteindre Diamant 2") avec barre de progression
+- Objectifs de progression (exemple: "atteindre Diamant 2") avec barre de progression
 - Regroupement automatique des matchs par session de jeu
 - Heatmap de performance par jour de la semaine / heure
 - Comparaison de progression entre saisons
