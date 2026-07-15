@@ -978,6 +978,7 @@ export const tauriApi = {
     invoke<UsageMetricsSummary>("get_usage_metrics_summary"),
   getBackgroundDiagnostics: () =>
     invoke<TaskDiagnostic[]>("get_background_diagnostics"),
+  openDownloadsFolder: () => invoke<void>("open_downloads_folder"),
   saveUiTheme: (theme: string) => invoke<void>("save_ui_theme", { theme }),
   saveUiAccent: (accent: string) => invoke<void>("save_ui_accent", { accent }),
   saveUiLanguage: (language: string) => invoke<void>("save_ui_language", { language }),

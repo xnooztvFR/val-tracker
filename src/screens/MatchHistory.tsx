@@ -10,6 +10,7 @@ import ErrorState from "../components/ErrorState";
 import StaleDataBanner from "../components/StaleDataBanner";
 import EmptyState from "../components/EmptyState";
 import { formatSessionHeader, groupMatchesIntoSessions } from "../lib/format";
+import { downloadBlob } from "../lib/downloadFile";
 import i18n from "../i18n";
 import type { MatchEntry } from "../lib/tauriApi";
 
@@ -50,15 +51,6 @@ function Chip({
 function csvEscape(value: string | number): string {
   const str = String(value);
   return /[",\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
-}
-
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
 
 /** Backlog #20 : export CSV/JSON de l'échantillon de matchs actuellement chargé. */

@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { tauriApi } from "../../lib/tauriApi";
-import { buildLocalStatsExport, downloadTextFile, toCsv, toJson } from "../../lib/exportLocalStats";
+import { buildLocalStatsExport, toCsv, toJson } from "../../lib/exportLocalStats";
+import { downloadTextFile } from "../../lib/downloadFile";
 import { SectionTitle } from "./shared";
 
 export default function DataSection() {

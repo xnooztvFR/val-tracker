@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import type { PeriodRecap } from "../lib/stats";
 import { formatPercent, rankGlowColor } from "../lib/format";
+import { downloadDataUri } from "../lib/downloadFile";
 import i18n from "../i18n";
 
 const WIDTH = 900;
@@ -201,10 +202,7 @@ export default function PeriodRecapModal({ recap, playerLabel, onClose }: Period
   function handleDownload() {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const link = document.createElement("a");
-    link.download = `valorant-tracker-recap-${recap.period}.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
+    downloadDataUri(`valorant-tracker-recap-${recap.period}.png`, canvas.toDataURL("image/png"));
   }
 
   return (

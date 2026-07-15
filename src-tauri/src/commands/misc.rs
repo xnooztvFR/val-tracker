@@ -3,7 +3,7 @@
 //! métriques d'usage local (backlog #50), diagnostics des tâches de fond.
 
 use serde::Serialize;
-use tauri::State;
+use tauri::{Manager, State};
 
 use super::CommandError;
 use crate::AppState;
@@ -83,4 +83,22 @@ pub fn get_background_diagnostics(
     registry: State<'_, crate::diagnostics::TaskRegistry>,
 ) -> Vec<crate::diagnostics::TaskDiagnostic> {
     registry.snapshot()
+}
+
+// ---- Dossier Téléchargements ----
+
+/// Ouvre le dossier Téléchargements de l'utilisateur dans l'explorateur Windows — appelé
+/// après chaque export/téléchargement (CSV/JSON/PNG) déclenché côté frontend via un `<a
+/// download>` classique (voir `lib/downloadFile.ts`), qui atterrit silencieusement dans ce
+/// dossier sans qu'un utilisateur non technique sache où le chercher. Best-effort : une
+/// erreur ici (résolution du dossier, `explorer.exe` absent) ne doit jamais faire échouer
+/// l'export lui-même, déjà terminé côté webview au moment de l'appel.
+#[tauri::command]
+pub fn open_downloads_folder(app: tauri::AppHandle) -> Result<(), CommandError> {
+    let dir = app.path().download_dir().map_err(|e| CommandError::Unknown { message: e.to_string() })?;
+    std::process::Command::new("explorer")
+        .arg(dir)
+        .spawn()
+        .map_err(|e| CommandError::Unknown { message: e.to_string() })?;
+    Ok(())
 }

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 
 import type { ProfileCardData } from "../lib/profileCard";
+import { downloadDataUri } from "../lib/downloadFile";
 
 const WIDTH = 900;
 const HEIGHT = 506;
@@ -177,10 +178,10 @@ export default function ProfileCardModal({ data, onClose }: ProfileCardModalProp
   function handleDownload() {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const link = document.createElement("a");
-    link.download = `valorant-tracker-${data.playerName.toLowerCase()}-${data.playerTag.toLowerCase()}.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
+    downloadDataUri(
+      `valorant-tracker-${data.playerName.toLowerCase()}-${data.playerTag.toLowerCase()}.png`,
+      canvas.toDataURL("image/png"),
+    );
   }
 
   return (

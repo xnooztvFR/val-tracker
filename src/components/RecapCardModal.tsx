@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { MatchRecapData } from "../lib/recapCard";
+import { downloadDataUri } from "../lib/downloadFile";
 import i18n from "../i18n";
 
 const WIDTH = 900;
@@ -190,10 +191,7 @@ export default function RecapCardModal({ data, onClose }: RecapCardModalProps) {
   function handleDownload() {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const link = document.createElement("a");
-    link.download = `valorant-tracker-${data.map.toLowerCase()}.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
+    downloadDataUri(`valorant-tracker-${data.map.toLowerCase()}.png`, canvas.toDataURL("image/png"));
   }
 
   return (
