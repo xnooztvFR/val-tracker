@@ -5,6 +5,7 @@ mod api;
 mod applog;
 mod commands;
 mod db;
+mod diagnostics;
 mod discord_rpc;
 mod dpapi;
 mod image_proxy;
@@ -46,6 +47,7 @@ fn main() {
         .setup(|app| {
             let handle = app.handle().clone();
             applog::init(&handle);
+            applog::install_panic_hook();
 
             let db_path = db::resolve_db_path(&handle)?;
             let conn = db::init_db(&db_path)?;
@@ -75,6 +77,13 @@ fn main() {
             // lancement d'app, fenêtre de course avec le démarrage de l'app lui-même).
             tauri::async_runtime::spawn(overlay::window::warm_up(handle.clone()));
 
+            // Registre "dernier tick / dernière erreur" des tâches de fond (poller
+            // riot_local, status watcher, rappel d'inactivité, thread Discord RPC),
+            // consultable depuis Paramètres → Diagnostics — voir `diagnostics.rs`. Doit
+            // être managé avant le démarrage de ces tâches, qui l'alimentent dès leur
+            // premier tick.
+            app.manage(diagnostics::TaskRegistry::new());
+
             app.manage(riot_local::LiveState::new());
             // Backlog #81 : lien "voir le récap" déposé par le poller à la fin d'une
             // partie, consommé au focus de la fenêtre principale (voir plus bas).
@@ -89,7 +98,7 @@ fn main() {
             // de partie déjà calculé là-bas) et depuis Paramètres. Best-effort : géré même
             // si Discord n'est pas lancé ou si aucun client_id n'est configuré (voir
             // discord_rpc.rs).
-            app.manage(discord_rpc::spawn());
+            app.manage(discord_rpc::spawn(handle.clone()));
 
             // V3 — watcher de statut serveur/file d'attente : opt-in (settings::
             // AppSettings::status_watcher_enabled), voir status_watcher.rs.
@@ -148,6 +157,7 @@ fn main() {
             commands::save_status_watcher_enabled,
             commands::save_usage_metrics_enabled,
             commands::get_usage_metrics_summary,
+            commands::get_background_diagnostics,
             commands::save_ui_theme,
             commands::save_ui_accent,
             commands::save_ui_language,

@@ -17,6 +17,7 @@ import UpdatesSection from "./settings/UpdatesSection";
 import DataSection from "./settings/DataSection";
 import LogsSection from "./settings/LogsSection";
 import HealthSection from "./settings/HealthSection";
+import DiagnosticsSection from "./settings/DiagnosticsSection";
 import AboutSection from "./settings/AboutSection";
 
 // Regroupement en 6 catégories (au lieu de 13) : chaque page peut empiler plusieurs
@@ -192,6 +193,8 @@ export default function Settings() {
               enabled={settings?.usage_metrics_enabled ?? false}
               onChange={setUsageMetricsEnabled}
             />
+            <SectionDivider />
+            <DiagnosticsSection />
           </div>
         )}
         {category === "about" && <AboutSection />}

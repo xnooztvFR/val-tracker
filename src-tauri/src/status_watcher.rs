@@ -70,6 +70,7 @@ fn is_main_window_focused(app: &AppHandle) -> bool {
 }
 
 async fn tick(app: &AppHandle, ctx: &mut WatchContext) {
+    crate::diagnostics::record_tick(app, crate::diagnostics::STATUS_WATCHER);
     if is_main_window_focused(app) {
         ctx.unfocused_ticks = 0;
     } else {
@@ -104,7 +105,7 @@ async fn tick(app: &AppHandle, ctx: &mut WatchContext) {
     let state = app.state::<AppState>();
     let is_first_pass = !ctx.initialized;
 
-    if let Ok(status) = crate::api::henrik::endpoints::get_status(
+    match crate::api::henrik::endpoints::get_status(
         &state.db,
         &state.henrik,
         Some(&api_key),
@@ -113,21 +114,24 @@ async fn tick(app: &AppHandle, ctx: &mut WatchContext) {
     )
     .await
     {
-        for incident in status.data.incidents.iter().chain(status.data.maintenances.iter()) {
-            let Some(id) = incident.id else { continue };
-            let is_new = ctx.known_incident_ids.insert(id);
-            if is_new && !is_first_pass {
-                let _ = app
-                    .notification()
-                    .builder()
-                    .title(format!("Incident Riot — {}", region.to_uppercase()))
-                    .body(incident_title(incident))
-                    .show();
+        Err(err) => crate::diagnostics::record_error(app, crate::diagnostics::STATUS_WATCHER, &err),
+        Ok(status) => {
+            for incident in status.data.incidents.iter().chain(status.data.maintenances.iter()) {
+                let Some(id) = incident.id else { continue };
+                let is_new = ctx.known_incident_ids.insert(id);
+                if is_new && !is_first_pass {
+                    let _ = app
+                        .notification()
+                        .builder()
+                        .title(format!("Incident Riot — {}", region.to_uppercase()))
+                        .body(incident_title(incident))
+                        .show();
+                }
             }
         }
     }
 
-    if let Ok(queues) = crate::api::henrik::endpoints::get_queue_status(
+    match crate::api::henrik::endpoints::get_queue_status(
         &state.db,
         &state.henrik,
         Some(&api_key),
@@ -136,26 +140,29 @@ async fn tick(app: &AppHandle, ctx: &mut WatchContext) {
     )
     .await
     {
-        let mut currently_disabled = HashSet::new();
-        for q in &queues.data {
-            if q.enabled == Some(false) {
-                if let Some(mode) = &q.mode {
-                    currently_disabled.insert(mode.clone());
+        Err(err) => crate::diagnostics::record_error(app, crate::diagnostics::STATUS_WATCHER, &err),
+        Ok(queues) => {
+            let mut currently_disabled = HashSet::new();
+            for q in &queues.data {
+                if q.enabled == Some(false) {
+                    if let Some(mode) = &q.mode {
+                        currently_disabled.insert(mode.clone());
+                    }
                 }
             }
-        }
 
-        if !is_first_pass {
-            for mode in ctx.disabled_queues.difference(&currently_disabled) {
-                let _ = app
-                    .notification()
-                    .builder()
-                    .title("File d'attente rouverte")
-                    .body(format!("{mode} est de nouveau disponible sur {}.", region.to_uppercase()))
-                    .show();
+            if !is_first_pass {
+                for mode in ctx.disabled_queues.difference(&currently_disabled) {
+                    let _ = app
+                        .notification()
+                        .builder()
+                        .title("File d'attente rouverte")
+                        .body(format!("{mode} est de nouveau disponible sur {}.", region.to_uppercase()))
+                        .show();
+                }
             }
+            ctx.disabled_queues = currently_disabled;
         }
-        ctx.disabled_queues = currently_disabled;
     }
 
     ctx.initialized = true;

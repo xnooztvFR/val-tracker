@@ -242,6 +242,7 @@ fn handle_lockfile_read(
 }
 
 async fn tick(app: &AppHandle, ctx: &mut PollContext) {
+    crate::diagnostics::record_tick(app, crate::diagnostics::RIOT_LOCAL_POLLER);
     if ctx.startup_grace_ticks > 0 {
         ctx.startup_grace_ticks -= 1;
     }
@@ -274,6 +275,7 @@ async fn tick(app: &AppHandle, ctx: &mut PollContext) {
             }
             Err(err) => {
                 crate::applog!("[riot_local] échec fetch_local_puuid: {err:#}");
+                crate::diagnostics::record_error(app, crate::diagnostics::RIOT_LOCAL_POLLER, &err);
                 on_local_api_failure(app, ctx, &settings).await;
                 return;
             }
@@ -292,6 +294,7 @@ async fn tick(app: &AppHandle, ctx: &mut PollContext) {
         }
         Err(err) => {
             crate::applog!("[riot_local] échec fetch_game_state: {err:#}");
+            crate::diagnostics::record_error(app, crate::diagnostics::RIOT_LOCAL_POLLER, &err);
             on_local_api_failure(app, ctx, &settings).await;
             return;
         }

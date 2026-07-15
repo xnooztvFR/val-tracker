@@ -187,7 +187,25 @@
     "networkCalls": "Network calls (7d)",
     "networkCallsHint": "Cache missed or stale, Henrik request made",
     "apiErrors": "API errors (7d)",
-    "apiErrorsHint": "Rate limit, circuit breaker, network failure..."
+    "apiErrorsHint": "Rate limit, circuit breaker, network failure...",
+    "latencyTitle": "Network request latency (7d)",
+    "latencyAvg": "Average: {{ms}} ms",
+    "latencyEmpty": "No network request measured over this period."
+  },
+  "diagnostics": {
+    "title": "Diagnostics",
+    "description": "Last tick / last error of the app's background tasks — useful for understanding why a best-effort feature (overlay, status watcher, inactivity reminder, Discord Rich Presence) seems silent.",
+    "refresh": "Refresh",
+    "refreshing": "Refreshing…",
+    "lastTick": "Last tick:",
+    "never": "never",
+    "noError": "No recent error",
+    "tasks": {
+      "riot_local_poller": "Match detection (Riot local API)",
+      "status_watcher": "Server status / queue watcher",
+      "inactivity_reminder": "Inactivity reminder",
+      "discord_rpc": "Discord Rich Presence"
+    }
   },
   "logs": {
     "title": "Logs",

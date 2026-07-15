@@ -50,6 +50,27 @@ pub fn init(app: &AppHandle) {
     let _ = LOG_PATH.set(path);
 }
 
+/// Installe un hook de panic qui journalise via `applog!` avant que le process ne meure.
+/// Le profil release a `panic = "abort"` (voir `Cargo.toml`) : un panic dans une tâche de
+/// fond (poller riot_local, thread Discord RPC, status watcher...) tuait le process sans
+/// laisser de trace consultable ailleurs que l'Observateur d'événements Windows. Ce hook
+/// s'exécute quand même avant l'abort — il ne l'empêche pas, il le rend juste visible dans
+/// le fichier de log déjà consultable depuis Paramètres → Logs. À appeler une seule fois,
+/// après `init` (pour que le fichier de log soit déjà prêt à recevoir l'écriture).
+pub fn install_panic_hook() {
+    let default_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let location = info
+            .location()
+            .map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column()))
+            .unwrap_or_else(|| "emplacement inconnu".to_string());
+        let thread = std::thread::current();
+        let thread_name = thread.name().unwrap_or("<sans nom>");
+        crate::applog!("[panic] thread '{thread_name}' à {location}: {info}");
+        default_hook(info);
+    }));
+}
+
 /// Écrit une ligne horodatée dans le fichier de log. No-op silencieux si `init` n'a pas
 /// été appelé ou si l'écriture échoue (verrou disque, dossier supprimé...) — un logger ne
 /// doit jamais faire planter l'app qu'il journalise.

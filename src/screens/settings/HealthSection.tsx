@@ -79,7 +79,47 @@ export default function HealthSection({ enabled, onChange }: HealthSectionProps)
               hint={t("health.apiErrorsHint")}
             />
           </div>
+
+          <LatencyHistogram summary={summary} />
         </>
+      )}
+    </div>
+  );
+}
+
+/** Backlog #50 (dashboard santé) : histogramme sommaire de la durée des requêtes réseau
+ * Henrik — un Henrik lent était auparavant indiscernable d'un Henrik normal dans ce
+ * dashboard, qui ne comptait que cache_hit/network_fetch/api_error sans mesurer de temps. */
+function LatencyHistogram({ summary }: { summary: UsageMetricsSummary | null }) {
+  const { t } = useTranslation("settings");
+  const buckets = summary?.duration_buckets ?? [];
+  const maxCount = Math.max(1, ...buckets.map((b) => b.count));
+  const hasData = buckets.some((b) => b.count > 0);
+
+  return (
+    <div className="space-y-2 border border-line p-3">
+      <div className="flex items-baseline justify-between">
+        <p className="hud-label text-[10px]">{t("health.latencyTitle")}</p>
+        {summary?.avg_duration_ms != null && (
+          <p className="text-xs text-lo">{t("health.latencyAvg", { ms: summary.avg_duration_ms })}</p>
+        )}
+      </div>
+
+      {!hasData ? (
+        <p className="text-xs text-lo">{t("health.latencyEmpty")}</p>
+      ) : (
+        <div className="flex items-end gap-2" style={{ height: 72 }}>
+          {buckets.map((bucket) => (
+            <div key={bucket.label} className="flex flex-1 flex-col items-center gap-1">
+              <div
+                className="w-full bg-accent/70"
+                style={{ height: `${Math.max(2, (bucket.count / maxCount) * 56)}px` }}
+                title={`${bucket.label}: ${bucket.count}`}
+              />
+              <span className="text-[9px] text-lo">{bucket.label}</span>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

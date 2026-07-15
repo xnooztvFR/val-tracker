@@ -28,10 +28,16 @@ async fn run_loop(app: AppHandle) {
 }
 
 async fn tick(app: &AppHandle) {
+    crate::diagnostics::record_tick(app, crate::diagnostics::INACTIVITY_REMINDER);
     let state = app.state::<AppState>();
     let conn = state.db.lock().await;
 
     let Ok(settings) = crate::settings::load_settings(&conn) else {
+        crate::diagnostics::record_error(
+            app,
+            crate::diagnostics::INACTIVITY_REMINDER,
+            "lecture des réglages échouée",
+        );
         return;
     };
     if !settings.inactivity_reminder_enabled {

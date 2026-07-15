@@ -187,7 +187,25 @@
     "networkCalls": "Appels réseau (7j)",
     "networkCallsHint": "Cache manqué ou périmé, requête Henrik effectuée",
     "apiErrors": "Erreurs API (7j)",
-    "apiErrorsHint": "Rate limit, circuit breaker, panne réseau..."
+    "apiErrorsHint": "Rate limit, circuit breaker, panne réseau...",
+    "latencyTitle": "Latence des requêtes réseau (7j)",
+    "latencyAvg": "Moyenne : {{ms}} ms",
+    "latencyEmpty": "Aucune requête réseau mesurée sur la période."
+  },
+  "diagnostics": {
+    "title": "Diagnostics",
+    "description": "Dernier tick / dernière erreur des tâches de fond de l'app — utile pour comprendre pourquoi une fonctionnalité best-effort (overlay, watcher de statut, rappel d'inactivité, Rich Presence Discord) semble muette.",
+    "refresh": "Actualiser",
+    "refreshing": "Actualisation…",
+    "lastTick": "Dernier tick :",
+    "never": "jamais",
+    "noError": "Aucune erreur récente",
+    "tasks": {
+      "riot_local_poller": "Détection de partie (API locale Riot)",
+      "status_watcher": "Watcher de statut serveur / file d'attente",
+      "inactivity_reminder": "Rappel d'inactivité",
+      "discord_rpc": "Rich Presence Discord"
+    }
   },
   "logs": {
     "title": "Logs",

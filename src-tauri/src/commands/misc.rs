@@ -1,6 +1,6 @@
 //! Regroupe les petites commandes standalone : logs consultables (backlog #49), vérification
 //! d'intégrité de l'updater (backlog #97), images externes VLR/esports (backlog #100),
-//! métriques d'usage local (backlog #50).
+//! métriques d'usage local (backlog #50), diagnostics des tâches de fond.
 
 use serde::Serialize;
 use tauri::State;
@@ -71,4 +71,16 @@ pub async fn get_usage_metrics_summary(
     let conn = state.db.lock().await;
     let since = chrono::Utc::now().timestamp() - USAGE_METRICS_WINDOW_SECS;
     Ok(crate::db::usage_metrics_summary(&conn, since)?)
+}
+
+// ---- Diagnostics des tâches de fond ----
+
+/// Dernier tick/dernière erreur des tâches de fond (poller riot_local, status watcher,
+/// rappel d'inactivité, thread Discord RPC) pour Paramètres → Diagnostics — rend les échecs
+/// best-effort silencieux réellement débogables sans lire le fichier de log brut.
+#[tauri::command]
+pub fn get_background_diagnostics(
+    registry: State<'_, crate::diagnostics::TaskRegistry>,
+) -> Vec<crate::diagnostics::TaskDiagnostic> {
+    registry.snapshot()
 }

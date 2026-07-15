@@ -14,6 +14,9 @@ use std::sync::mpsc::{channel, Sender};
 use std::thread;
 
 use discord_rich_presence::{activity, DiscordIpc, DiscordIpcClient};
+use tauri::AppHandle;
+
+use crate::diagnostics::{self, DISCORD_RPC};
 
 /// Activité à afficher — `None` sur les champs optionnels pour ne pas fixer d'image tant
 /// qu'on n'a pas d'assets uploadés côté Developer Portal (ceux-ci restent configurables
@@ -49,18 +52,21 @@ impl DiscordRpcHandle {
 }
 
 /// Démarre le thread IPC et renvoie un handle léger (clonable, juste un `Sender`) à
-/// enregistrer comme état géré par Tauri.
-pub fn spawn() -> DiscordRpcHandle {
+/// enregistrer comme état géré par Tauri. `app_handle` sert uniquement à alimenter le
+/// registre de diagnostics (dernier tick/dernière erreur, voir `diagnostics.rs`) depuis ce
+/// thread OS dédié, pas la runtime tokio.
+pub fn spawn(app_handle: AppHandle) -> DiscordRpcHandle {
     let (tx, rx) = channel::<RpcCommand>();
-    thread::spawn(move || run(rx));
+    thread::spawn(move || run(rx, app_handle));
     DiscordRpcHandle { tx }
 }
 
-fn run(rx: std::sync::mpsc::Receiver<RpcCommand>) {
+fn run(rx: std::sync::mpsc::Receiver<RpcCommand>, app_handle: AppHandle) {
     let mut client: Option<DiscordIpcClient> = None;
     let mut connected_client_id: Option<String> = None;
 
     while let Ok(cmd) = rx.recv() {
+        diagnostics::record_tick(&app_handle, DISCORD_RPC);
         match cmd {
             RpcCommand::Update { client_id, activity } => {
                 if connected_client_id.as_deref() != Some(client_id.as_str()) {
@@ -75,6 +81,7 @@ fn run(rx: std::sync::mpsc::Receiver<RpcCommand>) {
                         }
                         Err(err) => {
                             crate::applog!("[discord_rpc] connexion IPC impossible (Discord lancé ? client_id valide ?): {err}");
+                            diagnostics::record_error(&app_handle, DISCORD_RPC, &err);
                             continue;
                         }
                     }
@@ -92,6 +99,7 @@ fn run(rx: std::sync::mpsc::Receiver<RpcCommand>) {
                     let _ = c.close();
                     client = None;
                     connected_client_id = None;
+                    diagnostics::record_error(&app_handle, DISCORD_RPC, "pipe IPC cassée (set_activity)");
                 }
             }
             RpcCommand::Clear => {

@@ -770,10 +770,25 @@ export interface AppSettings {
   shortcut_main_window_toggle: string;
 }
 
+export interface LatencyBucket {
+  label: string;
+  count: number;
+}
+
+/** Dernier tick/dernière erreur d'une tâche de fond, pour Paramètres → Diagnostics. */
+export interface TaskDiagnostic {
+  name: string;
+  last_tick_at: number | null;
+  last_error: string | null;
+  last_error_at: number | null;
+}
+
 export interface UsageMetricsSummary {
   cache_hits: number;
   network_fetches: number;
   api_errors: number;
+  avg_duration_ms: number | null;
+  duration_buckets: LatencyBucket[];
 }
 
 /** Backlog #76 : un moniteur connecté, pour le sélecteur d'écran explicite de l'overlay. */
@@ -906,6 +921,8 @@ export const tauriApi = {
     invoke<void>("save_usage_metrics_enabled", { enabled }),
   getUsageMetricsSummary: () =>
     invoke<UsageMetricsSummary>("get_usage_metrics_summary"),
+  getBackgroundDiagnostics: () =>
+    invoke<TaskDiagnostic[]>("get_background_diagnostics"),
   saveUiTheme: (theme: string) => invoke<void>("save_ui_theme", { theme }),
   saveUiAccent: (accent: string) => invoke<void>("save_ui_accent", { accent }),
   saveUiLanguage: (language: string) => invoke<void>("save_ui_language", { language }),

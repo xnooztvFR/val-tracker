@@ -59,12 +59,18 @@ pub struct Fetched<T> {
 /// Backlog #50 : accumule un évènement de métrique d'usage local si l'utilisateur a
 /// activé `AppSettings::usage_metrics_enabled` — no-op sinon (défaut), pour ne pas payer
 /// une écriture SQLite à chaque appel Henrik quand personne ne regarde le dashboard.
-fn record_usage_if_enabled(conn: &Connection, kind: crate::db::UsageEventKind) {
+/// `duration_ms` mesure le temps de l'appel réseau (`None` pour un `CacheHit`, qui n'en a
+/// pas) — alimente l'histogramme de latence du dashboard santé.
+fn record_usage_if_enabled(
+    conn: &Connection,
+    kind: crate::db::UsageEventKind,
+    duration_ms: Option<i64>,
+) {
     let enabled = crate::settings::load_settings(conn)
         .map(|s| s.usage_metrics_enabled)
         .unwrap_or(false);
     if enabled {
-        let _ = crate::db::record_usage_event(conn, kind);
+        let _ = crate::db::record_usage_event(conn, kind, duration_ms);
     }
 }
 
@@ -81,7 +87,7 @@ pub(crate) async fn fetch_with_cache<T: DeserializeOwned>(
             let conn = db.lock().await;
             let cached = cache::get_fresh(&conn, path)?;
             if cached.is_some() {
-                record_usage_if_enabled(&conn, crate::db::UsageEventKind::CacheHit);
+                record_usage_if_enabled(&conn, crate::db::UsageEventKind::CacheHit, None);
             }
             cached
         };
@@ -97,8 +103,10 @@ pub(crate) async fn fetch_with_cache<T: DeserializeOwned>(
         }
     }
 
+    let network_started_at = std::time::Instant::now();
     match client.get_raw(path, api_key).await {
         Ok(body) => {
+            let duration_ms = network_started_at.elapsed().as_millis() as i64;
             // On parse AVANT de cacher : un payload qui ne respecte pas le schéma
             // attendu (changement d'API, réponse tronquée) ne doit jamais être écrit
             // dans api_cache, sinon il empoisonne le cache pour toute la durée du TTL
@@ -120,7 +128,7 @@ pub(crate) async fn fetch_with_cache<T: DeserializeOwned>(
             let fetched_at = {
                 let conn = db.lock().await;
                 cache::set(&conn, path, &body, ttl)?;
-                record_usage_if_enabled(&conn, crate::db::UsageEventKind::NetworkFetch);
+                record_usage_if_enabled(&conn, crate::db::UsageEventKind::NetworkFetch, Some(duration_ms));
                 chrono::Utc::now().timestamp()
             };
             Ok(Fetched {
@@ -133,9 +141,10 @@ pub(crate) async fn fetch_with_cache<T: DeserializeOwned>(
         // Un 404 est définitif ("joueur introuvable") : pas de repli sur un cache périmé.
         Err(HenrikError::NotFound) => Err(HenrikError::NotFound),
         Err(err) => {
+            let duration_ms = network_started_at.elapsed().as_millis() as i64;
             let stale = {
                 let conn = db.lock().await;
-                record_usage_if_enabled(&conn, crate::db::UsageEventKind::ApiError);
+                record_usage_if_enabled(&conn, crate::db::UsageEventKind::ApiError, Some(duration_ms));
                 cache::get_stale(&conn, path)?
             };
             match stale {

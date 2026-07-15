@@ -202,6 +202,11 @@ pub(crate) fn run_migrations(conn: &Connection) -> rusqlite::Result<()> {
     // Backlog #57 : date de dernière modification de la note perso, voir `set_player_notes`.
     add_column_if_missing(conn, "tracked_players", "notes_updated_at", "INTEGER")?;
 
+    // Histogramme de latence du dashboard santé : durée en ms des évènements
+    // NetworkFetch/ApiError (NULL pour CacheHit, qui n'a pas de latence réseau) — voir
+    // `metrics::usage_metrics_summary`.
+    add_column_if_missing(conn, "usage_metrics_events", "duration_ms", "INTEGER")?;
+
     conn.execute_batch(
         r#"
         -- Backlog #57 : marqueurs datés pour la frise "vie du compte" (objectifs hebdo
@@ -417,7 +422,7 @@ mod tests {
     #[test]
     fn reset_local_stats_also_clears_usage_metrics_events() {
         let conn = memory_conn();
-        metrics::record_usage_event(&conn, metrics::UsageEventKind::ApiError).unwrap();
+        metrics::record_usage_event(&conn, metrics::UsageEventKind::ApiError, None).unwrap();
 
         reset_local_stats(&conn).unwrap();
 
