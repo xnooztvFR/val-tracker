@@ -107,7 +107,9 @@
       "placeholder": "{{label}} — nome#tag",
       "submit": "Comparar",
       "addPlayer": "+ Adicionar jogador",
-      "removePlayer": "Remover este jogador"
+      "removePlayer": "Remover este jogador",
+      "compareMyAccounts": "Comparar minhas contas",
+      "compareMyAccountsDisabled": "Marque pelo menos 2 contas como \"suas\" (botão estrela) para usar esse atalho."
     },
     "error": {
       "format": "Formato esperado para cada jogador: nome#tag"
@@ -154,6 +156,11 @@
       }
     },
     "statsLine": "{{wins}} vitórias / {{played}} partidas juntos",
+    "recencyFilter": {
+      "all": "Todo o período",
+      "30d": "Últimos 30 dias",
+      "90d": "Últimos 90 dias"
+    },
     "squad": {
       "title": "Squad (3 jogadores)",
       "description": "Partidas em que você e dois companheiros específicos estavam na mesma party simultaneamente.",
@@ -163,7 +170,16 @@
       "title": "Rivalidade",
       "description": "Confronto direto contra adversários encontrados repetidamente, acumulado à medida que você consulta partidas no Histórico.",
       "statsLine": "{{wins}} vitórias / {{played}} confrontos diretos",
-      "emptyMessage": "Ainda nenhum rival detectado — abra mais partidas no Histórico para cruzar novamente com os mesmos adversários."
+      "emptyMessage": "Ainda nenhum rival detectado — abra mais partidas no Histórico para cruzar novamente com os mesmos adversários.",
+      "searchTitle": "Buscar um adversário",
+      "searchDescription": "Encontre um Riot ID nos detalhes de partida já em cache, sem nova chamada de rede.",
+      "searchPlaceholder": "Nome#Tag",
+      "searchButton": "Buscar",
+      "searchSearching": "Buscando…",
+      "searchFound_one": "{{count}} partida encontrada e adicionada à rivalidade.",
+      "searchFound_other": "{{count}} partidas encontradas e adicionadas à rivalidade.",
+      "searchNotFound": "Nenhuma partida em cache com esse jogador.",
+      "searchInvalid": "Formato esperado: Nome#Tag"
     }
   },
   "agentRoles": {

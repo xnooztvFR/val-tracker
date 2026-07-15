@@ -107,7 +107,9 @@
       "placeholder": "{{label}} — username#tag",
       "submit": "Compare",
       "addPlayer": "+ Add player",
-      "removePlayer": "Remove this player"
+      "removePlayer": "Remove this player",
+      "compareMyAccounts": "Compare my accounts",
+      "compareMyAccountsDisabled": "Mark at least 2 accounts as \"yours\" (star button) to use this shortcut."
     },
     "error": {
       "format": "Expected format for every player: username#tag"
@@ -154,6 +156,11 @@
       }
     },
     "statsLine": "{{wins}} wins / {{played}} matches together",
+    "recencyFilter": {
+      "all": "All time",
+      "30d": "Last 30 days",
+      "90d": "Last 90 days"
+    },
     "squad": {
       "title": "Squad (3 players)",
       "description": "Matches where you and two specific teammates were in the same party at the same time.",
@@ -163,7 +170,16 @@
       "title": "Rivalry",
       "description": "Head-to-head against opponents you've faced repeatedly, accumulated as you browse matches in History.",
       "statsLine": "{{wins}} wins / {{played}} head-to-head matches",
-      "emptyMessage": "No rival detected yet — open more matches in History to cross paths with the same opponents again."
+      "emptyMessage": "No rival detected yet — open more matches in History to cross paths with the same opponents again.",
+      "searchTitle": "Search for an opponent",
+      "searchDescription": "Find a Riot ID in match details already in cache, no new network call.",
+      "searchPlaceholder": "Name#Tag",
+      "searchButton": "Search",
+      "searchSearching": "Searching…",
+      "searchFound_one": "{{count}} match found and added to rivalry.",
+      "searchFound_other": "{{count}} matches found and added to rivalry.",
+      "searchNotFound": "No cached match with this player.",
+      "searchInvalid": "Expected format: Name#Tag"
     }
   },
   "agentRoles": {

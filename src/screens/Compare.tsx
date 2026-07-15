@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer } from "recharts";
 
 import { useAccount } from "../hooks/usePlayer";
 import { useMatches } from "../hooks/useMatches";
+import { useSelfAccountsStore } from "../store/selfAccountsStore";
 import { Skeleton } from "../components/Skeleton";
 import Panel from "../components/Panel";
 import ErrorState from "../components/ErrorState";
@@ -45,6 +46,22 @@ export default function Compare() {
   ]);
   const [sides, setSides] = useState<Side[] | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const selfAccounts = useSelfAccountsStore((s) => s.accounts);
+  const refreshSelfAccounts = useSelfAccountsStore((s) => s.refresh);
+  useEffect(() => {
+    refreshSelfAccounts();
+  }, [refreshSelfAccounts]);
+
+  // TODO Social/multi-comptes : court-circuite le formulaire pour pré-remplir directement
+  // depuis les comptes "à soi" (is_self) — réutilise l'infrastructure existante de Compare.tsx
+  // plutôt qu'une recherche manuelle.
+  function compareMyAccounts() {
+    if (selfAccounts.length < MIN_PLAYERS) return;
+    const picked = selfAccounts.slice(0, MAX_PLAYERS);
+    setFormError(null);
+    setInputs(picked.map((a) => ({ value: `${a.name}#${a.tag}`, region: a.region })));
+    setSides(picked.map((a) => ({ region: a.region, name: a.name, tag: a.tag })));
+  }
 
   function updateInput(index: number, patch: Partial<{ value: string; region: string }>) {
     setInputs((prev) => prev.map((input, i) => (i === index ? { ...input, ...patch } : input)));
@@ -109,6 +126,17 @@ export default function Compare() {
               {t("compare.form.addPlayer")}
             </button>
           )}
+          <button
+            type="button"
+            onClick={compareMyAccounts}
+            disabled={selfAccounts.length < MIN_PLAYERS}
+            title={
+              selfAccounts.length < MIN_PLAYERS ? t("compare.form.compareMyAccountsDisabled") : undefined
+            }
+            className="border border-line px-4 py-2 font-display text-xs font-semibold uppercase tracking-hud text-hi transition-colors hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-line disabled:hover:text-hi"
+          >
+            {t("compare.form.compareMyAccounts")}
+          </button>
           <button
             type="submit"
             className="btn-clip flex-1 bg-accent px-4 py-2 font-display text-xs font-bold uppercase tracking-hud text-base transition-colors hover:bg-accent-dim"

@@ -1,0 +1,110 @@
+name: Release
+
+# TODO Distribution/build/release : scaffold uniquement — inactif tant que les secrets
+# GitHub listés ci-dessous ne sont pas configurés manuellement (voir CLAUDE.md > "Publier
+# une nouvelle version"). Ne se déclenche jamais automatiquement (workflow_dispatch only,
+# pas de `push`/`tag`) pour ne pas entrer en conflit avec le flux 100% local existant
+# (scripts/release.ps1) tant que ce workflow n'a pas été validé manuellement au moins une
+# fois. Réutilise scripts/release.ps1 tel quel plutôt que de dupliquer sa logique de build/
+# signature/publication inline.
+on:
+  workflow_dispatch:
+    inputs:
+      notes_fr:
+        description: "Changelog FR de cette version (voir CLAUDE.md > Publier une nouvelle version)"
+        required: true
+        type: string
+      notes_en:
+        description: "Changelog EN de cette version"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      # scripts/release.ps1 lit la clé updater depuis ces deux chemins fixes (même
+      # convention qu'en local, voir CLAUDE.md > Signature) plutôt que directement depuis
+      # des variables d'env, pour rester un seul et même script entre CI et poste local.
+      - name: Write updater signing key from secrets
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force "$env:USERPROFILE\.tauri" | Out-Null
+          Set-Content -Path "$env:USERPROFILE\.tauri\val-tracker.key" -Value "${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}" -NoNewline
+          Set-Content -Path "$env:USERPROFILE\.tauri\val-tracker.key.password.txt" -Value "${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}" -NoNewline
+
+      # Le certificat Authenticode auto-signé (voir CLAUDE.md > Signature) doit être importé
+      # dans le magasin Windows du runner avec le même thumbprint que celui déjà en dur dans
+      # src-tauri/tauri.conf.json (bundle.windows.certificateThumbprint) — donc le même
+      # fichier .pfx exporté depuis la machine de build locale, pas un nouveau certificat
+      # généré à la volée.
+      - name: Import Authenticode certificate from secrets
+        shell: pwsh
+        run: |
+          $pfxPath = "$env:RUNNER_TEMP\val-tracker-codesign.pfx"
+          [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String("${{ secrets.CODESIGN_PFX_BASE64 }}"))
+          $securePassword = ConvertTo-SecureString "${{ secrets.CODESIGN_PFX_PASSWORD }}" -AsPlainText -Force
+          Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $securePassword
+          Remove-Item $pfxPath
+
+      # src-tauri/tauri.conf.json a `bundle.windows.signCommand.cmd` en dur
+      # (`...\10.0.26100.0\x64\signtool.exe`) — nécessaire sur la machine de build locale
+      # à cause d'une clé de registre SDK cassée (voir CLAUDE.md > Signature), mais ce
+      # chemin est spécifique à la version du SDK installée localement et n'a aucune raison
+      # de correspondre à celle du runner GitHub. On ne touche pas au fichier committé (qui
+      # doit rester correct pour la machine locale) : on réécrit juste ce champ à la volée
+      # sur le checkout éphémère du runner, avec le signtool.exe réellement présent ici.
+      - name: Point signCommand at this runner's signtool.exe
+        shell: pwsh
+        run: |
+          $signtool = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" -ErrorAction SilentlyContinue |
+              Sort-Object FullName -Descending | Select-Object -First 1
+          if (-not $signtool) {
+              throw "signtool.exe introuvable sur ce runner — le Windows SDK a-t-il changé d'emplacement ?"
+          }
+          Write-Host "signtool.exe résolu : $($signtool.FullName)"
+          $confPath = "src-tauri/tauri.conf.json"
+          $conf = Get-Content $confPath -Raw | ConvertFrom-Json
+          $conf.bundle.windows.signCommand.cmd = $signtool.FullName
+          ($conf | ConvertTo-Json -Depth 32) | Set-Content -Path $confPath -NoNewline
+
+      - name: Write changelog notes
+        shell: pwsh
+        run: |
+          Set-Content -Path "$env:RUNNER_TEMP\notes-fr.md" -Value '${{ inputs.notes_fr }}' -NoNewline
+          Set-Content -Path "$env:RUNNER_TEMP\notes-en.md" -Value '${{ inputs.notes_en }}' -NoNewline
+
+      - name: Build and publish draft release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./scripts/release.ps1 -NotesFileFr "$env:RUNNER_TEMP\notes-fr.md" -NotesFileEn "$env:RUNNER_TEMP\notes-en.md"

@@ -9,7 +9,11 @@
     "unlinkAccount": "Délier ce compte",
     "markAsMine": "Marquer {{name}}#{{tag}} comme mon compte",
     "detectedAccount": "Compte détecté : {{name}}#{{tag}} — Lier",
-    "searchToLink": "+ Chercher un profil à lier"
+    "searchToLink": "+ Chercher un profil à lier",
+    "cycleHint": "Ctrl+Tab pour cycler entre tes comptes",
+    "lossStreakThresholdLabel": "Seuil défaites",
+    "lossStreakThresholdPlaceholder": "Global ({{count}})",
+    "lossStreakThresholdTitle": "Surcharge le seuil d'alerte de série de défaites pour ce compte (vide = réglage global)"
   },
   "commandPalette": {
     "settings": "Paramètres",

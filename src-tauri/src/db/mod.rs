@@ -191,6 +191,10 @@ pub(crate) fn run_migrations(conn: &Connection) -> rusqlite::Result<()> {
     // Backlog #27 : ordre d'affichage explicite des favoris (drag & drop), au lieu de
     // toujours trier par date de dernière consultation.
     add_column_if_missing(conn, "tracked_players", "sort_order", "INTEGER NOT NULL DEFAULT 0")?;
+    // TODO Social/multi-comptes : surcharge par compte "à soi" du seuil global de
+    // `settings.loss_streak_alert_count` — NULL = pas de surcharge, retombe sur le réglage
+    // global (voir `loss_streak.rs::maybe_notify`).
+    add_column_if_missing(conn, "tracked_players", "loss_streak_alert_count", "INTEGER")?;
 
     goals::migrate_progression_goals_multi(conn)?;
 
@@ -414,7 +418,7 @@ mod tests {
 
         assert!(players::list_recent_players(&conn, 10).unwrap().is_empty());
         assert!(snapshots::list_rank_snapshots(&conn, "puuid-1").unwrap().is_empty());
-        assert!(party::list_duo_stats(&conn, "puuid-1", 1).unwrap().is_empty());
+        assert!(party::list_duo_stats(&conn, "puuid-1", 1, None).unwrap().is_empty());
         let cache_count: i64 = conn
             .query_row("SELECT COUNT(*) FROM api_cache", [], |r| r.get(0))
             .unwrap();

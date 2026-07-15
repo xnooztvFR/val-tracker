@@ -585,6 +585,27 @@ pub fn get_cached_match_details_for_puuid(
     Ok(details)
 }
 
+/// TODO Social/multi-comptes : scanne *tout* `api_cache` pour les détails de match, pas
+/// seulement ceux déjà indexés dans `party_matches` (contrairement à
+/// `get_cached_match_details_for_puuid`, borné à `list_match_ids_for_puuid`) — utilisé par
+/// `commands::retro_populate_rivalry` pour retrouver un adversaire jamais encore croisé côté
+/// `party_matches` mais déjà présent dans un détail de match consulté (ex. MatchDetail.tsx)
+/// avant que ce backlog n'existe. Plus lourd qu'un scan borné, mais reste local (aucun appel
+/// réseau) et n'est déclenché qu'à la demande explicite de l'utilisateur, pas en continu.
+pub fn scan_all_cached_match_details(conn: &Connection) -> rusqlite::Result<Vec<MatchDetailData>> {
+    let mut stmt =
+        conn.prepare("SELECT payload FROM api_cache WHERE url LIKE '/valorant/v2/match/%'")?;
+    let payloads = stmt.query_map([], |row| row.get::<_, String>(0))?;
+    let mut details = Vec::new();
+    for payload in payloads {
+        let payload = payload?;
+        if let Ok(envelope) = serde_json::from_str::<HenrikEnvelope<MatchDetailData>>(&payload) {
+            details.push(envelope.data);
+        }
+    }
+    Ok(details)
+}
+
 #[cfg(test)]
 mod redact_ids_tests {
     use super::*;
@@ -692,5 +713,88 @@ mod stored_fallback_tests {
         assert_eq!(entry.rr, Some(42));
         assert_eq!(entry.last_change, Some(-15));
         assert_eq!(entry.tier.unwrap().name.as_deref(), Some("Immortal 1"));
+    }
+}
+
+#[cfg(test)]
+mod scan_all_cached_match_details_tests {
+    use super::*;
+    use crate::api::henrik::types::{
+        MatchDetailMetadata, MatchDetailPlayer, MatchDetailPlayers, MatchDetailTeams,
+    };
+
+    fn memory_conn() -> Connection {
+        let conn = Connection::open_in_memory().unwrap();
+        crate::db::run_migrations(&conn).unwrap();
+        conn
+    }
+
+    fn make_player(puuid: &str, team: &str) -> MatchDetailPlayer {
+        MatchDetailPlayer {
+            puuid: puuid.to_string(),
+            name: "p".to_string(),
+            tag: "1234".to_string(),
+            team: team.to_string(),
+            level: None,
+            character: None,
+            currenttier: None,
+            currenttier_patched: None,
+            party_id: None,
+            assets: None,
+            stats: None,
+            economy: None,
+            damage_made: None,
+            damage_received: None,
+        }
+    }
+
+    fn make_match(match_id: &str, players: Vec<MatchDetailPlayer>) -> MatchDetailData {
+        MatchDetailData {
+            metadata: MatchDetailMetadata {
+                matchid: Some(match_id.to_string()),
+                map: None,
+                mode: None,
+                queue: None,
+                season_id: None,
+                game_length: None,
+                game_start: None,
+                game_start_patched: None,
+                rounds_played: None,
+            },
+            players: MatchDetailPlayers { all_players: players },
+            teams: MatchDetailTeams { red: None, blue: None },
+            rounds: vec![],
+        }
+    }
+
+    fn store_match(conn: &Connection, match_id: &str, detail: &MatchDetailData) {
+        let payload = serde_json::json!({ "status": 200, "data": detail }).to_string();
+        let path = format!("/valorant/v2/match/{match_id}");
+        cache::set(conn, &path, &payload, TtlSeconds(3600)).unwrap();
+    }
+
+    #[test]
+    fn finds_matches_across_the_whole_cache_not_just_party_matches() {
+        let conn = memory_conn();
+        let detail = make_match(
+            "match-1",
+            vec![make_player("me", "Red"), make_player("nemesis", "Blue")],
+        );
+        store_match(&conn, "match-1", &detail);
+        // Bruit : une autre entrée de cache sans rapport (pas un détail de match).
+        cache::set(&conn, "/valorant/v1/account/foo/1234", "{}", TtlSeconds(3600)).unwrap();
+
+        let found = scan_all_cached_match_details(&conn).unwrap();
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].metadata.matchid.as_deref(), Some("match-1"));
+        assert_eq!(found[0].players.all_players.len(), 2);
+    }
+
+    #[test]
+    fn ignores_unparsable_payloads() {
+        let conn = memory_conn();
+        cache::set(&conn, "/valorant/v2/match/broken", "not json", TtlSeconds(3600)).unwrap();
+
+        assert!(scan_all_cached_match_details(&conn).unwrap().is_empty());
     }
 }

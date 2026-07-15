@@ -67,21 +67,26 @@ pub fn list_match_ids_for_puuid(conn: &Connection, puuid: &str) -> rusqlite::Res
 
 /// Agrège les matchs en duo/squad par coéquipier, triés par nombre de matchs joués
 /// ensemble. `min_matches` filtre le bruit (un seul match commun, party de passage).
+/// TODO Social/multi-comptes : `since_ts` (timestamp Unix, `None` = pas de filtre) ne garde
+/// que les matchs enregistrés depuis cette date — garde ces panneaux pertinents dans le
+/// temps ("coéquipier des 30 derniers jours" vs "coéquipier occasionnel d'il y a un an").
 pub fn list_duo_stats(
     conn: &Connection,
     tracked_puuid: &str,
     min_matches: i64,
+    since_ts: Option<i64>,
 ) -> rusqlite::Result<Vec<DuoStat>> {
     let mut stmt = conn.prepare(
         "SELECT teammate_puuid, teammate_name, teammate_tag,
                 COUNT(*) AS matches_played, SUM(won) AS matches_won
          FROM party_matches
          WHERE tracked_puuid = ?1 AND relation = 'teammate'
+               AND (?3 IS NULL OR recorded_at >= ?3)
          GROUP BY teammate_puuid
          HAVING matches_played >= ?2
          ORDER BY matches_played DESC, matches_won DESC",
     )?;
-    let rows = stmt.query_map((tracked_puuid, min_matches), |row| {
+    let rows = stmt.query_map((tracked_puuid, min_matches, since_ts), |row| {
         Ok(DuoStat {
             teammate_puuid: row.get(0)?,
             teammate_name: row.get(1)?,
@@ -111,17 +116,19 @@ pub fn list_rivalry_stats(
     conn: &Connection,
     tracked_puuid: &str,
     min_matches: i64,
+    since_ts: Option<i64>,
 ) -> rusqlite::Result<Vec<RivalryStat>> {
     let mut stmt = conn.prepare(
         "SELECT teammate_puuid, teammate_name, teammate_tag,
                 COUNT(*) AS matches_played, SUM(won) AS matches_won
          FROM party_matches
          WHERE tracked_puuid = ?1 AND relation = 'opponent'
+               AND (?3 IS NULL OR recorded_at >= ?3)
          GROUP BY teammate_puuid
          HAVING matches_played >= ?2
          ORDER BY matches_played DESC, matches_won DESC",
     )?;
-    let rows = stmt.query_map((tracked_puuid, min_matches), |row| {
+    let rows = stmt.query_map((tracked_puuid, min_matches, since_ts), |row| {
         Ok(RivalryStat {
             opponent_puuid: row.get(0)?,
             opponent_name: row.get(1)?,
@@ -156,6 +163,7 @@ pub fn list_squad_stats(
     conn: &Connection,
     tracked_puuid: &str,
     min_matches: i64,
+    since_ts: Option<i64>,
 ) -> rusqlite::Result<Vec<SquadStat>> {
     let mut stmt = conn.prepare(
         "SELECT a.teammate_puuid, a.teammate_name, a.teammate_tag,
@@ -167,11 +175,12 @@ pub fn list_squad_stats(
             AND a.tracked_puuid = b.tracked_puuid
             AND a.teammate_puuid < b.teammate_puuid
          WHERE a.tracked_puuid = ?1 AND a.relation = 'teammate' AND b.relation = 'teammate'
+               AND (?3 IS NULL OR a.recorded_at >= ?3)
          GROUP BY a.teammate_puuid, b.teammate_puuid
          HAVING matches_played >= ?2
          ORDER BY matches_played DESC, matches_won DESC",
     )?;
-    let rows = stmt.query_map((tracked_puuid, min_matches), |row| {
+    let rows = stmt.query_map((tracked_puuid, min_matches, since_ts), |row| {
         Ok(SquadStat {
             teammate_a_puuid: row.get(0)?,
             teammate_a_name: row.get(1)?,
@@ -204,7 +213,7 @@ mod tests {
         record_party_match(&conn, "match-3", "me", "buddy", "Buddy", "1111", true, "teammate").unwrap();
         record_party_match(&conn, "match-1", "me", "stranger", "Stranger", "2222", true, "teammate").unwrap();
 
-        let stats = list_duo_stats(&conn, "me", 1).unwrap();
+        let stats = list_duo_stats(&conn, "me", 1, None).unwrap();
         assert_eq!(stats.len(), 2);
         // Trié par nombre de matchs joués ensemble, décroissant.
         assert_eq!(stats[0].teammate_puuid, "buddy");
@@ -219,8 +228,8 @@ mod tests {
         let conn = memory_conn();
         record_party_match(&conn, "match-1", "me", "stranger", "Stranger", "2222", true, "teammate").unwrap();
 
-        assert_eq!(list_duo_stats(&conn, "me", 2).unwrap().len(), 0);
-        assert_eq!(list_duo_stats(&conn, "me", 1).unwrap().len(), 1);
+        assert_eq!(list_duo_stats(&conn, "me", 2, None).unwrap().len(), 0);
+        assert_eq!(list_duo_stats(&conn, "me", 1, None).unwrap().len(), 1);
     }
 
     #[test]
@@ -231,7 +240,7 @@ mod tests {
         // juste une mise à jour de la ligne existante.
         record_party_match(&conn, "match-1", "me", "buddy", "BuddyRenamed", "1111", true, "teammate").unwrap();
 
-        let stats = list_duo_stats(&conn, "me", 1).unwrap();
+        let stats = list_duo_stats(&conn, "me", 1, None).unwrap();
         assert_eq!(stats.len(), 1);
         assert_eq!(stats[0].matches_played, 1);
         assert_eq!(stats[0].teammate_name, "BuddyRenamed");
@@ -245,14 +254,14 @@ mod tests {
         record_party_match(&conn, "match-2", "me", "nemesis", "Nemesis", "3333", false, "opponent").unwrap();
         record_party_match(&conn, "match-3", "me", "nemesis", "Nemesis", "3333", true, "opponent").unwrap();
 
-        let rivalry = list_rivalry_stats(&conn, "me", 1).unwrap();
+        let rivalry = list_rivalry_stats(&conn, "me", 1, None).unwrap();
         assert_eq!(rivalry.len(), 1);
         assert_eq!(rivalry[0].opponent_puuid, "nemesis");
         assert_eq!(rivalry[0].matches_played, 3);
         assert_eq!(rivalry[0].matches_won, 2);
 
         // La party ne doit apparaître ni dans list_rivalry_stats ni fausser le compte.
-        let duo = list_duo_stats(&conn, "me", 1).unwrap();
+        let duo = list_duo_stats(&conn, "me", 1, None).unwrap();
         assert_eq!(duo.len(), 1);
         assert_eq!(duo[0].teammate_puuid, "buddy");
     }
@@ -262,8 +271,8 @@ mod tests {
         let conn = memory_conn();
         record_party_match(&conn, "match-1", "me", "nemesis", "Nemesis", "3333", true, "opponent").unwrap();
 
-        assert_eq!(list_rivalry_stats(&conn, "me", 2).unwrap().len(), 0);
-        assert_eq!(list_rivalry_stats(&conn, "me", 1).unwrap().len(), 1);
+        assert_eq!(list_rivalry_stats(&conn, "me", 2, None).unwrap().len(), 0);
+        assert_eq!(list_rivalry_stats(&conn, "me", 1, None).unwrap().len(), 1);
     }
 
     #[test]
@@ -276,7 +285,7 @@ mod tests {
         // Match-3 : Alice seule (pas de squad complet), ne doit pas compter comme trio.
         record_party_match(&conn, "match-3", "me", "alice", "Alice", "1111", true, "teammate").unwrap();
 
-        let squads = list_squad_stats(&conn, "me", 1).unwrap();
+        let squads = list_squad_stats(&conn, "me", 1, None).unwrap();
         assert_eq!(squads.len(), 1);
         assert_eq!(squads[0].matches_played, 2);
         assert_eq!(squads[0].matches_won, 1);
@@ -291,7 +300,7 @@ mod tests {
         record_party_match(&conn, "match-1", "me", "alice", "Alice", "1111", true, "teammate").unwrap();
         record_party_match(&conn, "match-1", "me", "bob", "Bob", "2222", true, "teammate").unwrap();
 
-        assert_eq!(list_squad_stats(&conn, "me", 2).unwrap().len(), 0);
-        assert_eq!(list_squad_stats(&conn, "me", 1).unwrap().len(), 1);
+        assert_eq!(list_squad_stats(&conn, "me", 2, None).unwrap().len(), 0);
+        assert_eq!(list_squad_stats(&conn, "me", 1, None).unwrap().len(), 1);
     }
 }

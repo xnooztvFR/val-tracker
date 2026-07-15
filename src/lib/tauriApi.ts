@@ -861,6 +861,9 @@ export interface TrackedPlayer {
   notes: string | null;
   /** TODO stats & analyse joueur : tags structurés, liste fermée — voir `PLAYER_TAGS`. */
   tags: PlayerTag[];
+  /** TODO Social/multi-comptes : surcharge par compte du seuil global de notification
+   * "N défaites d'affilée", `null` = pas de surcharge (retombe sur le réglage global). */
+  loss_streak_alert_count: number | null;
 }
 
 /** Miroir de `db::players::ALLOWED_TAGS` côté Rust. */
@@ -1147,12 +1150,14 @@ export const tauriApi = {
 
   recordPartyFromMatch: (matchId: string, trackedPuuid: string) =>
     invoke<void>("record_party_from_match", { matchId, trackedPuuid }),
-  listDuoStats: (puuid: string, minMatches = 2) =>
-    invoke<DuoStat[]>("list_duo_stats", { puuid, minMatches }),
-  listSquadStats: (puuid: string, minMatches = 2) =>
-    invoke<SquadStat[]>("list_squad_stats", { puuid, minMatches }),
-  listRivalryStats: (puuid: string, minMatches = 2) =>
-    invoke<RivalryStat[]>("list_rivalry_stats", { puuid, minMatches }),
+  listDuoStats: (puuid: string, minMatches = 2, sinceTs: number | null = null) =>
+    invoke<DuoStat[]>("list_duo_stats", { puuid, minMatches, sinceTs }),
+  listSquadStats: (puuid: string, minMatches = 2, sinceTs: number | null = null) =>
+    invoke<SquadStat[]>("list_squad_stats", { puuid, minMatches, sinceTs }),
+  listRivalryStats: (puuid: string, minMatches = 2, sinceTs: number | null = null) =>
+    invoke<RivalryStat[]>("list_rivalry_stats", { puuid, minMatches, sinceTs }),
+  retroPopulateRivalry: (puuid: string, opponentName: string, opponentTag: string) =>
+    invoke<number>("retro_populate_rivalry", { puuid, opponentName, opponentTag }),
   recordGoalAchieved: (puuid: string, goalType: string, periodKey: string) =>
     invoke<void>("record_goal_achieved", { puuid, goalType, periodKey }),
   listAccountTimeline: (puuid: string) =>
@@ -1162,6 +1167,8 @@ export const tauriApi = {
     invoke<void>("set_self_account", { puuid, isSelf }),
   listSelfAccounts: () => invoke<TrackedPlayer[]>("list_self_accounts"),
   detectLocalAccount: () => invoke<DetectedAccount | null>("detect_local_account"),
+  setSelfAccountLossStreakThreshold: (puuid: string, count: number | null) =>
+    invoke<void>("set_self_account_loss_streak_threshold", { puuid, count }),
 
   getRecentLogs: () => invoke<LogSnapshot>("get_recent_logs"),
 };

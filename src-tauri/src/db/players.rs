@@ -61,6 +61,11 @@ pub struct TrackedPlayer {
     /// TODO stats & analyse joueur : tags structurés (smurf/toxique/carry/duo régulier...),
     /// liste de slugs fixes — voir `set_player_tags`/`ALLOWED_TAGS`.
     pub tags: Vec<String>,
+    /// TODO Social/multi-comptes : surcharge par compte du seuil global de notification
+    /// "N défaites d'affilée" (`settings::AppSettings::loss_streak_alert_count`). `None` tant
+    /// qu'aucune surcharge n'a été définie pour ce compte — voir `loss_streak.rs::maybe_notify`
+    /// et `set_loss_streak_alert_count_override`.
+    pub loss_streak_alert_count: Option<i64>,
 }
 
 /// Liste fermée de tags autorisés — un slug hors de cette liste est rejeté par
@@ -83,6 +88,7 @@ fn map_tracked_player(row: &rusqlite::Row) -> rusqlite::Result<TrackedPlayer> {
         is_self: row.get::<_, i64>(6)? != 0,
         notes: decrypt_notes(row.get(7)?),
         tags: parse_tags(row.get(8)?),
+        loss_streak_alert_count: row.get(9)?,
     })
 }
 
@@ -110,7 +116,7 @@ pub fn upsert_tracked_player(
 /// Historique des dernières recherches, favoris en tête puis par date de consultation.
 pub fn list_recent_players(conn: &Connection, limit: i64) -> rusqlite::Result<Vec<TrackedPlayer>> {
     let mut stmt = conn.prepare(
-        "SELECT puuid, name, tag, region, is_favorite, last_viewed_at, is_self, notes, tags
+        "SELECT puuid, name, tag, region, is_favorite, last_viewed_at, is_self, notes, tags, loss_streak_alert_count
          FROM tracked_players
          ORDER BY is_favorite DESC, last_viewed_at DESC
          LIMIT ?1",
@@ -124,7 +130,7 @@ pub fn list_recent_players(conn: &Connection, limit: i64) -> rusqlite::Result<Ve
 /// de fin de partie (backlog #81 ; voir `riot_local::poller::on_state_changed`).
 pub fn find_tracked_player(conn: &Connection, puuid: &str) -> rusqlite::Result<Option<TrackedPlayer>> {
     conn.query_row(
-        "SELECT puuid, name, tag, region, is_favorite, last_viewed_at, is_self, notes, tags
+        "SELECT puuid, name, tag, region, is_favorite, last_viewed_at, is_self, notes, tags, loss_streak_alert_count
          FROM tracked_players WHERE puuid = ?1",
         [puuid],
         map_tracked_player,
@@ -142,11 +148,26 @@ pub fn set_self_account(conn: &Connection, puuid: &str, is_self: bool) -> rusqli
     Ok(())
 }
 
+/// TODO Social/multi-comptes : surcharge (ou efface, si `None`) le seuil de notification
+/// "N défaites d'affilée" pour ce compte "à soi" spécifique — voir
+/// `TrackedPlayer::loss_streak_alert_count` et `loss_streak.rs::maybe_notify`.
+pub fn set_loss_streak_alert_count_override(
+    conn: &Connection,
+    puuid: &str,
+    count: Option<i64>,
+) -> rusqlite::Result<()> {
+    conn.execute(
+        "UPDATE tracked_players SET loss_streak_alert_count = ?2 WHERE puuid = ?1",
+        (puuid, count),
+    )?;
+    Ok(())
+}
+
 /// Comptes marqués `is_self`, triés par dernière consultation (le plus récemment
 /// consulté/switché en premier) — alimente le sélecteur de comptes de TopNav.
 pub fn list_self_accounts(conn: &Connection) -> rusqlite::Result<Vec<TrackedPlayer>> {
     let mut stmt = conn.prepare(
-        "SELECT puuid, name, tag, region, is_favorite, last_viewed_at, is_self, notes, tags
+        "SELECT puuid, name, tag, region, is_favorite, last_viewed_at, is_self, notes, tags, loss_streak_alert_count
          FROM tracked_players
          WHERE is_self = 1
          ORDER BY last_viewed_at DESC",
@@ -238,7 +259,7 @@ pub fn toggle_favorite(conn: &Connection, puuid: &str) -> rusqlite::Result<bool>
 /// Search.tsx — distinct de `list_recent_players` qui trie par date de consultation.
 pub fn list_favorite_players(conn: &Connection) -> rusqlite::Result<Vec<TrackedPlayer>> {
     let mut stmt = conn.prepare(
-        "SELECT puuid, name, tag, region, is_favorite, last_viewed_at, is_self, notes, tags
+        "SELECT puuid, name, tag, region, is_favorite, last_viewed_at, is_self, notes, tags, loss_streak_alert_count
          FROM tracked_players
          WHERE is_favorite = 1
          ORDER BY sort_order ASC, last_viewed_at DESC",
@@ -442,6 +463,30 @@ mod tests {
             last_loss_streak_notified_match_id(&conn, "puuid-1").unwrap(),
             Some("match-1".to_string())
         );
+    }
+
+    #[test]
+    fn loss_streak_alert_count_override_round_trip_and_clear() {
+        let conn = memory_conn();
+        upsert_tracked_player(&conn, "puuid-1", "Player1", "1234", "eu").unwrap();
+        assert!(find_tracked_player(&conn, "puuid-1")
+            .unwrap()
+            .unwrap()
+            .loss_streak_alert_count
+            .is_none());
+
+        set_loss_streak_alert_count_override(&conn, "puuid-1", Some(7)).unwrap();
+        assert_eq!(
+            find_tracked_player(&conn, "puuid-1").unwrap().unwrap().loss_streak_alert_count,
+            Some(7)
+        );
+
+        set_loss_streak_alert_count_override(&conn, "puuid-1", None).unwrap();
+        assert!(find_tracked_player(&conn, "puuid-1")
+            .unwrap()
+            .unwrap()
+            .loss_streak_alert_count
+            .is_none());
     }
 
     #[test]

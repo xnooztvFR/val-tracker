@@ -31,6 +31,19 @@ pub async fn list_self_accounts(state: State<'_, AppState>) -> Result<Vec<Tracke
     Ok(crate::db::list_self_accounts(&conn)?)
 }
 
+/// TODO Social/multi-comptes : surcharge (ou efface, si `None`) le seuil de notification
+/// "N défaites d'affilée" pour un compte "à soi" spécifique — voir
+/// `loss_streak.rs::maybe_notify`.
+#[tauri::command]
+pub async fn set_self_account_loss_streak_threshold(
+    state: State<'_, AppState>,
+    puuid: String,
+    count: Option<i64>,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    Ok(crate::db::set_loss_streak_alert_count_override(&conn, &puuid, count)?)
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct DetectedAccount {
     pub puuid: String,

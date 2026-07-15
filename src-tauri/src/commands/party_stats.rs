@@ -137,6 +137,58 @@ pub async fn get_queue_stats(
     Ok(crate::queue_stats::compute_queue_stats(&matches, &puuid))
 }
 
+/// TODO Social/multi-comptes : recherche manuelle d'un rival — au lieu d'attendre que
+/// `record_party_from_match` le croise passivement en consultant un détail de match,
+/// rétro-peuple `party_matches` (relation "opponent") pour tous les matchs *déjà en cache*
+/// (`api_cache`, aucun appel réseau) où `puuid` et `opponent_name#opponent_tag` apparaissent
+/// dans des équipes différentes. Contrairement à `record_party_from_match`, scanne tout
+/// `api_cache` (voir `scan_all_cached_match_details`) et non les seuls matchs déjà indexés
+/// dans `party_matches` — c'est justement le but : trouver un adversaire jamais encore
+/// croisé côté rivalité. Renvoie le nombre de matchs rétro-peuplés (0 si aucun match en
+/// cache ne contient cet adversaire face à ce compte).
+#[tauri::command]
+pub async fn retro_populate_rivalry(
+    state: State<'_, AppState>,
+    puuid: String,
+    opponent_name: String,
+    opponent_tag: String,
+) -> Result<i64, CommandError> {
+    let conn = state.db.lock().await;
+    let details = crate::api::henrik::endpoints::scan_all_cached_match_details(&conn)?;
+
+    let tx = conn.unchecked_transaction()?;
+    let mut populated = 0i64;
+    for detail in &details {
+        let Some(match_id) = detail.metadata.matchid.clone() else {
+            continue;
+        };
+        let Some(me) = detail.players.all_players.iter().find(|p| p.puuid == puuid) else {
+            continue;
+        };
+        let Some(opponent) = detail.players.all_players.iter().find(|p| {
+            p.team != me.team
+                && p.name.eq_ignore_ascii_case(&opponent_name)
+                && p.tag.eq_ignore_ascii_case(&opponent_tag)
+        }) else {
+            continue;
+        };
+        let won = team_won(detail, &me.team);
+        crate::db::record_party_match(
+            &tx,
+            &match_id,
+            &puuid,
+            &opponent.puuid,
+            &opponent.name,
+            &opponent.tag,
+            won,
+            "opponent",
+        )?;
+        populated += 1;
+    }
+    tx.commit()?;
+    Ok(populated)
+}
+
 fn team_won(detail: &MatchDetailData, team: &str) -> bool {
     let team_data = if team.eq_ignore_ascii_case("red") {
         detail.teams.red.as_ref()
@@ -153,9 +205,10 @@ pub async fn list_duo_stats(
     state: State<'_, AppState>,
     puuid: String,
     min_matches: i64,
+    since_ts: Option<i64>,
 ) -> Result<Vec<DuoStat>, CommandError> {
     let conn = state.db.lock().await;
-    Ok(crate::db::list_duo_stats(&conn, &puuid, min_matches.max(1))?)
+    Ok(crate::db::list_duo_stats(&conn, &puuid, min_matches.max(1), since_ts)?)
 }
 
 /// Backlog #23 : extension "squad" (trios) de `list_duo_stats`.
@@ -164,9 +217,10 @@ pub async fn list_squad_stats(
     state: State<'_, AppState>,
     puuid: String,
     min_matches: i64,
+    since_ts: Option<i64>,
 ) -> Result<Vec<SquadStat>, CommandError> {
     let conn = state.db.lock().await;
-    Ok(crate::db::list_squad_stats(&conn, &puuid, min_matches.max(1))?)
+    Ok(crate::db::list_squad_stats(&conn, &puuid, min_matches.max(1), since_ts)?)
 }
 
 /// Backlog #58 : rivalité suivie en continu — pendant "adversaire" de `list_duo_stats`.
@@ -175,9 +229,10 @@ pub async fn list_rivalry_stats(
     state: State<'_, AppState>,
     puuid: String,
     min_matches: i64,
+    since_ts: Option<i64>,
 ) -> Result<Vec<RivalryStat>, CommandError> {
     let conn = state.db.lock().await;
-    Ok(crate::db::list_rivalry_stats(&conn, &puuid, min_matches.max(1))?)
+    Ok(crate::db::list_rivalry_stats(&conn, &puuid, min_matches.max(1), since_ts)?)
 }
 
 /// Backlog #57 : marque un objectif hebdo comme atteint pour la période en cours — appelé

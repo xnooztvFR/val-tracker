@@ -6,20 +6,21 @@ use crate::api::henrik::types::MatchEntry;
 
 /// Notifie si le compte "à soi" (`tracked_players.is_self`) correspondant à `name#tag`
 /// enchaîne `threshold` défaites d'affilée sur ses matchs les plus récents (`matches[0]` en
-/// tête, comme renvoyé par Henrik). Ne notifie jamais deux fois pour la même série (dédup
-/// via `tracked_players.last_loss_streak_notified_match_id`). Best-effort et silencieux :
-/// aucune erreur ne doit remonter jusqu'à `commands::fetch_matches`.
+/// tête, comme renvoyé par Henrik). `default_threshold` est le seuil global
+/// (`settings::AppSettings::loss_streak_alert_count`) — surchargé si ce compte a une valeur
+/// dans `tracked_players.loss_streak_alert_count` (TODO Social/multi-comptes : seuil
+/// différencié par compte, voir `db::set_loss_streak_alert_count_override`). Ne notifie
+/// jamais deux fois pour la même série (dédup via
+/// `tracked_players.last_loss_streak_notified_match_id`). Best-effort et silencieux : aucune
+/// erreur ne doit remonter jusqu'à `commands::fetch_matches`.
 pub fn maybe_notify(
     app: &tauri::AppHandle,
     conn: &rusqlite::Connection,
     name: &str,
     tag: &str,
     matches: &[MatchEntry],
-    threshold: i64,
+    default_threshold: i64,
 ) {
-    if threshold < 1 {
-        return;
-    }
     let Some(puuid) = matches.iter().find_map(|entry| {
         entry.players.iter().find_map(|p| {
             let matches_riot_id = p.name.as_deref().is_some_and(|n| n.eq_ignore_ascii_case(name))
@@ -30,10 +31,14 @@ pub fn maybe_notify(
         return;
     };
 
-    let is_self = crate::db::list_self_accounts(conn)
-        .map(|accounts| accounts.iter().any(|a| a.puuid == puuid))
-        .unwrap_or(false);
-    if !is_self {
+    let Ok(Some(account)) = crate::db::find_tracked_player(conn, &puuid) else {
+        return;
+    };
+    if !account.is_self {
+        return;
+    }
+    let threshold = account.loss_streak_alert_count.unwrap_or(default_threshold);
+    if threshold < 1 {
         return;
     }
 

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
 import { useSelfAccountsStore } from "../store/selfAccountsStore";
+import { useSettingsStore } from "../store/settingsStore";
 import { tauriApi } from "../lib/tauriApi";
 
 interface CurrentPlayer {
@@ -22,6 +23,7 @@ export default function AccountSwitcher({ current }: { current?: CurrentPlayer }
   const { t } = useTranslation("componentsExtra");
   const [open, setOpen] = useState(false);
   const { accounts, refresh, setSelf } = useSelfAccountsStore();
+  const globalLossStreakThreshold = useSettingsStore((s) => s.settings?.loss_streak_alert_count ?? 3);
 
   useEffect(() => {
     refresh();
@@ -49,6 +51,14 @@ export default function AccountSwitcher({ current }: { current?: CurrentPlayer }
   async function markCurrentAsSelf() {
     if (!current) return;
     await setSelf(current.puuid, true);
+  }
+
+  async function updateLossStreakThreshold(puuid: string, raw: string) {
+    const trimmed = raw.trim();
+    const count = trimmed === "" ? null : Number(trimmed);
+    if (count !== null && (!Number.isFinite(count) || count < 1)) return;
+    await tauriApi.setSelfAccountLossStreakThreshold(puuid, count);
+    await refresh();
   }
 
   function goTo(account: { region: string; name: string; tag: string }) {
@@ -104,6 +114,19 @@ export default function AccountSwitcher({ current }: { current?: CurrentPlayer }
                       {a.region}
                     </span>
                   </button>
+                  <input
+                    type="number"
+                    min={1}
+                    max={20}
+                    defaultValue={a.loss_streak_alert_count ?? ""}
+                    onBlur={(e) => updateLossStreakThreshold(a.puuid, e.target.value)}
+                    placeholder={t("accountSwitcher.lossStreakThresholdPlaceholder", {
+                      count: globalLossStreakThreshold,
+                    })}
+                    title={t("accountSwitcher.lossStreakThresholdTitle")}
+                    aria-label={t("accountSwitcher.lossStreakThresholdLabel")}
+                    className="w-14 shrink-0 border border-line bg-base px-1 py-0.5 text-[10px] text-hi placeholder:text-lo/60 opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100"
+                  />
                   <button
                     type="button"
                     onClick={() => setSelf(a.puuid, false)}
@@ -116,6 +139,12 @@ export default function AccountSwitcher({ current }: { current?: CurrentPlayer }
                 </div>
               ))}
             </div>
+
+            {accounts.length >= 2 && (
+              <p className="hud-label px-1 pt-1.5 text-[9px] text-lo/70">
+                {t("accountSwitcher.cycleHint")}
+              </p>
+            )}
 
             {current && !isCurrentSelf && (
               <button

@@ -9,7 +9,11 @@
     "unlinkAccount": "Unlink this account",
     "markAsMine": "Mark {{name}}#{{tag}} as my account",
     "detectedAccount": "Detected account: {{name}}#{{tag}} — Link",
-    "searchToLink": "+ Search for a profile to link"
+    "searchToLink": "+ Search for a profile to link",
+    "cycleHint": "Ctrl+Tab to cycle through your accounts",
+    "lossStreakThresholdLabel": "Loss threshold",
+    "lossStreakThresholdPlaceholder": "Global ({{count}})",
+    "lossStreakThresholdTitle": "Override the loss-streak alert threshold for this account (empty = global setting)"
   },
   "commandPalette": {
     "settings": "Settings",

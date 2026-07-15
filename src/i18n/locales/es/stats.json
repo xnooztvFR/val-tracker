@@ -107,7 +107,9 @@
       "placeholder": "{{label}} — nombre#tag",
       "submit": "Comparar",
       "addPlayer": "+ Añadir jugador",
-      "removePlayer": "Quitar este jugador"
+      "removePlayer": "Quitar este jugador",
+      "compareMyAccounts": "Comparar mis cuentas",
+      "compareMyAccountsDisabled": "Marca al menos 2 cuentas como \"tuyas\" (botón de estrella) para usar este atajo."
     },
     "error": {
       "format": "Formato esperado para cada jugador: nombre#tag"
@@ -154,6 +156,11 @@
       }
     },
     "statsLine": "{{wins}} victorias / {{played}} partidas juntos",
+    "recencyFilter": {
+      "all": "Todo el periodo",
+      "30d": "Últimos 30 días",
+      "90d": "Últimos 90 días"
+    },
     "squad": {
       "title": "Squad (3 jugadores)",
       "description": "Partidas donde tú y dos compañeros concretos estuvisteis en la misma party al mismo tiempo.",
@@ -163,7 +170,16 @@
       "title": "Rivalidad",
       "description": "Cara a cara contra rivales con los que te has cruzado repetidamente, acumulado a medida que consultas partidas en Historial.",
       "statsLine": "{{wins}} victorias / {{played}} partidas cara a cara",
-      "emptyMessage": "Todavía no se ha detectado ningún rival — abre más partidas en Historial para cruzarte de nuevo con los mismos rivales."
+      "emptyMessage": "Todavía no se ha detectado ningún rival — abre más partidas en Historial para cruzarte de nuevo con los mismos rivales.",
+      "searchTitle": "Buscar un rival",
+      "searchDescription": "Encuentra un Riot ID en los detalles de partida ya en caché, sin nueva llamada de red.",
+      "searchPlaceholder": "Nombre#Tag",
+      "searchButton": "Buscar",
+      "searchSearching": "Buscando…",
+      "searchFound_one": "{{count}} partida encontrada y añadida a la rivalidad.",
+      "searchFound_other": "{{count}} partidas encontradas y añadidas a la rivalidad.",
+      "searchNotFound": "Ninguna partida en caché con este jugador.",
+      "searchInvalid": "Formato esperado: Nombre#Tag"
     }
   },
   "agentRoles": {

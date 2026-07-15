@@ -9,7 +9,11 @@
     "unlinkAccount": "Desvincular esta conta",
     "markAsMine": "Marcar {{name}}#{{tag}} como minha conta",
     "detectedAccount": "Conta detectada: {{name}}#{{tag}} — Vincular",
-    "searchToLink": "+ Buscar um perfil para vincular"
+    "searchToLink": "+ Buscar um perfil para vincular",
+    "cycleHint": "Ctrl+Tab para alternar entre suas contas",
+    "lossStreakThresholdLabel": "Limite de derrotas",
+    "lossStreakThresholdPlaceholder": "Global ({{count}})",
+    "lossStreakThresholdTitle": "Substitui o limite de alerta de sequência de derrotas para esta conta (vazio = configuração global)"
   },
   "commandPalette": {
     "settings": "Configurações",

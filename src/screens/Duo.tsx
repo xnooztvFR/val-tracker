@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Skeleton } from "../components/Skeleton";
@@ -8,7 +8,7 @@ import { useAccount, useDuoStats, useRivalryStats, useSquadStats } from "../hook
 import Panel from "../components/Panel";
 import ErrorState from "../components/ErrorState";
 import EmptyState from "../components/EmptyState";
-import { formatPercent } from "../lib/format";
+import { formatPercent, splitRiotId } from "../lib/format";
 import { PLAYER_TAGS, tauriApi, type PlayerTag } from "../lib/tauriApi";
 
 /** Winrate en duo/squad (V3), calculé à partir des `party_id` accumulés localement à
@@ -20,9 +20,13 @@ export default function Duo() {
 
   const account = useAccount(name, tag);
   const puuid = account.data?.data.puuid;
-  const duo = useDuoStats(puuid);
-  const squad = useSquadStats(puuid);
-  const rivalry = useRivalryStats(puuid);
+
+  // TODO Social/multi-comptes : filtre de récence — "toutes les périodes" par défaut pour
+  // ne pas changer le comportement existant tant que l'utilisateur n'a rien choisi.
+  const [sinceDays, setSinceDays] = useState<number | null>(null);
+  const duo = useDuoStats(puuid, 2, sinceDays);
+  const squad = useSquadStats(puuid, 2, sinceDays);
+  const rivalry = useRivalryStats(puuid, 2, sinceDays);
 
   // TODO stats & analyse joueur : filtre par tag structuré (voir PlayerNotesPanel.tsx) sur
   // ces trois listes — les tags ne sont posés que sur des joueurs déjà suivis
@@ -54,6 +58,30 @@ export default function Duo() {
     [rivalry.data, tagFilter, tagsByPuuid],
   );
 
+  // TODO Social/multi-comptes : recherche manuelle d'un rival, rétro-peuplée depuis les
+  // détails de match déjà en cache (aucun appel réseau) — voir
+  // commands::retro_populate_rivalry.
+  const queryClient = useQueryClient();
+  const [opponentInput, setOpponentInput] = useState("");
+  const [searchState, setSearchState] = useState<
+    { status: "idle" } | { status: "searching" } | { status: "done"; count: number } | { status: "invalid" }
+  >({ status: "idle" });
+
+  async function searchOpponent() {
+    if (!puuid) return;
+    const split = splitRiotId(opponentInput);
+    if (!split) {
+      setSearchState({ status: "invalid" });
+      return;
+    }
+    setSearchState({ status: "searching" });
+    const count = await tauriApi.retroPopulateRivalry(puuid, split.name, split.tag);
+    setSearchState({ status: "done", count });
+    if (count > 0) {
+      queryClient.invalidateQueries({ queryKey: ["rivalry_stats", puuid] });
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -61,18 +89,29 @@ export default function Duo() {
           <h1 className="hud-label text-sm">{t("duo.title")}</h1>
           <p className="mt-1 text-xs text-lo">{t("duo.description")}</p>
         </div>
-        <select
-          value={tagFilter}
-          onChange={(e) => setTagFilter(e.target.value as PlayerTag | "all")}
-          className="hud-label border border-line bg-raised px-2 py-1.5 text-xs text-hi"
-        >
-          <option value="all">{t("duo.tagFilter.all")}</option>
-          {PLAYER_TAGS.map((t2) => (
-            <option key={t2} value={t2}>
-              {t(`duo.tagFilter.tags.${t2}`)}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2">
+          <select
+            value={sinceDays ?? "all"}
+            onChange={(e) => setSinceDays(e.target.value === "all" ? null : Number(e.target.value))}
+            className="hud-label border border-line bg-raised px-2 py-1.5 text-xs text-hi"
+          >
+            <option value="all">{t("duo.recencyFilter.all")}</option>
+            <option value={30}>{t("duo.recencyFilter.30d")}</option>
+            <option value={90}>{t("duo.recencyFilter.90d")}</option>
+          </select>
+          <select
+            value={tagFilter}
+            onChange={(e) => setTagFilter(e.target.value as PlayerTag | "all")}
+            className="hud-label border border-line bg-raised px-2 py-1.5 text-xs text-hi"
+          >
+            <option value="all">{t("duo.tagFilter.all")}</option>
+            {PLAYER_TAGS.map((t2) => (
+              <option key={t2} value={t2}>
+                {t(`duo.tagFilter.tags.${t2}`)}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {duo.isError && <ErrorState error={duo.error} />}
@@ -156,6 +195,44 @@ export default function Duo() {
           <EmptyState icon="team" title={t("duo.squad.emptyMessage")} />
         </div>
       )}
+
+      <Panel className="space-y-2 p-4">
+        <div>
+          <h2 className="hud-label text-sm">{t("duo.rivalry.searchTitle")}</h2>
+          <p className="mt-1 text-xs text-lo">{t("duo.rivalry.searchDescription")}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={opponentInput}
+            onChange={(e) => {
+              setOpponentInput(e.target.value);
+              setSearchState({ status: "idle" });
+            }}
+            placeholder={t("duo.rivalry.searchPlaceholder")}
+            className="flex-1 border border-line bg-base px-2 py-1.5 text-xs text-hi placeholder:text-lo/60"
+          />
+          <button
+            type="button"
+            onClick={searchOpponent}
+            disabled={!opponentInput.trim() || searchState.status === "searching"}
+            className="hud-label border border-line bg-raised px-3 py-1.5 text-xs text-hi hover:text-accent disabled:opacity-50"
+          >
+            {searchState.status === "searching" ? t("duo.rivalry.searchSearching") : t("duo.rivalry.searchButton")}
+          </button>
+        </div>
+        {searchState.status === "invalid" && (
+          <p className="text-xs text-crit">{t("duo.rivalry.searchInvalid")}</p>
+        )}
+        {searchState.status === "done" && searchState.count > 0 && (
+          <p className="text-xs text-accent">
+            {t("duo.rivalry.searchFound", { count: searchState.count })}
+          </p>
+        )}
+        {searchState.status === "done" && searchState.count === 0 && (
+          <p className="text-xs text-lo">{t("duo.rivalry.searchNotFound")}</p>
+        )}
+      </Panel>
 
       {rivalry.data && filteredRivalry.length > 0 && (
         <div className="space-y-2">

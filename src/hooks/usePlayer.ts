@@ -56,19 +56,26 @@ export function useMmrHistory(params: { region?: string; name?: string; tag?: st
 /** Stats de duo/squad (V3) accumulées localement au fil des matchs consultés (voir
  * commands::record_party_from_match) — ne déclenche aucun appel réseau, relit juste la
  * table locale `party_matches`. `minMatches` filtre les parties de passage. */
-export function useDuoStats(puuid: string | undefined, minMatches = 2) {
+/** TODO Social/multi-comptes : `sinceDays` (`null` = toutes les périodes) convertit en
+ * timestamp Unix côté frontend avant l'appel — garde les panneaux duo/squad/rivalité
+ * pertinents dans le temps ("coéquipier des 30 derniers jours" vs "occasionnel il y a un an"). */
+function sinceDaysToTs(sinceDays: number | null): number | null {
+  return sinceDays == null ? null : Math.floor(Date.now() / 1000) - sinceDays * 24 * 60 * 60;
+}
+
+export function useDuoStats(puuid: string | undefined, minMatches = 2, sinceDays: number | null = null) {
   return useQuery({
-    queryKey: ["duo_stats", puuid, minMatches],
-    queryFn: () => tauriApi.listDuoStats(puuid!, minMatches),
+    queryKey: ["duo_stats", puuid, minMatches, sinceDays],
+    queryFn: () => tauriApi.listDuoStats(puuid!, minMatches, sinceDaysToTs(sinceDays)),
     enabled: Boolean(puuid),
   });
 }
 
 /** Backlog #23 : extension "squad" (trios) de useDuoStats. */
-export function useSquadStats(puuid: string | undefined, minMatches = 2) {
+export function useSquadStats(puuid: string | undefined, minMatches = 2, sinceDays: number | null = null) {
   return useQuery({
-    queryKey: ["squad_stats", puuid, minMatches],
-    queryFn: () => tauriApi.listSquadStats(puuid!, minMatches),
+    queryKey: ["squad_stats", puuid, minMatches, sinceDays],
+    queryFn: () => tauriApi.listSquadStats(puuid!, minMatches, sinceDaysToTs(sinceDays)),
     enabled: Boolean(puuid),
   });
 }
@@ -76,10 +83,10 @@ export function useSquadStats(puuid: string | undefined, minMatches = 2) {
 /** Backlog #58 : rivalité suivie en continu, pendant "adversaire" de useDuoStats —
  * alimentée par commands::record_party_from_match à chaque consultation d'un match où le
  * joueur suivi affrontait un adversaire déjà croisé, aucun appel réseau ici non plus. */
-export function useRivalryStats(puuid: string | undefined, minMatches = 2) {
+export function useRivalryStats(puuid: string | undefined, minMatches = 2, sinceDays: number | null = null) {
   return useQuery({
-    queryKey: ["rivalry_stats", puuid, minMatches],
-    queryFn: () => tauriApi.listRivalryStats(puuid!, minMatches),
+    queryKey: ["rivalry_stats", puuid, minMatches, sinceDays],
+    queryFn: () => tauriApi.listRivalryStats(puuid!, minMatches, sinceDaysToTs(sinceDays)),
     enabled: Boolean(puuid),
   });
 }

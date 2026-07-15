@@ -17,6 +17,7 @@ import CommandPalette from "./components/CommandPalette";
 import Search from "./screens/Search";
 import { useUiStore } from "./store/uiStore";
 import { useSettingsStore } from "./store/settingsStore";
+import { useSelfAccountCycling } from "./hooks/useSelfAccountCycling";
 
 // Écrans chargés à la demande (React.lazy) : seul l'écran de recherche (route "/",
 // premier rendu de l'app) est dans le bundle initial. Le reste — profil joueur, recharts
@@ -58,6 +59,10 @@ export default function App() {
   useEffect(() => {
     refreshSettings();
   }, [refreshSettings]);
+
+  // TODO Social/multi-comptes : Ctrl+Tab cycle entre comptes "à soi" — n'a de sens que pour
+  // la fenêtre principale (routeur applicatif), pas l'overlay (voir early-return plus bas).
+  useSelfAccountCycling();
 
   // Backlog #25 : Ctrl+K ouvre la palette de commande — écouteur frontend simple, cette
   // fenêtre doit juste avoir le focus (contrairement à Ctrl+Shift+V qui est un raccourci
