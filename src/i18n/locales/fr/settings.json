@@ -162,6 +162,11 @@
   "data": {
     "title": "Données locales",
     "description": "L'app garde une copie locale (cache SQLite) de tes recherches, du cache API et de l'historique de progression de rank pour rester rapide et fonctionner hors-ligne en repli.",
+    "exportTitle": "Exporter mes données",
+    "exportDescription": "Exporte tes joueurs suivis (favoris, notes, tags) en CSV, ou un export JSON complet incluant aussi l'historique de rang et les stats duo/squad/rivalité de tes comptes \"à soi\" — utile pour croiser tes données dans un tableur.",
+    "exportCsv": "Export CSV",
+    "exportJson": "Export JSON",
+    "exportError": "Échec de l'export.",
     "resetTitle": "Effacer le cache et l'historique local",
     "resetDescription": "Supprime le cache API, l'historique de progression de rank et l'historique de recherche. Ta clé API et tes préférences sont conservées.",
     "resetConfirm": "Effacer le cache local, l'historique de rank et l'historique de recherche ? Cette action est irréversible (les réglages sont conservés).",
