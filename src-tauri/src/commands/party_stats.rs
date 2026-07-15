@@ -88,6 +88,22 @@ pub async fn get_side_winrate(
     Ok(crate::side_stats::compute_side_winrate(&matches, &puuid))
 }
 
+/// TODO stats & analyse joueur : winrate par type d'achat (eco/half-buy/full-buy) agrégé sur
+/// tous les détails de match déjà en cache pour ce puuid (aucun appel réseau — voir
+/// `economy_stats::compute_economy_stats`).
+#[tauri::command]
+pub async fn get_economy_stats(
+    state: State<'_, AppState>,
+    puuid: String,
+) -> Result<crate::economy_stats::EconomyStat, CommandError> {
+    let matches = {
+        let conn = state.db.lock().await;
+        crate::api::henrik::endpoints::get_cached_match_details_for_puuid(&conn, &puuid)?
+    };
+
+    Ok(crate::economy_stats::compute_economy_stats(&matches, &puuid))
+}
+
 fn team_won(detail: &MatchDetailData, team: &str) -> bool {
     let team_data = if team.eq_ignore_ascii_case("red") {
         detail.teams.red.as_ref()

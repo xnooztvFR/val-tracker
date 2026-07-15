@@ -43,6 +43,14 @@
       "defense": "Round win % — Defensa",
       "roundsHint": "{{n}} rondas"
     },
+    "economyStats": {
+      "title": "Winrate por tipo de compra",
+      "description": "Basado en las {{count}} partidas ya consultadas en detalle (ronda por ronda) — las partidas nunca abiertas en detalle no se cuentan. Clasificación por umbrales de valor de equipo individual (aproximada, no es una regla oficial de Riot).",
+      "eco": "Round win % — Eco",
+      "halfBuy": "Round win % — Half-buy",
+      "fullBuy": "Round win % — Full-buy",
+      "roundsHint": "{{n}} rondas"
+    },
     "seasonComparison": {
       "title": "Comparación por temporada",
       "description": "Aproximación por temporada (Henrik no expone el parche exacto por partida sin una llamada de red adicional por partida) — basado en el historial de RR ya en caché.",

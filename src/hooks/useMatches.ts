@@ -35,3 +35,13 @@ export function useSideWinrate(puuid: string | undefined) {
     enabled: Boolean(puuid),
   });
 }
+
+/** TODO stats & analyse joueur : winrate par type d'achat (eco/half-buy/full-buy), même
+ * principe que `useSideWinrate` — agrégé côté Rust sur les détails de match déjà en cache. */
+export function useEconomyStats(puuid: string | undefined) {
+  return useQuery({
+    queryKey: ["economy_stats", puuid],
+    queryFn: () => tauriApi.getEconomyStats(puuid!),
+    enabled: Boolean(puuid),
+  });
+}

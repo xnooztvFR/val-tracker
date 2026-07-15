@@ -280,6 +280,24 @@ export interface SideWinrateStat {
   matches_considered: number;
 }
 
+// ---- economy stats (eco/half-buy/full-buy) ----
+
+export type BuyType = "eco" | "half_buy" | "full_buy";
+
+export interface BuyTypeTally {
+  rounds_played: number;
+  rounds_won: number;
+}
+
+/** Winrate par type d'achat, agrégé côté Rust sur les détails de match déjà en cache — même
+ * principe et mêmes limites que `SideWinrateStat`. */
+export interface EconomyStat {
+  eco: BuyTypeTally;
+  half_buy: BuyTypeTally;
+  full_buy: BuyTypeTally;
+  matches_considered: number;
+}
+
 export interface LeaderboardPlayer {
   puuid: string | null;
   name: string;
@@ -1089,6 +1107,7 @@ export const tauriApi = {
   clearWeeklyGoal: (puuid: string, goalType: WeeklyGoalType) =>
     invoke<void>("clear_weekly_goal", { puuid, goalType }),
   getSideWinrate: (puuid: string) => invoke<SideWinrateStat>("get_side_winrate", { puuid }),
+  getEconomyStats: (puuid: string) => invoke<EconomyStat>("get_economy_stats", { puuid }),
 
   recordPartyFromMatch: (matchId: string, trackedPuuid: string) =>
     invoke<void>("record_party_from_match", { matchId, trackedPuuid }),

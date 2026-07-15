@@ -14,7 +14,7 @@ import {
 } from "recharts";
 
 import { useAccount, useMmrHistory } from "../hooks/usePlayer";
-import { useMatches, useSideWinrate } from "../hooks/useMatches";
+import { useEconomyStats, useMatches, useSideWinrate } from "../hooks/useMatches";
 import StatCard from "../components/StatCard";
 import Panel from "../components/Panel";
 import SampleSizeSwitch, { type SampleSize } from "../components/SampleSizeSwitch";
@@ -96,6 +96,7 @@ export default function Trends() {
   const matches = useMatches({ region, name, tag, size: sampleSize });
   const mmrHistory = useMmrHistory({ region, name, tag });
   const sideWinrate = useSideWinrate(puuid);
+  const economyStats = useEconomyStats(puuid);
 
   const trends = useMemo(
     () => (matches.data && puuid ? computeTrends(matches.data.data, puuid) : null),
@@ -280,6 +281,34 @@ export default function Trends() {
                       : 0
                   }
                 />
+              </div>
+            </div>
+          )}
+
+          {economyStats.data && economyStats.data.matches_considered > 0 && (
+            <div>
+              <h2 className="hud-label mb-2">{t("trends.economyStats.title")}</h2>
+              <p className="mb-2 text-xs text-lo">
+                {t("trends.economyStats.description", { count: economyStats.data.matches_considered })}
+              </p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {(
+                  [
+                    ["eco", economyStats.data.eco, t("trends.economyStats.eco")],
+                    ["half_buy", economyStats.data.half_buy, t("trends.economyStats.halfBuy")],
+                    ["full_buy", economyStats.data.full_buy, t("trends.economyStats.fullBuy")],
+                  ] as const
+                ).map(([key, tally, label]) => (
+                  <StatCard
+                    key={key}
+                    label={label}
+                    value={t("trends.statCards.bestMapWinrate", {
+                      percent: tally.rounds_played > 0 ? ((tally.rounds_won / tally.rounds_played) * 100).toFixed(0) : "0",
+                    })}
+                    hint={t("trends.economyStats.roundsHint", { n: tally.rounds_played })}
+                    gaugePercent={tally.rounds_played > 0 ? (tally.rounds_won / tally.rounds_played) * 100 : 0}
+                  />
+                ))}
               </div>
             </div>
           )}
