@@ -44,7 +44,7 @@ urlencoding = "2"
 [target.'cfg(windows)'.dependencies]
 # Chiffrement au repos de la clé API Henrik via DPAPI (voir settings.rs::crypto) — liée au
 # compte Windows de l'utilisateur, pas de secret supplémentaire à gérer.
-windows = { version = "0.61", features = ["Win32_Security_Cryptography", "Win32_Foundation"] }
+windows = { version = "0.62", features = ["Win32_Security_Cryptography", "Win32_Foundation"] }
 
 [profile.release]
 panic = "abort"
