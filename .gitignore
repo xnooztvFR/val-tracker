@@ -23,6 +23,7 @@ src-tauri/proxy/.wrangler/
 CLAUDE.md
 TODO.md
 prompt-refonte-design.md
+aidd_docs/
 
 # Éditeurs / OS
 .vscode/*
