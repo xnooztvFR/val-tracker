@@ -418,3 +418,56 @@ export function computeLeaderboardPercentile(
     playersInTier,
   };
 }
+
+export interface RankEta {
+  /** Pente de la régression linéaire RR/jour sur le palier actuel (peut être négative). */
+  slopeRrPerDay: number;
+  /** Nombre de jours avant d'atteindre `targetRr` au rythme actuel, `null` si la tendance
+   * n'est pas positive ou si l'objectif est déjà atteint/pas assez de données. */
+  daysToTargetRr: number | null;
+  sampleSize: number;
+  currentTier: number;
+}
+
+/** TODO stats & analyse joueur : ETA de progression de rang, régression linéaire simple sur
+ * `rank_snapshots` déjà en cache. Volontairement restreinte aux snapshots du palier (tier)
+ * *actuel* : `computePeriodRecap` documente déjà que les paliers de RR par tier ne sont pas
+ * uniformes, donc mélanger des RR de tiers différents dans une même régression donnerait une
+ * pente trompeuse. Ici on estime seulement "à ce rythme, combien de jours avant la promotion
+ * (RR >= targetRr, 100 par défaut) depuis le tier actuel" — pas une ETA jusqu'à un tier cible
+ * arbitraire plus haut, qui resterait une extrapolation non fiable au-delà du palier en
+ * cours. */
+export function computeRankEta(snapshots: RankSnapshot[], targetRr = 100): RankEta | null {
+  const sorted = [...snapshots].sort((a, b) => a.recorded_at - b.recorded_at);
+  if (sorted.length === 0) return null;
+  const currentTier = sorted[sorted.length - 1].tier;
+
+  // Ne garde que la série continue de snapshots du tier actuel, en partant de la fin — dès
+  // qu'on retombe sur un tier différent en remontant dans le temps, on s'arrête.
+  const sameTier: RankSnapshot[] = [];
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    if (sorted[i].tier !== currentTier) break;
+    if (sorted[i].rr == null) continue;
+    sameTier.unshift(sorted[i]);
+  }
+  if (sameTier.length < 2) return null;
+
+  // Régression linéaire simple RR = a + b*t, t en jours depuis le premier snapshot retenu.
+  const t0 = sameTier[0].recorded_at;
+  const xs = sameTier.map((s) => (s.recorded_at - t0) / 86_400);
+  const ys = sameTier.map((s) => s.rr ?? 0);
+  const n = xs.length;
+  const meanX = xs.reduce((a, b) => a + b, 0) / n;
+  const meanY = ys.reduce((a, b) => a + b, 0) / n;
+  let num = 0;
+  let den = 0;
+  for (let i = 0; i < n; i++) {
+    num += (xs[i] - meanX) * (ys[i] - meanY);
+    den += (xs[i] - meanX) ** 2;
+  }
+  const slope = den === 0 ? 0 : num / den;
+  const lastRr = sameTier[sameTier.length - 1].rr ?? 0;
+  const daysToTargetRr = slope > 0 && targetRr > lastRr ? (targetRr - lastRr) / slope : null;
+
+  return { slopeRrPerDay: slope, daysToTargetRr, sampleSize: n, currentTier };
+}

@@ -5,6 +5,8 @@ import { useTranslation } from "react-i18next";
 import Panel from "./Panel";
 import { tauriApi } from "../lib/tauriApi";
 import { computeGoalProgress, getFullTierLabels } from "../lib/format";
+import { computeRankEta } from "../lib/stats";
+import { useRankSnapshots } from "../hooks/usePlayer";
 
 interface ProgressionGoalPanelProps {
   puuid: string;
@@ -21,6 +23,7 @@ export default function ProgressionGoalPanel({ puuid, currentTier, currentRr }: 
     queryKey: ["progressionGoal", puuid],
     queryFn: () => tauriApi.getProgressionGoal(puuid),
   });
+  const rankSnapshots = useRankSnapshots(puuid);
   const [editing, setEditing] = useState(false);
   // Défaut : Diamant 1 (tier 18 dans le référentiel Henrik/Riot — voir FULL_TIER_KEYS dans
   // lib/format.ts). On cherche par valeur de tier plutôt que par position dans le tableau
@@ -50,6 +53,17 @@ export default function ProgressionGoalPanel({ puuid, currentTier, currentRr }: 
   const progress =
     activeGoal && currentTier != null && currentRr != null && activeGoal.target_tier != null
       ? computeGoalProgress(currentTier, currentRr, activeGoal.target_tier, activeGoal.target_rr)
+      : null;
+
+  // TODO stats & analyse joueur : ETA de progression de rang par régression linéaire sur
+  // rank_snapshots — voir computeRankEta pour la limite volontaire au palier actuel.
+  const targetRrForEta =
+    activeGoal?.target_tier != null && currentTier != null && activeGoal.target_tier === currentTier
+      ? (activeGoal.target_rr ?? 100)
+      : 100;
+  const rankEta =
+    activeGoal && !progress?.reached && rankSnapshots.data
+      ? computeRankEta(rankSnapshots.data, targetRrForEta)
       : null;
 
   return (
@@ -135,6 +149,11 @@ export default function ProgressionGoalPanel({ puuid, currentTier, currentRr }: 
               style={{ width: `${progress?.percent ?? 0}%` }}
             />
           </div>
+          {rankEta && rankEta.daysToTargetRr != null && (
+            <p className="text-[11px] text-lo">
+              {t("progressionGoalPanel.eta", { days: Math.ceil(rankEta.daysToTargetRr) })}
+            </p>
+          )}
           <button
             type="button"
             onClick={handleClear}

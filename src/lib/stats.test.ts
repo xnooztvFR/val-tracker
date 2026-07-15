@@ -6,6 +6,7 @@ import {
   computeLeaderboardPercentile,
   computeOverview,
   computePeriodRecap,
+  computeRankEta,
   computeRegularity,
   computeSeasonComparison,
   computeWeeklyMatchStats,
@@ -226,6 +227,51 @@ describe("computePeriodRecap", () => {
     const recap = computePeriodRecap([], snapshots, "me", "week", now);
     expect(recap.rankChange?.tierStart).toBe(20);
     expect(recap.rankChange?.tierEnd).toBe(20);
+  });
+});
+
+describe("computeRankEta", () => {
+  function makeSnapshot(tier: number, rr: number | null, recordedAt: number): RankSnapshot {
+    return { tier, tier_patched: `Tier ${tier}`, rr, recorded_at: recordedAt };
+  }
+
+  it("estimates days to reach the target RR from a positive trend on the current tier", () => {
+    const day = 86_400;
+    const snapshots = [
+      makeSnapshot(18, 20, 0),
+      makeSnapshot(18, 30, day),
+      makeSnapshot(18, 40, 2 * day),
+    ];
+    const eta = computeRankEta(snapshots, 100);
+    expect(eta?.currentTier).toBe(18);
+    expect(eta?.slopeRrPerDay).toBeCloseTo(10, 5);
+    // 40 -> 100 à +10 RR/jour = 6 jours.
+    expect(eta?.daysToTargetRr).toBeCloseTo(6, 5);
+  });
+
+  it("returns null days when the trend is flat or negative", () => {
+    const day = 86_400;
+    const snapshots = [makeSnapshot(18, 40, 0), makeSnapshot(18, 30, day), makeSnapshot(18, 20, 2 * day)];
+    const eta = computeRankEta(snapshots, 100);
+    expect(eta?.daysToTargetRr).toBeNull();
+  });
+
+  it("ignores snapshots from a previous tier when computing the trend", () => {
+    const day = 86_400;
+    const snapshots = [
+      makeSnapshot(17, 90, 0),
+      makeSnapshot(18, 10, day), // promotion : redémarre à un RR bas sur le nouveau tier
+      makeSnapshot(18, 30, 2 * day),
+    ];
+    const eta = computeRankEta(snapshots, 100);
+    expect(eta?.currentTier).toBe(18);
+    expect(eta?.sampleSize).toBe(2);
+    expect(eta?.slopeRrPerDay).toBeCloseTo(20, 5);
+  });
+
+  it("returns null with fewer than two snapshots on the current tier", () => {
+    expect(computeRankEta([makeSnapshot(18, 10, 0)])).toBeNull();
+    expect(computeRankEta([])).toBeNull();
   });
 });
 

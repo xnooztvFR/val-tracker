@@ -151,7 +151,8 @@
     "cancel": "Cancel",
     "reached": "Reached",
     "removeGoal": "Remove goal",
-    "rrSuffix": "({{rr}} RR)"
+    "rrSuffix": "({{rr}} RR)",
+    "eta": "At this pace, next tier in ~{{days}} day(s)"
   },
   "weeklyGoalsPanel": {
     "title": "Weekly goals",

@@ -151,7 +151,8 @@
     "cancel": "Annuler",
     "reached": "Atteint",
     "removeGoal": "Retirer l'objectif",
-    "rrSuffix": "({{rr}} RR)"
+    "rrSuffix": "({{rr}} RR)",
+    "eta": "À ce rythme, prochain palier dans ~{{days}} jour(s)"
   },
   "weeklyGoalsPanel": {
     "title": "Objectifs hebdo",

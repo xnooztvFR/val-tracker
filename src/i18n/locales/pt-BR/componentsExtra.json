@@ -151,7 +151,8 @@
     "cancel": "Cancelar",
     "reached": "Alcançado",
     "removeGoal": "Remover objetivo",
-    "rrSuffix": "({{rr}} RR)"
+    "rrSuffix": "({{rr}} RR)",
+    "eta": "Nesse ritmo, próximo patamar em ~{{days}} dia(s)"
   },
   "weeklyGoalsPanel": {
     "title": "Objetivos semanais",
