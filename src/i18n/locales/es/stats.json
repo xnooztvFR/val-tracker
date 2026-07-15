@@ -60,6 +60,17 @@
         "netRr": "RR neto",
         "highestTier": "Mejor rango"
       }
+    },
+    "sessions": {
+      "title": "Sesiones de juego",
+      "description": "Un intervalo de más de 2h entre dos partidas inicia una nueva sesión. El tilt compara el K/D del último tercio de la sesión con el del primer tercio (a partir de 3 partidas).",
+      "table": {
+        "date": "Inicio",
+        "matches": "Balance",
+        "record": "{{wins}}V – {{losses}}D",
+        "winrate": "Winrate",
+        "tilt": "Tilt"
+      }
     }
   },
   "agents": {

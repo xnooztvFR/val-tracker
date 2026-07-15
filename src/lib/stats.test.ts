@@ -9,6 +9,7 @@ import {
   computeRankEta,
   computeRegularity,
   computeSeasonComparison,
+  computeSessions,
   computeWeeklyMatchStats,
   isoWeekKey,
 } from "./stats";
@@ -272,6 +273,56 @@ describe("computeRankEta", () => {
   it("returns null with fewer than two snapshots on the current tier", () => {
     expect(computeRankEta([makeSnapshot(18, 10, 0)])).toBeNull();
     expect(computeRankEta([])).toBeNull();
+  });
+});
+
+describe("computeSessions", () => {
+  it("splits matches into sessions on a gap greater than 2 hours", () => {
+    const matches = [
+      makeMatch({ matchId: "m1", startedAt: "2024-03-05T10:00:00Z", won: true }),
+      makeMatch({ matchId: "m2", startedAt: "2024-03-05T10:40:00Z", won: true }),
+      // écart de 3h -> nouvelle session
+      makeMatch({ matchId: "m3", startedAt: "2024-03-05T13:40:00Z", won: false }),
+    ];
+    const sessions = computeSessions(matches, "me");
+    expect(sessions).toHaveLength(2);
+    // la plus récente en premier
+    expect(sessions[0].matches).toBe(1);
+    expect(sessions[1].matches).toBe(2);
+    expect(sessions[1].wins).toBe(2);
+    expect(sessions[1].winPercent).toBe(100);
+  });
+
+  it("does not split on a gap of exactly 2 hours or less", () => {
+    const matches = [
+      makeMatch({ matchId: "m1", startedAt: "2024-03-05T10:00:00Z", won: true }),
+      makeMatch({ matchId: "m2", startedAt: "2024-03-05T12:00:00Z", won: true }),
+    ];
+    const sessions = computeSessions(matches, "me");
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0].matches).toBe(2);
+  });
+
+  it("reports a tilt signal only from 3 matches onward, comparing last third to first third K/D", () => {
+    const twoMatches = [
+      makeMatch({ matchId: "m1", startedAt: "2024-03-05T10:00:00Z", won: true, kills: 20, deaths: 5 }),
+      makeMatch({ matchId: "m2", startedAt: "2024-03-05T10:20:00Z", won: false, kills: 5, deaths: 20 }),
+    ];
+    expect(computeSessions(twoMatches, "me")[0].tiltDeltaKd).toBeNull();
+
+    const threeMatches = [
+      makeMatch({ matchId: "m1", startedAt: "2024-03-05T10:00:00Z", won: true, kills: 20, deaths: 5 }),
+      makeMatch({ matchId: "m2", startedAt: "2024-03-05T10:20:00Z", won: true, kills: 15, deaths: 5 }),
+      makeMatch({ matchId: "m3", startedAt: "2024-03-05T10:40:00Z", won: false, kills: 2, deaths: 20 }),
+    ];
+    const tilt = computeSessions(threeMatches, "me")[0].tiltDeltaKd;
+    expect(tilt).not.toBeNull();
+    expect(tilt as number).toBeLessThan(0);
+  });
+
+  it("ignores matches with a missing or invalid timestamp", () => {
+    const match = makeMatch({ matchId: "m1", startedAt: null, won: true });
+    expect(computeSessions([match], "me")).toHaveLength(0);
   });
 });
 

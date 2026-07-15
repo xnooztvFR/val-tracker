@@ -60,6 +60,17 @@
         "netRr": "Net RR",
         "highestTier": "Highest tier"
       }
+    },
+    "sessions": {
+      "title": "Play sessions",
+      "description": "A gap of more than 2h between two matches starts a new session. Tilt compares the K/D of the session's last third to its first third (from 3 matches onward).",
+      "table": {
+        "date": "Started",
+        "matches": "Record",
+        "record": "{{wins}}W – {{losses}}L",
+        "winrate": "Winrate",
+        "tilt": "Tilt"
+      }
     }
   },
   "agents": {

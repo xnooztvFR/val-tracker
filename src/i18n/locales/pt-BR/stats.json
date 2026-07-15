@@ -60,6 +60,17 @@
         "netRr": "RR líquido",
         "highestTier": "Melhor rank"
       }
+    },
+    "sessions": {
+      "title": "Sessões de jogo",
+      "description": "Um intervalo de mais de 2h entre duas partidas inicia uma nova sessão. O tilt compara o K/D do último terço da sessão com o do primeiro terço (a partir de 3 partidas).",
+      "table": {
+        "date": "Início",
+        "matches": "Saldo",
+        "record": "{{wins}}V – {{losses}}D",
+        "winrate": "Winrate",
+        "tilt": "Tilt"
+      }
     }
   },
   "agents": {

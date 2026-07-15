@@ -471,3 +471,76 @@ export function computeRankEta(snapshots: RankSnapshot[], targetRr = 100): RankE
 
   return { slopeRrPerDay: slope, daysToTargetRr, sampleSize: n, currentTier };
 }
+
+const SESSION_GAP_MS = 2 * 60 * 60 * 1000;
+/** Sous ce nombre de matchs, le signal "tilt" (delta K/D début vs fin de session) est trop
+ * bruité pour être affiché — un split en tiers de 1-2 matchs ne veut rien dire. */
+const MIN_MATCHES_FOR_TILT_SIGNAL = 3;
+
+export interface GameSession {
+  start: Date;
+  end: Date;
+  matches: number;
+  wins: number;
+  losses: number;
+  winPercent: number;
+  /** K/D moyen du dernier tiers de la session moins celui du premier tiers — négatif =
+   * signal de tilt (perf en baisse en cours de session). `null` si la session est trop
+   * courte pour un signal fiable (voir `MIN_MATCHES_FOR_TILT_SIGNAL`). */
+  tiltDeltaKd: number | null;
+}
+
+/** TODO stats & analyse joueur : regroupement par "session de jeu" (écart > 2h entre deux
+ * matchs = nouvelle session), avec un indicateur de tilt simple — pure fonction sur
+ * `MatchEntry[]` déjà en cache, aucun appel réseau supplémentaire. Sessions triées de la plus
+ * récente à la plus ancienne. */
+export function computeSessions(matches: MatchEntry[], puuid: string): GameSession[] {
+  const withDates = matches
+    .map((match) => {
+      const player = match.players.find((p) => p.puuid === puuid);
+      const startedAt = match.metadata.started_at;
+      if (!player?.stats || !startedAt) return null;
+      const date = new Date(startedAt);
+      if (Number.isNaN(date.getTime())) return null;
+      const team = match.teams.find((t) => t.team_id === player.team_id);
+      const kills = player.stats.kills ?? 0;
+      const deaths = player.stats.deaths ?? 0;
+      return { date, won: team?.won ?? false, kd: deaths > 0 ? kills / deaths : kills };
+    })
+    .filter((m): m is { date: Date; won: boolean; kd: number } => m !== null)
+    .sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  const sessions: GameSession[] = [];
+  let current: typeof withDates = [];
+
+  function flush() {
+    if (current.length === 0) return;
+    const wins = current.filter((m) => m.won).length;
+    let tiltDeltaKd: number | null = null;
+    if (current.length >= MIN_MATCHES_FOR_TILT_SIGNAL) {
+      const third = Math.max(1, Math.floor(current.length / 3));
+      const avg = (arr: typeof current) => arr.reduce((sum, m) => sum + m.kd, 0) / arr.length;
+      tiltDeltaKd = avg(current.slice(-third)) - avg(current.slice(0, third));
+    }
+    sessions.push({
+      start: current[0].date,
+      end: current[current.length - 1].date,
+      matches: current.length,
+      wins,
+      losses: current.length - wins,
+      winPercent: (wins / current.length) * 100,
+      tiltDeltaKd,
+    });
+    current = [];
+  }
+
+  for (const m of withDates) {
+    if (current.length > 0 && m.date.getTime() - current[current.length - 1].date.getTime() > SESSION_GAP_MS) {
+      flush();
+    }
+    current.push(m);
+  }
+  flush();
+
+  return sessions.reverse();
+}

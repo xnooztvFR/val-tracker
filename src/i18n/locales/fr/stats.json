@@ -60,6 +60,17 @@
         "netRr": "RR net",
         "highestTier": "Meilleur tier"
       }
+    },
+    "sessions": {
+      "title": "Sessions de jeu",
+      "description": "Un écart de plus de 2h entre deux matchs démarre une nouvelle session. Le tilt compare le K/D du dernier tiers de la session à celui du premier tiers (à partir de 3 matchs).",
+      "table": {
+        "date": "Début",
+        "matches": "Bilan",
+        "record": "{{wins}}V – {{losses}}D",
+        "winrate": "Winrate",
+        "tilt": "Tilt"
+      }
     }
   },
   "agents": {

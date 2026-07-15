@@ -22,8 +22,8 @@ import ErrorState from "../components/ErrorState";
 import StaleDataBanner from "../components/StaleDataBanner";
 import PerformanceHeatmap from "../components/PerformanceHeatmap";
 import type { MatchEntry } from "../lib/tauriApi";
-import { formatKdRatio, formatRelativeTime } from "../lib/format";
-import { computeHeatmap, computeRegularity, computeSeasonComparison } from "../lib/stats";
+import { formatKdRatio, formatPercent, formatRelativeTime } from "../lib/format";
+import { computeHeatmap, computeRegularity, computeSeasonComparison, computeSessions } from "../lib/stats";
 
 const MONO = '"JetBrains Mono", Consolas, monospace';
 
@@ -112,6 +112,10 @@ export default function Trends() {
   );
   const regularity = useMemo(
     () => (matches.data && puuid ? computeRegularity(matches.data.data, puuid) : null),
+    [matches.data, puuid],
+  );
+  const sessions = useMemo(
+    () => (matches.data && puuid ? computeSessions(matches.data.data, puuid) : []),
     [matches.data, puuid],
   );
 
@@ -339,6 +343,51 @@ export default function Trends() {
                       {row.netRr}
                     </td>
                     <td className="stat-value px-4 py-2.5">{row.highestTier}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Panel>
+        </div>
+      )}
+
+      {sessions.length > 0 && (
+        <div>
+          <h2 className="hud-label mb-2">{t("trends.sessions.title")}</h2>
+          <p className="mb-2 text-xs text-lo">{t("trends.sessions.description")}</p>
+          <Panel className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-line text-left">
+                <tr>
+                  <th className="hud-label px-4 py-3 font-semibold">{t("trends.sessions.table.date")}</th>
+                  <th className="hud-label px-4 py-3 font-semibold">{t("trends.sessions.table.matches")}</th>
+                  <th className="hud-label px-4 py-3 font-semibold">{t("trends.sessions.table.winrate")}</th>
+                  <th className="hud-label px-4 py-3 font-semibold">{t("trends.sessions.table.tilt")}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line/60">
+                {sessions.map((session) => (
+                  <tr key={session.start.toISOString()} className="text-hi/90">
+                    <td className="px-4 py-2.5 font-medium">
+                      {session.start.toLocaleDateString()}{" "}
+                      <span className="text-lo">
+                        {session.start.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </td>
+                    <td className="stat-value px-4 py-2.5">
+                      {t("trends.sessions.table.record", { wins: session.wins, losses: session.losses })}
+                    </td>
+                    <td className="stat-value px-4 py-2.5">{formatPercent(session.winPercent)}</td>
+                    <td className="stat-value px-4 py-2.5">
+                      {session.tiltDeltaKd === null ? (
+                        <span className="text-lo">—</span>
+                      ) : (
+                        <span className={session.tiltDeltaKd < -0.2 ? "text-crit" : "text-lo"}>
+                          {session.tiltDeltaKd >= 0 ? "+" : ""}
+                          {session.tiltDeltaKd.toFixed(2)} K/D
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
