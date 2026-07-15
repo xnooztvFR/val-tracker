@@ -103,18 +103,30 @@
     "form": {
       "playerA": "Jogador A",
       "playerB": "Jogador B",
+      "playerLabel": "Jogador {{n}}",
       "placeholder": "{{label}} — nome#tag",
-      "submit": "Comparar"
+      "submit": "Comparar",
+      "addPlayer": "+ Adicionar jogador",
+      "removePlayer": "Remover este jogador"
     },
     "error": {
-      "format": "Formato esperado para os dois jogadores: nome#tag"
+      "format": "Formato esperado para cada jogador: nome#tag"
     },
     "column": {
       "noData": "Sem dados."
     },
     "initial": {
       "title": "Nenhuma comparação",
-      "detail": "Informe dois Riot ID acima para comparar as estatísticas lado a lado."
+      "detail": "Informe de 2 a 5 Riot ID acima para comparar as estatísticas lado a lado."
+    },
+    "radar": {
+      "title": "Comparativo (radar)",
+      "metrics": {
+        "winrate": "Winrate",
+        "kd": "K/D",
+        "hsPercent": "HS %",
+        "acs": "ACS"
+      }
     },
     "rows": {
       "winrate": "Winrate",
