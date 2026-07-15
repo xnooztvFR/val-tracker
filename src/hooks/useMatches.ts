@@ -45,3 +45,14 @@ export function useEconomyStats(puuid: string | undefined) {
     enabled: Boolean(puuid),
   });
 }
+
+/** TODO stats & analyse joueur : comparaison à la moyenne perso sur une carte, même principe
+ * que `useEconomyStats` — agrégé côté Rust sur les détails de match déjà en cache pour cette
+ * carte précisément. */
+export function useMapAverageStats(puuid: string | undefined, map: string | undefined) {
+  return useQuery({
+    queryKey: ["map_average_stats", puuid, map],
+    queryFn: () => tauriApi.getMapAverageStats(puuid!, map!),
+    enabled: Boolean(puuid && map),
+  });
+}

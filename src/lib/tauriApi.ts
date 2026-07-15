@@ -298,6 +298,17 @@ export interface EconomyStat {
   matches_considered: number;
 }
 
+// ---- map average stats (comparaison à la moyenne perso) ----
+
+/** Moyenne perso (ADR/K-D/score) sur une carte donnée, agrégée côté Rust sur les détails de
+ * match déjà en cache pour cette carte — mêmes limites que `SideWinrateStat`. */
+export interface MapAverageStat {
+  matches_considered: number;
+  avg_adr: number;
+  avg_kd: number;
+  avg_score: number;
+}
+
 export interface LeaderboardPlayer {
   puuid: string | null;
   name: string;
@@ -1108,6 +1119,8 @@ export const tauriApi = {
     invoke<void>("clear_weekly_goal", { puuid, goalType }),
   getSideWinrate: (puuid: string) => invoke<SideWinrateStat>("get_side_winrate", { puuid }),
   getEconomyStats: (puuid: string) => invoke<EconomyStat>("get_economy_stats", { puuid }),
+  getMapAverageStats: (puuid: string, map: string) =>
+    invoke<MapAverageStat | null>("get_map_average_stats", { puuid, map }),
 
   recordPartyFromMatch: (matchId: string, trackedPuuid: string) =>
     invoke<void>("record_party_from_match", { matchId, trackedPuuid }),

@@ -92,6 +92,14 @@
       "title": "Sua economia",
       "spent": "Gasto total: {{spent}} créditos · {{average}} / round em média",
       "avgLoadout": "Valor médio de equipamento: {{value}}"
+    },
+    "mapAverage": {
+      "title": "Comparado com sua média em {{map}}",
+      "description": "Baseado nas {{count}} partidas já consultadas em detalhe neste mapa — partidas nunca abertas em detalhe não são contadas.",
+      "adr": "ADR",
+      "kd": "K/D",
+      "score": "Pontuação",
+      "vsAverage": "vs {{avg}} de média"
     }
   },
   "report": {

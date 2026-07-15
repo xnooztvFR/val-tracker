@@ -4,14 +4,14 @@ import { SkeletonScreen } from "../components/Skeleton";
 import { Link, useParams } from "react-router-dom";
 
 import { useAccount } from "../hooks/usePlayer";
-import { useMatchDetail } from "../hooks/useMatches";
+import { useMapAverageStats, useMatchDetail } from "../hooks/useMatches";
 import ErrorState from "../components/ErrorState";
 import InfoTooltip from "../components/InfoTooltip";
 import Panel from "../components/Panel";
 import StaleDataBanner from "../components/StaleDataBanner";
 import { formatDurationMs, formatKda, formatKdRatio } from "../lib/format";
 import { tauriApi } from "../lib/tauriApi";
-import type { MatchDetailPlayer, MatchDetailRound } from "../lib/tauriApi";
+import type { MapAverageStat, MatchDetailPlayer, MatchDetailRound } from "../lib/tauriApi";
 
 function endTypeLabel(t: (key: string) => string, endType: string | null | undefined): string {
   const key: Record<string, string> = {
@@ -39,6 +39,10 @@ export default function MatchDetail() {
   const puuid = account.data?.data.puuid;
 
   const detail = useMatchDetail(matchId);
+  // TODO stats & analyse joueur : comparaison à la moyenne perso sur cette carte — le hook
+  // doit être appelé inconditionnellement (avant les early return ci-dessous), donc on lit
+  // la carte via optional chaining plutôt que d'attendre `data`.
+  const mapAverage = useMapAverageStats(puuid, detail.data?.data.metadata.map ?? undefined);
 
   // Best-effort, ne bloque jamais l'affichage : reconstruit les stats de duo/squad
   // (party_id) à partir du détail de match tout juste chargé, sans appel réseau
@@ -194,7 +198,69 @@ export default function MatchDetail() {
           </p>
         </Panel>
       )}
+
+      {activePlayer && mapAverage.data && roundsPlayed > 0 && (
+        <MapAverageComparisonPanel
+          player={activePlayer}
+          roundsPlayed={roundsPlayed}
+          mapName={data.metadata.map}
+          average={mapAverage.data}
+        />
+      )}
     </div>
+  );
+}
+
+/** TODO stats & analyse joueur : compare ADR/K-D/score du match affiché à la moyenne perso du
+ * joueur suivi sur cette carte, calculée côté Rust sur les matchs déjà en cache (voir
+ * `useMapAverageStats`) — évite d'afficher des chiffres bruts seuls sans point de repère. */
+function MapAverageComparisonPanel({
+  player,
+  roundsPlayed,
+  mapName,
+  average,
+}: {
+  player: MatchDetailPlayer;
+  roundsPlayed: number;
+  mapName: string | null | undefined;
+  average: MapAverageStat;
+}) {
+  const { t } = useTranslation("matches");
+  const adr = (player.damage_made ?? 0) / roundsPlayed;
+  const kills = player.stats?.kills ?? 0;
+  const deaths = player.stats?.deaths ?? 0;
+  const kd = deaths > 0 ? kills / deaths : kills;
+  const score = player.stats?.score ?? 0;
+
+  const rows: { label: string; value: number; avg: number; decimals: number }[] = [
+    { label: t("detail.mapAverage.adr"), value: adr, avg: average.avg_adr, decimals: 0 },
+    { label: t("detail.mapAverage.kd"), value: kd, avg: average.avg_kd, decimals: 2 },
+    { label: t("detail.mapAverage.score"), value: score, avg: average.avg_score, decimals: 0 },
+  ];
+
+  return (
+    <Panel className="p-4">
+      <p className="hud-label mb-2">{t("detail.mapAverage.title", { map: mapName ?? "?" })}</p>
+      <p className="mb-2 text-xs text-lo">
+        {t("detail.mapAverage.description", { count: average.matches_considered })}
+      </p>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {rows.map((row) => {
+          const delta = row.value - row.avg;
+          const deltaColor = delta > 0 ? "text-accent" : delta < 0 ? "text-crit" : "text-lo";
+          return (
+            <div key={row.label}>
+              <p className="hud-label text-[10px] text-lo">{row.label}</p>
+              <p className="stat-value text-lg font-bold text-hi">{row.value.toFixed(row.decimals)}</p>
+              <p className={`stat-value text-[11px] ${deltaColor}`}>
+                {delta >= 0 ? "+" : ""}
+                {delta.toFixed(row.decimals)} {t("detail.mapAverage.vsAverage", { avg: row.avg.toFixed(row.decimals) })}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+    </Panel>
   );
 }
 

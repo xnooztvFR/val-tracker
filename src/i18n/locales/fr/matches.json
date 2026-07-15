@@ -92,6 +92,14 @@
       "title": "Ton économie",
       "spent": "Dépenses totales : {{spent}} crédits · {{average}} / round en moyenne",
       "avgLoadout": "Valeur de loadout moyenne : {{value}}"
+    },
+    "mapAverage": {
+      "title": "Comparé à ta moyenne sur {{map}}",
+      "description": "Basé sur les {{count}} matchs déjà consultés en détail sur cette carte — les matchs jamais ouverts en détail ne sont pas comptés.",
+      "adr": "ADR",
+      "kd": "K/D",
+      "score": "Score",
+      "vsAverage": "vs {{avg}} en moyenne"
     }
   },
   "report": {

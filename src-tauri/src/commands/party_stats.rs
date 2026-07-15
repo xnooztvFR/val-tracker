@@ -104,6 +104,23 @@ pub async fn get_economy_stats(
     Ok(crate::economy_stats::compute_economy_stats(&matches, &puuid))
 }
 
+/// TODO stats & analyse joueur : comparaison à la moyenne perso sur une carte (ADR/K/D/score)
+/// agrégée sur tous les détails de match déjà en cache pour ce puuid sur cette carte (aucun
+/// appel réseau — voir `map_averages::compute_map_average`).
+#[tauri::command]
+pub async fn get_map_average_stats(
+    state: State<'_, AppState>,
+    puuid: String,
+    map: String,
+) -> Result<Option<crate::map_averages::MapAverageStat>, CommandError> {
+    let matches = {
+        let conn = state.db.lock().await;
+        crate::api::henrik::endpoints::get_cached_match_details_for_puuid(&conn, &puuid)?
+    };
+
+    Ok(crate::map_averages::compute_map_average(&matches, &puuid, &map))
+}
+
 fn team_won(detail: &MatchDetailData, team: &str) -> bool {
     let team_data = if team.eq_ignore_ascii_case("red") {
         detail.teams.red.as_ref()

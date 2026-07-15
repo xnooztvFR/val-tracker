@@ -14,6 +14,7 @@ mod loss_streak;
 mod overlay;
 mod riot_local;
 mod economy_stats;
+mod map_averages;
 mod settings;
 mod side_stats;
 mod status_watcher;
@@ -202,6 +203,7 @@ fn main() {
             commands::record_party_from_match,
             commands::get_side_winrate,
             commands::get_economy_stats,
+            commands::get_map_average_stats,
             commands::list_duo_stats,
             commands::list_squad_stats,
             commands::list_rivalry_stats,

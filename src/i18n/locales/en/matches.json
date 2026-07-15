@@ -92,6 +92,14 @@
       "title": "Your economy",
       "spent": "Total spent: {{spent}} credits · {{average}} avg. per round",
       "avgLoadout": "Average loadout value: {{value}}"
+    },
+    "mapAverage": {
+      "title": "Compared to your average on {{map}}",
+      "description": "Based on the {{count}} matches already opened in detail on this map — matches never opened in detail aren't counted.",
+      "adr": "ADR",
+      "kd": "K/D",
+      "score": "Score",
+      "vsAverage": "vs {{avg}} average"
     }
   },
   "report": {
