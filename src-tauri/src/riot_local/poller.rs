@@ -34,7 +34,7 @@
 //! que ce soit un vrai hors-jeu confirmé ; autant le détecter vite plutôt que d'attendre au
 //! rythme lent conçu pour un hors-jeu déjà établi de longue date.
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_notification::NotificationExt;
@@ -63,6 +63,14 @@ const STUCK_RESET_THRESHOLD: u32 = 15;
 /// locale Riot après un démarrage. ~2 minutes à `ACTIVE_INTERVAL` (2,5s/tick), pour couvrir
 /// le pire cas observé en pratique.
 const STARTUP_GRACE_TICKS: u32 = 48;
+/// Nombre de cycles de reconnexion complète consécutifs (voir `on_local_api_failure`) qui
+/// ont eux-mêmes échoué immédiatement, à partir duquel on commence à espacer les tentatives
+/// suivantes au lieu de retenter en boucle serrée à `ACTIVE_INTERVAL` — cas d'un Riot Client
+/// qui répond de façon systématiquement cassée (ex. changement de format d'auth après un
+/// patch, voir backlog sécurité).
+const RECONNECT_BACKOFF_THRESHOLD: u32 = 2;
+const RECONNECT_BACKOFF_BASE: Duration = Duration::from_secs(5);
+const RECONNECT_BACKOFF_MAX: Duration = Duration::from_secs(120);
 /// Durée d'affichage de l'overlay une fois la manche lancée, le temps de lire le roster
 /// ennemi (voir `on_state_changed`) avant de se masquer pour ne pas gêner la visée.
 const IN_GAME_OVERLAY_DURATION: Duration = Duration::from_secs(12);
@@ -111,6 +119,12 @@ async fn run_loop(app: AppHandle, mut stop_rx: watch::Receiver<bool>) {
 /// après `DEEP_IDLE_THRESHOLD` ticks — `Menu` reste à `IDLE_INTERVAL` puisque le client est
 /// ouvert et une mise en file d'attente peut survenir à tout moment.
 fn next_interval(ctx: &PollContext) -> Duration {
+    if let Some(until) = ctx.reconnect_backoff_until {
+        let now = Instant::now();
+        if now < until {
+            return until - now;
+        }
+    }
     if ctx.startup_grace_ticks > 0 {
         return ACTIVE_INTERVAL;
     }
@@ -144,6 +158,13 @@ struct PollContext {
     /// Compte à rebours de polling rapide forcé après une (re)connexion — voir
     /// `STARTUP_GRACE_TICKS` et `next_interval`. Décrémenté une fois par tick dans `tick`.
     startup_grace_ticks: u32,
+    /// Cycles de reconnexion complète consécutifs qui ont eux-mêmes échoué immédiatement —
+    /// PAS remis à zéro par `reset_session` (aussi appelée pour un simple changement de
+    /// lockfile bénin) : seul un aller-retour API réellement réussi le fait (voir `tick`).
+    reconnect_failures: u32,
+    /// Deadline de backoff avant la prochaine tentative de reconnexion complète — voir
+    /// `RECONNECT_BACKOFF_THRESHOLD`/`next_interval`.
+    reconnect_backoff_until: Option<Instant>,
     /// Roster mis en cache pour la phase de jeu en cours (pregame OU in-game) : le roster
     /// ne change pas une fois connu pour cette phase, pas besoin de refaire
     /// entitlements + 2 requêtes GLZ à chaque tick tant qu'on y est encore.
@@ -276,6 +297,10 @@ async fn tick(app: &AppHandle, ctx: &mut PollContext) {
         }
     };
     ctx.local_failures = 0;
+    // Aller-retour complet réussi : la session est réellement rétablie, plus besoin
+    // d'espacer les prochaines tentatives de reconnexion.
+    ctx.reconnect_failures = 0;
+    ctx.reconnect_backoff_until = None;
 
     if state == GameState::HorsJeu {
         ctx.stuck_ticks = ctx.stuck_ticks.saturating_add(1);
@@ -454,7 +479,27 @@ async fn on_local_api_failure(app: &AppHandle, ctx: &mut PollContext, settings: 
     publish(app, ctx, settings, LiveSnapshot::offline());
     crate::overlay::window::hide_overlay(app);
     ctx.previous_state = Some(GameState::HorsJeu);
+    ctx.reconnect_failures = ctx.reconnect_failures.saturating_add(1);
+    if ctx.reconnect_failures > RECONNECT_BACKOFF_THRESHOLD {
+        let backoff = reconnect_backoff(ctx.reconnect_failures);
+        crate::applog!(
+            "[riot_local] {} reconnexions consécutives en échec — backoff de {backoff:?} avant nouvelle tentative",
+            ctx.reconnect_failures
+        );
+        ctx.reconnect_backoff_until = Some(Instant::now() + backoff);
+    }
     ctx.reset_session();
+}
+
+/// Backoff exponentiel plafonné (base `RECONNECT_BACKOFF_BASE`, doublement par échec
+/// au-delà de `RECONNECT_BACKOFF_THRESHOLD`, plafonné à `RECONNECT_BACKOFF_MAX`).
+fn reconnect_backoff(failures: u32) -> Duration {
+    // Plafonne l'exposant avant `pow` : au-delà d'une vingtaine de doublements la valeur
+    // dépasse déjà largement RECONNECT_BACKOFF_MAX, pas besoin d'aller jusqu'à l'overflow de
+    // `u64` pour un nombre d'échecs consécutifs qui n'a de toute façon aucune limite haute.
+    let exponent = failures.saturating_sub(RECONNECT_BACKOFF_THRESHOLD).min(20);
+    let millis = RECONNECT_BACKOFF_BASE.as_millis() as u64 * 2u64.saturating_pow(exponent);
+    Duration::from_millis(millis).min(RECONNECT_BACKOFF_MAX)
 }
 
 /// Réagit aux transitions : affiche/masque l'overlay, notifie la fin de partie. L'overlay
@@ -612,6 +657,11 @@ async fn read_settings(app: &AppHandle) -> crate::settings::AppSettings {
         inactivity_reminder_days: 3,
         notes_pin_enabled: false,
         onboarding_completed: true,
+        henrik_api_key_dpapi_unreadable: false,
+        notes_pin_dpapi_unreadable: false,
+        shortcut_overlay_toggle: crate::settings::DEFAULT_SHORTCUT_OVERLAY_TOGGLE.to_string(),
+        shortcut_main_window_toggle: crate::settings::DEFAULT_SHORTCUT_MAIN_WINDOW_TOGGLE
+            .to_string(),
     })
 }
 
@@ -714,5 +764,28 @@ mod tests {
             presence_text("anything_else", None),
             ("Valorant Tracker".to_string(), "Hors-jeu".to_string())
         );
+    }
+
+    #[test]
+    fn reconnect_backoff_stays_at_base_below_threshold() {
+        assert_eq!(reconnect_backoff(1), RECONNECT_BACKOFF_BASE);
+        assert_eq!(reconnect_backoff(RECONNECT_BACKOFF_THRESHOLD), RECONNECT_BACKOFF_BASE);
+    }
+
+    #[test]
+    fn reconnect_backoff_grows_then_caps() {
+        let first_over = reconnect_backoff(RECONNECT_BACKOFF_THRESHOLD + 1);
+        let second_over = reconnect_backoff(RECONNECT_BACKOFF_THRESHOLD + 2);
+        assert!(first_over > RECONNECT_BACKOFF_BASE);
+        assert!(second_over > first_over);
+        assert_eq!(reconnect_backoff(1000), RECONNECT_BACKOFF_MAX);
+    }
+
+    #[test]
+    fn next_interval_honors_active_reconnect_backoff() {
+        let mut ctx = PollContext::default();
+        ctx.reconnect_backoff_until = Some(Instant::now() + Duration::from_secs(30));
+        let interval = next_interval(&ctx);
+        assert!(interval > Duration::from_secs(20) && interval <= Duration::from_secs(30));
     }
 }

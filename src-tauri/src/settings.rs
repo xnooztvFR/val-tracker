@@ -47,6 +47,17 @@ const KEY_NOTES_PIN_ENABLED: &str = "notes_pin_enabled";
 /// (seul `notes_pin_enabled` l'est) ; la vérification se fait entièrement côté Rust via
 /// `verify_notes_pin`.
 const KEY_NOTES_PIN: &str = "notes_pin";
+/// Compteur d'échecs consécutifs + horodatage de fin de verrouillage de `verify_notes_pin` —
+/// sans ça, un PIN à 4 chiffres (10 000 combinaisons) invoqué en boucle depuis le frontend
+/// (ou tout process local capable d'appeler `invoke`) se casse en quelques secondes malgré la
+/// comparaison en temps constant. Persisté en DB (pas juste en mémoire) pour survivre à un
+/// redémarrage de l'app pendant la fenêtre de verrouillage — même esprit que le circuit
+/// breaker de `rate_limiter.rs`, mais qui lui n'a pas besoin de survivre à un redémarrage
+/// (l'API Henrik retente simplement au prochain lancement).
+const KEY_NOTES_PIN_FAIL_COUNT: &str = "notes_pin_fail_count";
+const KEY_NOTES_PIN_LOCKOUT_UNTIL: &str = "notes_pin_lockout_until";
+const NOTES_PIN_FAILURE_THRESHOLD: u32 = 5;
+const NOTES_PIN_LOCKOUT_SECONDS: i64 = 60;
 /// Backlog #72 (fix) : changelog de la mise à jour tout juste installée, écrit juste avant
 /// `relaunch()` et lu (puis effacé) par `ChangelogModal.tsx` au chargement suivant. Stocké
 /// côté Rust plutôt qu'en `localStorage` : `invoke()` attend la fin de l'écriture SQLite
@@ -62,6 +73,14 @@ const KEY_PENDING_CHANGELOG_NOTES: &str = "pending_changelog_notes";
 /// de configuration initiale (région, détection auto...), même sur une base SQLite vierge.
 /// Ce flag marque un vrai "premier lancement", indépendant de la disponibilité d'une clé.
 const KEY_ONBOARDING_COMPLETED: &str = "onboarding_completed";
+/// Raccourcis globaux (tauri-plugin-global-shortcut, indépendants du focus applicatif) —
+/// en dur jusqu'ici (`overlay::window::TOGGLE_SHORTCUT`/`MAIN_WINDOW_TOGGLE_SHORTCUT`), sans
+/// moyen de les changer en cas de conflit avec une autre appli (overlay GPU, Discord...).
+/// Format accelerator de `tauri-plugin-global-shortcut` (ex. `"ctrl+shift+v"`).
+const KEY_SHORTCUT_OVERLAY_TOGGLE: &str = "shortcut_overlay_toggle";
+const KEY_SHORTCUT_MAIN_WINDOW_TOGGLE: &str = "shortcut_main_window_toggle";
+pub const DEFAULT_SHORTCUT_OVERLAY_TOGGLE: &str = "ctrl+shift+v";
+pub const DEFAULT_SHORTCUT_MAIN_WINDOW_TOGGLE: &str = "ctrl+shift+h";
 
 const DEFAULT_UI_THEME: &str = "dark";
 const DEFAULT_UI_ACCENT: &str = "red";
@@ -175,6 +194,17 @@ pub struct AppSettings {
     /// marqué comme tel) — déclenche l'affichage du wizard côté `Search.tsx` tant que
     /// `false`, sans dépendre de `henrik_api_key_set` (voir `KEY_ONBOARDING_COMPLETED`).
     pub onboarding_completed: bool,
+    /// `true` si un blob DPAPI existe pour la clé API Henrik mais n'a pas pu être déchiffré
+    /// (voir `is_dpapi_blob_unreadable`) — distinct de "jamais configuré", pour que Paramètres
+    /// puisse afficher "ta clé a disparu suite à une réinstallation Windows" plutôt que de
+    /// laisser croire qu'elle a été supprimée sans raison.
+    pub henrik_api_key_dpapi_unreadable: bool,
+    /// Même distinction pour le PIN de verrouillage des notes perso (backlog #99).
+    pub notes_pin_dpapi_unreadable: bool,
+    /// Raccourcis globaux reconfigurables — voir `KEY_SHORTCUT_OVERLAY_TOGGLE`. Format
+    /// accelerator `tauri-plugin-global-shortcut` (ex. `"ctrl+shift+v"`).
+    pub shortcut_overlay_toggle: String,
+    pub shortcut_main_window_toggle: String,
 }
 
 impl fmt::Debug for AppSettings {
@@ -213,6 +243,13 @@ impl fmt::Debug for AppSettings {
             .field("inactivity_reminder_days", &self.inactivity_reminder_days)
             .field("notes_pin_enabled", &self.notes_pin_enabled)
             .field("onboarding_completed", &self.onboarding_completed)
+            .field(
+                "henrik_api_key_dpapi_unreadable",
+                &self.henrik_api_key_dpapi_unreadable,
+            )
+            .field("notes_pin_dpapi_unreadable", &self.notes_pin_dpapi_unreadable)
+            .field("shortcut_overlay_toggle", &self.shortcut_overlay_toggle)
+            .field("shortcut_main_window_toggle", &self.shortcut_main_window_toggle)
             .finish()
     }
 }
@@ -263,6 +300,21 @@ fn get_encrypted(conn: &Connection, key: &str) -> rusqlite::Result<Option<String
             }
             Ok(Some(raw))
         }
+    }
+}
+
+/// Distingue "jamais configuré" de "un blob DPAPI existe mais n'est plus déchiffrable"
+/// (réinstallation Windows, migration de compte...). `get_encrypted` gère déjà ce cas sans
+/// planter (repli silencieux sur `None`), ce qui masque à l'utilisateur la différence entre
+/// "je n'ai jamais renseigné ça" et "ça a disparu sans que je l'aie supprimé" — utilisé pour
+/// afficher un bandeau dédié dans Paramètres plutôt que de laisser croire à une suppression.
+fn is_dpapi_blob_unreadable(conn: &Connection, key: &str) -> bool {
+    let Ok(Some(raw)) = get_raw(conn, key) else {
+        return false;
+    };
+    match raw.strip_prefix(DPAPI_PREFIX) {
+        Some(encoded) => dpapi::unprotect(encoded).is_err(),
+        None => false,
     }
 }
 
@@ -348,6 +400,14 @@ pub fn load_settings(conn: &Connection) -> rusqlite::Result<AppSettings> {
     let onboarding_completed = get_raw(conn, KEY_ONBOARDING_COMPLETED)?
         .map(|v| v == "true")
         .unwrap_or(false);
+    let henrik_api_key_dpapi_unreadable = is_dpapi_blob_unreadable(conn, KEY_HENRIK_API_KEY);
+    let notes_pin_dpapi_unreadable = is_dpapi_blob_unreadable(conn, KEY_NOTES_PIN);
+    let shortcut_overlay_toggle = get_raw(conn, KEY_SHORTCUT_OVERLAY_TOGGLE)?
+        .filter(|v| !v.is_empty())
+        .unwrap_or_else(|| DEFAULT_SHORTCUT_OVERLAY_TOGGLE.to_string());
+    let shortcut_main_window_toggle = get_raw(conn, KEY_SHORTCUT_MAIN_WINDOW_TOGGLE)?
+        .filter(|v| !v.is_empty())
+        .unwrap_or_else(|| DEFAULT_SHORTCUT_MAIN_WINDOW_TOGGLE.to_string());
 
     Ok(AppSettings {
         henrik_api_key_set,
@@ -374,6 +434,10 @@ pub fn load_settings(conn: &Connection) -> rusqlite::Result<AppSettings> {
         inactivity_reminder_days,
         notes_pin_enabled,
         onboarding_completed,
+        henrik_api_key_dpapi_unreadable,
+        notes_pin_dpapi_unreadable,
+        shortcut_overlay_toggle,
+        shortcut_main_window_toggle,
     })
 }
 
@@ -564,11 +628,26 @@ pub fn set_rank_gap_alert_threshold(conn: &Connection, threshold: i64) -> rusqli
     )
 }
 
+/// Persiste le raccourci global de bascule de l'overlay — appelée seulement après un
+/// réenregistrement réussi côté `overlay::window::change_toggle_shortcut` (voir la commande
+/// correspondante), jamais avant, pour ne jamais persister un raccourci qui n'a pas pu être
+/// activé.
+pub fn set_shortcut_overlay_toggle(conn: &Connection, shortcut: &str) -> rusqlite::Result<()> {
+    set_raw(conn, KEY_SHORTCUT_OVERLAY_TOGGLE, shortcut)
+}
+
+pub fn set_shortcut_main_window_toggle(conn: &Connection, shortcut: &str) -> rusqlite::Result<()> {
+    set_raw(conn, KEY_SHORTCUT_MAIN_WINDOW_TOGGLE, shortcut)
+}
+
 /// Backlog #99 : active le verrou et enregistre le PIN (chiffré via DPAPI, comme la clé API
 /// Henrik). `pin` doit être non vide — validé côté commande avant d'appeler cette fonction.
 pub fn set_notes_pin(conn: &Connection, pin: &str) -> rusqlite::Result<()> {
     set_encrypted(conn, KEY_NOTES_PIN, pin)?;
-    set_raw(conn, KEY_NOTES_PIN_ENABLED, "true")
+    set_raw(conn, KEY_NOTES_PIN_ENABLED, "true")?;
+    // Un nouveau PIN repart avec un compteur d'échecs propre — sinon changer de PIN pendant
+    // un verrouillage en cours resterait bloqué jusqu'à expiration de l'ancien cooldown.
+    reset_notes_pin_lockout(conn)
 }
 
 /// Désactive le verrou et efface le PIN enregistré (pas seulement le flag) — repasser
@@ -576,16 +655,63 @@ pub fn set_notes_pin(conn: &Connection, pin: &str) -> rusqlite::Result<()> {
 /// qui redeviendrait active si l'utilisateur ré-active le verrou plus tard sans le vouloir.
 pub fn clear_notes_pin(conn: &Connection) -> rusqlite::Result<()> {
     set_raw(conn, KEY_NOTES_PIN, "")?;
-    set_raw(conn, KEY_NOTES_PIN_ENABLED, "false")
+    set_raw(conn, KEY_NOTES_PIN_ENABLED, "false")?;
+    reset_notes_pin_lockout(conn)
 }
 
-/// Compare `pin` au PIN enregistré. `false` si aucun PIN n'est configuré (le verrou ne
-/// devrait alors pas être affiché côté frontend — `notes_pin_enabled` sert de garde).
-/// Comparaison en temps constant : le temps de réponse ne doit pas dépendre du nombre de
-/// caractères corrects (timing attack, même si le modèle de menace local la rend théorique).
-pub fn verify_notes_pin(conn: &Connection, pin: &str) -> rusqlite::Result<bool> {
+fn reset_notes_pin_lockout(conn: &Connection) -> rusqlite::Result<()> {
+    set_raw(conn, KEY_NOTES_PIN_FAIL_COUNT, "0")?;
+    set_raw(conn, KEY_NOTES_PIN_LOCKOUT_UNTIL, "0")
+}
+
+/// Résultat de `verify_notes_pin` — distingue un verrouillage temporaire (brute-force) d'une
+/// simple comparaison réussie/échouée, pour que l'appelant puisse afficher un délai d'attente
+/// plutôt qu'un simple "PIN incorrect" trompeur pendant le cooldown.
+pub enum NotesPinCheck {
+    Verified(bool),
+    LockedOut { retry_after_secs: i64 },
+}
+
+/// Compare `pin` au PIN enregistré. `Verified(false)` si aucun PIN n'est configuré (le
+/// verrou ne devrait alors pas être affiché côté frontend — `notes_pin_enabled` sert de
+/// garde). Comparaison en temps constant : le temps de réponse ne doit pas dépendre du nombre
+/// de caractères corrects (timing attack, même si le modèle de menace local la rend
+/// théorique). Après `NOTES_PIN_FAILURE_THRESHOLD` échecs consécutifs, verrouille pendant
+/// `NOTES_PIN_LOCKOUT_SECONDS` — persisté en DB, survit à un redémarrage de l'app.
+pub fn verify_notes_pin(conn: &Connection, pin: &str) -> rusqlite::Result<NotesPinCheck> {
+    let now = chrono::Utc::now().timestamp();
+    if let Some(until) = get_raw(conn, KEY_NOTES_PIN_LOCKOUT_UNTIL)?
+        .and_then(|v| v.parse::<i64>().ok())
+        .filter(|until| *until > now)
+    {
+        return Ok(NotesPinCheck::LockedOut {
+            retry_after_secs: until - now,
+        });
+    }
+
     let stored = get_encrypted(conn, KEY_NOTES_PIN)?;
-    Ok(stored.is_some_and(|s| constant_time_eq(s.as_bytes(), pin.as_bytes())))
+    let matches = stored.is_some_and(|s| constant_time_eq(s.as_bytes(), pin.as_bytes()));
+
+    if matches {
+        reset_notes_pin_lockout(conn)?;
+    } else {
+        let fail_count = get_raw(conn, KEY_NOTES_PIN_FAIL_COUNT)?
+            .and_then(|v| v.parse::<u32>().ok())
+            .unwrap_or(0)
+            + 1;
+        if fail_count >= NOTES_PIN_FAILURE_THRESHOLD {
+            set_raw(conn, KEY_NOTES_PIN_FAIL_COUNT, "0")?;
+            set_raw(
+                conn,
+                KEY_NOTES_PIN_LOCKOUT_UNTIL,
+                &(now + NOTES_PIN_LOCKOUT_SECONDS).to_string(),
+            )?;
+        } else {
+            set_raw(conn, KEY_NOTES_PIN_FAIL_COUNT, &fail_count.to_string())?;
+        }
+    }
+
+    Ok(NotesPinCheck::Verified(matches))
 }
 
 fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
@@ -902,16 +1028,23 @@ mod tests {
         assert_eq!(settings.inactivity_reminder_days, 7);
     }
 
+    fn assert_verified(conn: &Connection, pin: &str, expected: bool) {
+        match verify_notes_pin(conn, pin).unwrap() {
+            NotesPinCheck::Verified(matched) => assert_eq!(matched, expected),
+            NotesPinCheck::LockedOut { .. } => panic!("unexpected lockout"),
+        }
+    }
+
     #[test]
     fn notes_pin_round_trip_verify_and_clear() {
         let conn = memory_conn();
         assert!(!load_settings(&conn).unwrap().notes_pin_enabled);
-        assert!(!verify_notes_pin(&conn, "1234").unwrap());
+        assert_verified(&conn, "1234", false);
 
         set_notes_pin(&conn, "1234").unwrap();
         assert!(load_settings(&conn).unwrap().notes_pin_enabled);
-        assert!(verify_notes_pin(&conn, "1234").unwrap());
-        assert!(!verify_notes_pin(&conn, "0000").unwrap());
+        assert_verified(&conn, "1234", true);
+        assert_verified(&conn, "0000", false);
 
         // Le PIN ne doit jamais apparaître en clair dans la base.
         let raw = get_raw(&conn, KEY_NOTES_PIN).unwrap().unwrap();
@@ -920,7 +1053,87 @@ mod tests {
 
         clear_notes_pin(&conn).unwrap();
         assert!(!load_settings(&conn).unwrap().notes_pin_enabled);
-        assert!(!verify_notes_pin(&conn, "1234").unwrap());
+        assert_verified(&conn, "1234", false);
+    }
+
+    #[test]
+    fn notes_pin_locks_out_after_repeated_failures_and_persists_across_reload() {
+        let conn = memory_conn();
+        set_notes_pin(&conn, "1234").unwrap();
+
+        for _ in 0..NOTES_PIN_FAILURE_THRESHOLD {
+            assert_verified(&conn, "0000", false);
+        }
+
+        // Le seuil est atteint : même le bon PIN est refusé pendant le cooldown.
+        match verify_notes_pin(&conn, "1234").unwrap() {
+            NotesPinCheck::LockedOut { retry_after_secs } => {
+                assert!(retry_after_secs > 0 && retry_after_secs <= NOTES_PIN_LOCKOUT_SECONDS);
+            }
+            NotesPinCheck::Verified(_) => panic!("expected lockout"),
+        }
+
+        // Persisté en DB, pas juste en mémoire : une nouvelle "session" (même connexion ici,
+        // mais aucune valeur en mémoire de process n'est utilisée par verify_notes_pin) voit
+        // toujours le verrouillage actif.
+        match verify_notes_pin(&conn, "1234").unwrap() {
+            NotesPinCheck::LockedOut { .. } => {}
+            NotesPinCheck::Verified(_) => panic!("expected lockout to persist"),
+        }
+    }
+
+    #[test]
+    fn setting_a_new_pin_resets_any_pending_lockout() {
+        let conn = memory_conn();
+        set_notes_pin(&conn, "1234").unwrap();
+        for _ in 0..NOTES_PIN_FAILURE_THRESHOLD {
+            assert_verified(&conn, "0000", false);
+        }
+        // Verrouillé à ce stade.
+        assert!(matches!(
+            verify_notes_pin(&conn, "1234").unwrap(),
+            NotesPinCheck::LockedOut { .. }
+        ));
+
+        set_notes_pin(&conn, "5678").unwrap();
+        assert_verified(&conn, "5678", true);
+    }
+
+    #[test]
+    fn shortcuts_default_then_round_trip() {
+        let conn = memory_conn();
+        let defaults = load_settings(&conn).unwrap();
+        assert_eq!(defaults.shortcut_overlay_toggle, DEFAULT_SHORTCUT_OVERLAY_TOGGLE);
+        assert_eq!(
+            defaults.shortcut_main_window_toggle,
+            DEFAULT_SHORTCUT_MAIN_WINDOW_TOGGLE
+        );
+
+        set_shortcut_overlay_toggle(&conn, "ctrl+shift+o").unwrap();
+        set_shortcut_main_window_toggle(&conn, "ctrl+alt+h").unwrap();
+
+        let settings = load_settings(&conn).unwrap();
+        assert_eq!(settings.shortcut_overlay_toggle, "ctrl+shift+o");
+        assert_eq!(settings.shortcut_main_window_toggle, "ctrl+alt+h");
+    }
+
+    #[test]
+    fn unreadable_dpapi_blob_is_distinguished_from_never_configured() {
+        let conn = memory_conn();
+        let defaults = load_settings(&conn).unwrap();
+        assert!(!defaults.henrik_api_key_dpapi_unreadable);
+        assert!(!defaults.notes_pin_dpapi_unreadable);
+
+        // Simule un blob DPAPI corrompu/illisible (ex. profil Windows recréé) plutôt qu'une
+        // valeur jamais enregistrée.
+        set_raw(&conn, KEY_HENRIK_API_KEY, &format!("{DPAPI_PREFIX}not-a-real-blob")).unwrap();
+        let settings = load_settings(&conn).unwrap();
+        assert!(settings.henrik_api_key_dpapi_unreadable);
+        // Le champ éditable reste vide (comportement inchangé), seul le nouveau flag change.
+        assert!(settings.henrik_api_key.is_none());
+
+        // Une clé jamais configurée ne doit jamais déclencher ce flag.
+        assert!(!load_settings(&conn).unwrap().notes_pin_dpapi_unreadable);
     }
 
     #[test]

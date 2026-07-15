@@ -759,6 +759,15 @@ export interface AppSettings {
    * terminé — indépendant de `henrik_api_key_set` (qui reste `true` en permanence sur un
    * build avec relais proxy compilé, voir `settings.rs::KEY_ONBOARDING_COMPLETED`). */
   onboarding_completed: boolean;
+  /** `true` si un blob DPAPI existe pour la clé API Henrik mais n'a pas pu être déchiffré
+   * (réinstallation Windows, migration de compte...) — distinct de "jamais configurée". */
+  henrik_api_key_dpapi_unreadable: boolean;
+  /** Même distinction pour le PIN de verrouillage des notes perso (backlog #99). */
+  notes_pin_dpapi_unreadable: boolean;
+  /** Raccourcis globaux reconfigurables (backlog sécurité) — format accelerator
+   * `tauri-plugin-global-shortcut` (ex. `"ctrl+shift+v"`). */
+  shortcut_overlay_toggle: string;
+  shortcut_main_window_toggle: string;
 }
 
 export interface UsageMetricsSummary {
@@ -947,6 +956,10 @@ export const tauriApi = {
   listOverlayMonitors: () => invoke<MonitorInfo[]>("list_overlay_monitors"),
   saveOverlayMonitor: (monitorId: string) =>
     invoke<void>("save_overlay_monitor", { monitorId }),
+  saveShortcutOverlayToggle: (shortcut: string) =>
+    invoke<void>("save_shortcut_overlay_toggle", { shortcut }),
+  saveShortcutMainWindowToggle: (shortcut: string) =>
+    invoke<void>("save_shortcut_main_window_toggle", { shortcut }),
 
   fetchMmrHistory: (region: string, name: string, tag: string, force = false) =>
     invoke<Fetched<MmrHistoryData>>("fetch_mmr_history", { region, name, tag, force }),

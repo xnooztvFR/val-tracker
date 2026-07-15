@@ -11,6 +11,9 @@ interface GeneralSectionProps {
   apiKeySet: boolean;
   savedApiKey: string;
   defaultRegion: string;
+  /** `true` si un blob DPAPI existe pour la clé API Henrik mais n'a pas pu être déchiffré
+   * (réinstallation Windows, migration de compte...) — distinct de "jamais configurée". */
+  dpapiUnreadable: boolean;
   onSaveApiKey: (key: string) => Promise<void>;
   onSaveRegion: (region: string) => Promise<void>;
 }
@@ -19,6 +22,7 @@ export default function GeneralSection({
   apiKeySet,
   savedApiKey,
   defaultRegion,
+  dpapiUnreadable,
   onSaveApiKey,
   onSaveRegion,
 }: GeneralSectionProps) {
@@ -59,6 +63,11 @@ export default function GeneralSection({
 
       <section className="space-y-2">
         <h2 className="hud-label">{t("general.apiKeyLabel")}</h2>
+        {dpapiUnreadable && (
+          <p className="border border-crit/40 bg-crit/10 px-3 py-2 text-xs text-crit">
+            {t("general.apiKeyDpapiUnreadable")}
+          </p>
+        )}
         <div className="flex gap-2">
           <input
             type="password"

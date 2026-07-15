@@ -16,11 +16,13 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use crate::AppState;
 
 pub const OVERLAY_LABEL: &str = "overlay";
-const TOGGLE_SHORTCUT: &str = "ctrl+shift+v";
 /// Backlog #68 : montrer/masquer la fenêtre principale même quand Valorant a le focus —
 /// `Ctrl+Shift+H` fonctionne comme `Ctrl+Shift+V` (raccourci OS global via
-/// tauri-plugin-global-shortcut, indépendant du focus applicatif).
-const MAIN_WINDOW_TOGGLE_SHORTCUT: &str = "ctrl+shift+h";
+/// tauri-plugin-global-shortcut, indépendant du focus applicatif). Les deux sont
+/// reconfigurables depuis Paramètres (voir `settings::DEFAULT_SHORTCUT_*` pour les valeurs
+/// par défaut ci-dessous, et `change_toggle_shortcut`/`change_main_window_shortcut` pour le
+/// réenregistrement à chaud) — un raccourci pris par une autre appli (overlay GPU, Discord...)
+/// n'avait auparavant aucun moyen d'être changé sans recompiler.
 /// Réaffiche l'overlay tant que la touche est maintenue (voir `register_recall_shortcut`)
 /// — utile pendant `IN_GAME_OVERLAY_DURATION` où l'overlay se masque automatiquement au
 /// lancement de la manche pour ne pas gêner la visée, si 12s n'ont pas suffi à lire le
@@ -45,6 +47,24 @@ pub struct ShortcutStatus(pub AtomicBool);
 impl ShortcutStatus {
     pub fn registered(value: bool) -> Self {
         Self(AtomicBool::new(value))
+    }
+}
+
+/// Combinaisons actuellement enregistrées auprès de `tauri-plugin-global-shortcut` pour les
+/// deux raccourcis reconfigurables — nécessaire pour savoir quoi désenregistrer
+/// (`unregister`) quand l'utilisateur en choisit une nouvelle depuis Paramètres, le plugin
+/// n'exposant pas de "quel est le raccourci actuel associé à ce handler".
+pub struct ActiveShortcuts {
+    pub overlay_toggle: std::sync::Mutex<String>,
+    pub main_window_toggle: std::sync::Mutex<String>,
+}
+
+impl ActiveShortcuts {
+    pub fn new(overlay_toggle: String, main_window_toggle: String) -> Self {
+        Self {
+            overlay_toggle: std::sync::Mutex::new(overlay_toggle),
+            main_window_toggle: std::sync::Mutex::new(main_window_toggle),
+        }
     }
 }
 
@@ -269,15 +289,28 @@ pub fn set_click_through(app_handle: &AppHandle, ignore: bool) -> tauri::Result<
 
 /// Enregistre `Ctrl+Shift+V` → bascule click-through / interactif. Le plugin
 /// global-shortcut doit déjà être enregistré dans le builder (voir `main.rs`).
-pub fn register_toggle_shortcut(app_handle: &AppHandle) -> anyhow::Result<()> {
+pub fn register_toggle_shortcut(app_handle: &AppHandle, shortcut: &str) -> anyhow::Result<()> {
     app_handle
         .global_shortcut()
-        .on_shortcut(TOGGLE_SHORTCUT, |app, _shortcut, event| {
+        .on_shortcut(shortcut, |app, _shortcut, event| {
             if event.state() == ShortcutState::Pressed {
                 let ignore = !CLICK_THROUGH.load(Ordering::Relaxed);
                 let _ = set_click_through(app, ignore);
             }
         })?;
+    Ok(())
+}
+
+/// Réenregistre le raccourci de bascule de l'overlay avec une nouvelle combinaison — appelée
+/// depuis Paramètres (backlog sécurité : raccourcis globaux non reconfigurables). Enregistre
+/// d'abord `new` avant de désenregistrer `old` : si `new` est invalide ou déjà pris par une
+/// autre appli, `old` reste actif plutôt que de laisser l'utilisateur sans raccourci du tout.
+pub fn change_toggle_shortcut(app_handle: &AppHandle, old: &str, new: &str) -> anyhow::Result<()> {
+    if old.eq_ignore_ascii_case(new) {
+        return Ok(());
+    }
+    register_toggle_shortcut(app_handle, new)?;
+    let _ = app_handle.global_shortcut().unregister(old);
     Ok(())
 }
 
@@ -316,10 +349,10 @@ pub fn register_recall_shortcut(app_handle: &AppHandle) -> anyhow::Result<()> {
 /// Valorant a le focus (raccourci OS global, pas une chaîne de touches captée par la
 /// fenêtre). Best-effort comme `register_toggle_shortcut` : un échec (raccourci déjà pris
 /// par une autre appli) ne doit pas empêcher l'app de démarrer.
-pub fn register_main_window_shortcut(app_handle: &AppHandle) -> anyhow::Result<()> {
+pub fn register_main_window_shortcut(app_handle: &AppHandle, shortcut: &str) -> anyhow::Result<()> {
     app_handle
         .global_shortcut()
-        .on_shortcut(MAIN_WINDOW_TOGGLE_SHORTCUT, |app, _shortcut, event| {
+        .on_shortcut(shortcut, |app, _shortcut, event| {
             if event.state() != ShortcutState::Pressed {
                 return;
             }
@@ -335,5 +368,16 @@ pub fn register_main_window_shortcut(app_handle: &AppHandle) -> anyhow::Result<(
                 let _ = window.set_focus();
             }
         })?;
+    Ok(())
+}
+
+/// Même principe que `change_toggle_shortcut` pour le raccourci de bascule de la fenêtre
+/// principale.
+pub fn change_main_window_shortcut(app_handle: &AppHandle, old: &str, new: &str) -> anyhow::Result<()> {
+    if old.eq_ignore_ascii_case(new) {
+        return Ok(());
+    }
+    register_main_window_shortcut(app_handle, new)?;
+    let _ = app_handle.global_shortcut().unregister(old);
     Ok(())
 }

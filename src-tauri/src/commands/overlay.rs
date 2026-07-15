@@ -30,6 +30,65 @@ pub fn get_overlay_shortcut_status(
     status.0.load(std::sync::atomic::Ordering::Relaxed)
 }
 
+/// Backlog sécurité : change à chaud le raccourci global de bascule de l'overlay (aucun
+/// redémarrage requis). Rejette une valeur vide ; si le nouveau raccourci est invalide ou
+/// déjà pris par une autre appli, l'ancien reste actif et rien n'est persisté (voir
+/// `overlay::window::change_toggle_shortcut`).
+#[tauri::command]
+pub async fn save_shortcut_overlay_toggle(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    active: State<'_, crate::overlay::window::ActiveShortcuts>,
+    shortcut: String,
+) -> Result<(), CommandError> {
+    let normalized = shortcut.trim().to_lowercase();
+    if normalized.is_empty() {
+        return Err(CommandError::Unknown {
+            message: "le raccourci ne peut pas être vide".to_string(),
+        });
+    }
+    {
+        let mut guard = active.overlay_toggle.lock().map_err(|_| CommandError::Unknown {
+            message: "état des raccourcis indisponible".to_string(),
+        })?;
+        crate::overlay::window::change_toggle_shortcut(&app, &guard, &normalized)?;
+        *guard = normalized.clone();
+    }
+    let conn = state.db.lock().await;
+    crate::settings::set_shortcut_overlay_toggle(&conn, &normalized)?;
+    Ok(())
+}
+
+/// Même principe que `save_shortcut_overlay_toggle` pour le raccourci de bascule de la
+/// fenêtre principale (backlog #68).
+#[tauri::command]
+pub async fn save_shortcut_main_window_toggle(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    active: State<'_, crate::overlay::window::ActiveShortcuts>,
+    shortcut: String,
+) -> Result<(), CommandError> {
+    let normalized = shortcut.trim().to_lowercase();
+    if normalized.is_empty() {
+        return Err(CommandError::Unknown {
+            message: "le raccourci ne peut pas être vide".to_string(),
+        });
+    }
+    {
+        let mut guard = active
+            .main_window_toggle
+            .lock()
+            .map_err(|_| CommandError::Unknown {
+                message: "état des raccourcis indisponible".to_string(),
+            })?;
+        crate::overlay::window::change_main_window_shortcut(&app, &guard, &normalized)?;
+        *guard = normalized.clone();
+    }
+    let conn = state.db.lock().await;
+    crate::settings::set_shortcut_main_window_toggle(&conn, &normalized)?;
+    Ok(())
+}
+
 /// Backlog #76 : liste les moniteurs connectés pour le sélecteur d'écran explicite de
 /// Paramètres → Overlay, plutôt que de ne dépendre que de la dernière signature d'écran
 /// mémorisée (voir `overlay::window::list_monitors`).

@@ -25,7 +25,10 @@ use base64::Engine;
 /// limite généreuse évite de laisser une réponse inattendue saturer la mémoire de l'app.
 const MAX_IMAGE_BYTES: usize = 5 * 1024 * 1024;
 
-const FETCH_TIMEOUT: Duration = Duration::from_secs(30);
+/// Réduit à 10s (au lieu de 30s) : un logo/avatar VLR/owcdn pèse quelques centaines de Ko au
+/// plus, un flux volontairement très lent (sous `MAX_IMAGE_BYTES` mais très étalé dans le
+/// temps) n'a pas besoin de garder une tâche tokio occupée aussi longtemps.
+const FETCH_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Domaines (suffixes) autorisés — les CDN d'où viennent réellement les logos/avatars
 /// esports servis par Henrik (vlr.gg et son CDN owcdn.net). Si Henrik change de CDN un

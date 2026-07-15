@@ -30,6 +30,8 @@ interface SettingsState {
   setInactivityReminderDays: (days: number) => Promise<void>;
   setNotesPin: (pin: string) => Promise<void>;
   clearNotesPin: () => Promise<void>;
+  setShortcutOverlayToggle: (shortcut: string) => Promise<void>;
+  setShortcutMainWindowToggle: (shortcut: string) => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -119,6 +121,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   setOverlayMonitor: async (monitorId: string) => {
     await tauriApi.saveOverlayMonitor(monitorId);
+    await get().refresh();
+  },
+
+  setShortcutOverlayToggle: async (shortcut: string) => {
+    await tauriApi.saveShortcutOverlayToggle(shortcut);
+    await get().refresh();
+  },
+
+  setShortcutMainWindowToggle: async (shortcut: string) => {
+    await tauriApi.saveShortcutMainWindowToggle(shortcut);
     await get().refresh();
   },
 

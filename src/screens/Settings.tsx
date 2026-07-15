@@ -58,6 +58,8 @@ export default function Settings() {
     setInactivityReminderDays,
     setNotesPin,
     clearNotesPin,
+    setShortcutOverlayToggle,
+    setShortcutMainWindowToggle,
   } = useSettingsStore();
   const [searchParams] = useSearchParams();
   const initialCategory = searchParams.get("section");
@@ -95,6 +97,7 @@ export default function Settings() {
               apiKeySet={settings?.henrik_api_key_set ?? false}
               savedApiKey={settings?.henrik_api_key ?? ""}
               defaultRegion={settings?.default_region ?? "eu"}
+              dpapiUnreadable={settings?.henrik_api_key_dpapi_unreadable ?? false}
               onSaveApiKey={setApiKey}
               onSaveRegion={setDefaultRegion}
             />
@@ -142,7 +145,12 @@ export default function Settings() {
             <SectionDivider />
             <CrosshairSection />
             <SectionDivider />
-            <ShortcutsSection />
+            <ShortcutsSection
+              shortcutOverlayToggle={settings?.shortcut_overlay_toggle ?? "ctrl+shift+v"}
+              shortcutMainWindowToggle={settings?.shortcut_main_window_toggle ?? "ctrl+shift+h"}
+              onChangeShortcutOverlayToggle={setShortcutOverlayToggle}
+              onChangeShortcutMainWindowToggle={setShortcutMainWindowToggle}
+            />
           </div>
         )}
         {category === "alerts" && (
@@ -162,6 +170,7 @@ export default function Settings() {
             <SectionDivider />
             <PrivacySection
               enabled={settings?.notes_pin_enabled ?? false}
+              dpapiUnreadable={settings?.notes_pin_dpapi_unreadable ?? false}
               onSavePin={setNotesPin}
               onClearPin={clearNotesPin}
             />

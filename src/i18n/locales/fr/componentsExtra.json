@@ -52,6 +52,7 @@
     "pinPlaceholder": "PIN",
     "unlock": "Déverrouiller",
     "pinIncorrect": "PIN incorrect.",
+    "pinLocked": "Trop de tentatives incorrectes. Réessaie dans {{seconds}}s.",
     "saved": "Enregistré",
     "saving": "…",
     "notesPlaceholder": "Smurf, duo régulier, à re-jouer..."

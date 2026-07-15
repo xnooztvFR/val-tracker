@@ -1,8 +1,8 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
-  "identifier": "default",
-  "description": "Capacités des fenêtres — fenêtre principale sans decorations (titlebar custom : drag/minimize/close, mode mini) et fenêtre overlay V2 (drag en mode interactif, events d'état de partie).",
-  "windows": ["main", "overlay"],
+  "identifier": "main",
+  "description": "Capacités de la fenêtre principale (titlebar custom : drag/minimize/close/mode mini, updater, clipboard, autostart) — scopée à `main` uniquement, distincte de `overlay.json` qui n'a besoin que d'un sous-ensemble minimal.",
+  "windows": ["main"],
   "permissions": [
     "core:default",
     "core:window:allow-minimize",

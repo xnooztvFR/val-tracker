@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import Panel from "./Panel";
-import { tauriApi } from "../lib/tauriApi";
+import { isCommandError, tauriApi } from "../lib/tauriApi";
 import { useSettingsStore } from "../store/settingsStore";
 
 interface PlayerNotesPanelProps {
@@ -28,6 +28,7 @@ export default function PlayerNotesPanel({ puuid, initialNotes }: PlayerNotesPan
   const [unlocked, setUnlocked] = useState(!notesPinEnabled);
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState(false);
+  const [pinLockedSeconds, setPinLockedSeconds] = useState<number | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Le panneau est monté une fois par profil (puuid change entraîne un remount via `key`
@@ -47,13 +48,26 @@ export default function PlayerNotesPanel({ puuid, initialNotes }: PlayerNotesPan
   }
 
   async function handleUnlock() {
-    const ok = await tauriApi.verifyNotesPin(pinInput);
-    if (ok) {
-      setUnlocked(true);
-      setPinInput("");
-      setPinError(false);
-    } else {
-      setPinError(true);
+    try {
+      const ok = await tauriApi.verifyNotesPin(pinInput);
+      if (ok) {
+        setUnlocked(true);
+        setPinInput("");
+        setPinError(false);
+        setPinLockedSeconds(null);
+      } else {
+        setPinError(true);
+        setPinLockedSeconds(null);
+      }
+    } catch (err) {
+      // Backlog sécurité : verrouillage temporaire après plusieurs échecs consécutifs
+      // (voir settings.rs::verify_notes_pin), réutilise CommandError::RateLimited.
+      if (isCommandError(err) && err.kind === "rate_limited") {
+        setPinError(false);
+        setPinLockedSeconds(err.retry_after_secs ?? null);
+      } else {
+        setPinError(true);
+      }
     }
   }
 
@@ -72,6 +86,7 @@ export default function PlayerNotesPanel({ puuid, initialNotes }: PlayerNotesPan
             onChange={(e) => {
               setPinInput(e.target.value);
               setPinError(false);
+              setPinLockedSeconds(null);
             }}
             onKeyDown={(e) => {
               if (e.key === "Enter") handleUnlock();
@@ -88,6 +103,11 @@ export default function PlayerNotesPanel({ puuid, initialNotes }: PlayerNotesPan
           </button>
         </div>
         {pinError && <p className="mt-2 text-xs text-crit">{t("playerNotesPanel.pinIncorrect")}</p>}
+        {pinLockedSeconds !== null && (
+          <p className="mt-2 text-xs text-crit">
+            {t("playerNotesPanel.pinLocked", { seconds: pinLockedSeconds })}
+          </p>
+        )}
       </Panel>
     );
   }
@@ -103,6 +123,7 @@ export default function PlayerNotesPanel({ puuid, initialNotes }: PlayerNotesPan
         onChange={(e) => handleChange(e.target.value)}
         placeholder={t("playerNotesPanel.notesPlaceholder")}
         rows={3}
+        maxLength={2000}
         className="w-full resize-none border border-line bg-base px-2.5 py-2 text-sm text-hi placeholder:text-lo/60 focus:border-accent focus:outline-none"
       />
     </Panel>

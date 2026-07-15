@@ -358,7 +358,17 @@ pub async fn mark_onboarding_completed(state: State<'_, AppState>) -> Result<(),
 #[tauri::command]
 pub async fn verify_notes_pin(state: State<'_, AppState>, pin: String) -> Result<bool, CommandError> {
     let conn = state.db.lock().await;
-    Ok(crate::settings::verify_notes_pin(&conn, pin.trim())?)
+    match crate::settings::verify_notes_pin(&conn, pin.trim())? {
+        crate::settings::NotesPinCheck::Verified(matched) => Ok(matched),
+        // Réutilise CommandError::RateLimited (déjà géré côté frontend, ErrorState.tsx) pour
+        // que l'utilisateur voie un délai d'attente plutôt qu'un simple "PIN incorrect"
+        // trompeur pendant le cooldown de brute-force.
+        crate::settings::NotesPinCheck::LockedOut { retry_after_secs } => {
+            Err(CommandError::RateLimited {
+                retry_after_secs: Some(retry_after_secs.max(0) as u64),
+            })
+        }
+    }
 }
 
 /// Pas de champ dédié dans `AppSettings` : l'état de la tâche planifiée/clé de registre

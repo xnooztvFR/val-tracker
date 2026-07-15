@@ -3,6 +3,46 @@
 use rusqlite::{Connection, OptionalExtension};
 use serde::Serialize;
 
+/// Marqueur de préfixe distinguant une note chiffrée via DPAPI d'une note en clair héritée
+/// d'une version antérieure de l'app (avant le chiffrement au repos) — même convention que
+/// `settings.rs::DPAPI_PREFIX` pour la clé API Henrik. Sans ça, `tracked_players.notes`
+/// restait en clair dans `val-tracker.db`, lisible par n'importe quel outil SQLite avec accès
+/// au dossier de données, alors que le PIN (backlog #99) ne protège que l'affichage.
+const NOTES_DPAPI_PREFIX: &str = "dpapi:";
+
+fn encrypt_notes(notes: &str) -> String {
+    match crate::dpapi::protect(notes) {
+        Ok(encrypted) => format!("{NOTES_DPAPI_PREFIX}{encrypted}"),
+        Err(e) => {
+            crate::applog!(
+                "[db] chiffrement DPAPI de la note perso échoué, stockage en clair en secours: {e}"
+            );
+            notes.to_string()
+        }
+    }
+}
+
+/// Déchiffre une note lue en base. Une valeur sans le préfixe `dpapi:` est une note
+/// enregistrée par une version antérieure de l'app (en clair) : renvoyée telle quelle,
+/// re-chiffrée transparemment à la prochaine sauvegarde via `set_player_notes` (pas de
+/// migration au moment de la lecture ici, contrairement à `settings::get_encrypted` — cette
+/// fonction ne reçoit pas de `Connection` pour ré-écrire, seulement la ligne).
+fn decrypt_notes(raw: Option<String>) -> Option<String> {
+    let raw = raw?;
+    match raw.strip_prefix(NOTES_DPAPI_PREFIX) {
+        Some(encoded) => match crate::dpapi::unprotect(encoded) {
+            Ok(plain) => Some(plain),
+            Err(e) => {
+                // Un blob DPAPI illisible (profil Windows recréé, compte migré...) ne doit
+                // jamais faire planter le chargement de la liste des joueurs suivis.
+                crate::applog!("[db] déchiffrement DPAPI de la note perso échoué: {e}");
+                None
+            }
+        },
+        None => Some(raw),
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct TrackedPlayer {
     pub puuid: String,
@@ -29,7 +69,7 @@ fn map_tracked_player(row: &rusqlite::Row) -> rusqlite::Result<TrackedPlayer> {
         is_favorite: row.get::<_, i64>(4)? != 0,
         last_viewed_at: row.get(5)?,
         is_self: row.get::<_, i64>(6)? != 0,
-        notes: row.get(7)?,
+        notes: decrypt_notes(row.get(7)?),
     })
 }
 
@@ -109,8 +149,12 @@ pub fn list_self_accounts(conn: &Connection) -> rusqlite::Result<Vec<TrackedPlay
 /// la note quand elle redevient vide.
 pub fn set_player_notes(conn: &Connection, puuid: &str, notes: &str) -> rusqlite::Result<()> {
     let trimmed = notes.trim();
-    let value: Option<&str> = if trimmed.is_empty() { None } else { Some(trimmed) };
-    let updated_at = value.map(|_| chrono::Utc::now().timestamp());
+    let value: Option<String> = if trimmed.is_empty() {
+        None
+    } else {
+        Some(encrypt_notes(trimmed))
+    };
+    let updated_at = value.as_ref().map(|_| chrono::Utc::now().timestamp());
     conn.execute(
         "UPDATE tracked_players SET notes = ?2, notes_updated_at = ?3 WHERE puuid = ?1",
         (puuid, value, updated_at),
@@ -287,6 +331,47 @@ mod tests {
 
         set_player_notes(&conn, "puuid-1", "   ").unwrap();
         assert!(list_recent_players(&conn, 10).unwrap()[0].notes.is_none());
+    }
+
+    #[test]
+    fn player_notes_are_encrypted_at_rest() {
+        let conn = memory_conn();
+        upsert_tracked_player(&conn, "puuid-1", "Player1", "1234", "eu").unwrap();
+        set_player_notes(&conn, "puuid-1", "smurf, duo régulier").unwrap();
+
+        let raw: String = conn
+            .query_row(
+                "SELECT notes FROM tracked_players WHERE puuid = 'puuid-1'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert!(raw.starts_with(NOTES_DPAPI_PREFIX));
+        assert!(!raw.contains("smurf"));
+
+        // Relue via l'API publique, la note redevient lisible.
+        assert_eq!(
+            list_recent_players(&conn, 10).unwrap()[0].notes.as_deref(),
+            Some("smurf, duo régulier")
+        );
+    }
+
+    #[test]
+    fn legacy_plaintext_notes_are_still_readable() {
+        let conn = memory_conn();
+        upsert_tracked_player(&conn, "puuid-1", "Player1", "1234", "eu").unwrap();
+        // Simule une note enregistrée par une version antérieure de l'app, avant l'ajout du
+        // chiffrement au repos — stockée en clair.
+        conn.execute(
+            "UPDATE tracked_players SET notes = 'legacy plaintext note', notes_updated_at = 1 WHERE puuid = 'puuid-1'",
+            [],
+        )
+        .unwrap();
+
+        assert_eq!(
+            list_recent_players(&conn, 10).unwrap()[0].notes.as_deref(),
+            Some("legacy plaintext note")
+        );
     }
 
     #[test]

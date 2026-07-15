@@ -22,6 +22,7 @@
     "keyVerifyError": "Couldn't verify the key (network issue?).",
     "keySaved": "Key saved.",
     "apiKeyHint": "Get a key on the Henrik Dev Discord. It's never sent anywhere other than the Henrik API and stays stored only on this machine.",
+    "apiKeyDpapiUnreadable": "Your saved key could not be decrypted (Windows reinstall, account migration...) — it wasn't deleted, but you'll need to re-enter it below to keep using it.",
     "regionLabel": "Default region"
   },
   "appearance": {
@@ -140,6 +141,7 @@
   "privacy": {
     "title": "Privacy",
     "description": "Locks the display of personal notes (\"smurf\"/\"toxic\"/\"regular duo\" tags...) behind a PIN — handy while streaming or on a shared screen. The lock is asked for again on every profile switch or app restart.",
+    "dpapiUnreadable": "Your saved PIN could not be decrypted (Windows reinstall, account migration...) — it wasn't deleted, but you'll need to set a new one below to keep locking your notes.",
     "lockActive": "PIN lock active.",
     "disableLock": "Disable lock",
     "confirmDisable": "Disable the personal notes PIN lock?",
@@ -168,7 +170,10 @@
     "ctrlShiftH": "Shows or hides the main window — works even when Valorant has focus.",
     "ctrlShiftSpace": "Hold to bring the overlay back during the 12s window where it auto-hides at round start (long enough to read the enemy roster); release to return to hidden.",
     "ctrlShiftF": "Toggles focus mode (hides titlebar/nav/banners for a clean screen share). Main window only.",
-    "ctrlK": "Opens the command palette (search a player, jump to a screen, jump to a recent/favorite player). Main window only."
+    "ctrlK": "Opens the command palette (search a player, jump to a screen, jump to a recent/favorite player). Main window only.",
+    "recording": "Press a key…",
+    "saved": "Shortcut updated.",
+    "saveError": "Invalid shortcut, or already used by another application."
   },
   "health": {
     "title": "App health",

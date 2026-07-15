@@ -254,6 +254,28 @@ fn maybe_vacuum_with_threshold(conn: &Connection, db_path: &Path, threshold_byte
     }
 }
 
+/// Rétention des lignes accumulées sans limite pour un compte suivi pendant des années
+/// (`party_matches` : duo/squad/rivalité, `usage_metrics_events` : dashboard santé) —
+/// contrairement à `api_cache`, rien ne les purgeait jusqu'ici (voir `maybe_vacuum`). Fenêtre
+/// de 90 jours cohérente avec le "7 derniers jours" déjà affiché par le dashboard santé
+/// (backlog #50) : largement suffisant pour ne jamais purger une donnée encore consultée,
+/// tout en bornant la croissance de ces deux tables. Best-effort, appelé au démarrage comme
+/// `maybe_vacuum` — ne doit jamais empêcher l'app de démarrer si la purge échoue.
+const RETENTION_DAYS: i64 = 90;
+
+pub fn purge_old_events(conn: &Connection) {
+    let cutoff = chrono::Utc::now().timestamp() - RETENTION_DAYS * 24 * 60 * 60;
+    if let Err(e) = conn.execute("DELETE FROM party_matches WHERE recorded_at < ?1", [cutoff]) {
+        crate::applog!("Purge party_matches (rétention {RETENTION_DAYS}j) échouée: {e}");
+    }
+    if let Err(e) = conn.execute(
+        "DELETE FROM usage_metrics_events WHERE occurred_at < ?1",
+        [cutoff],
+    ) {
+        crate::applog!("Purge usage_metrics_events (rétention {RETENTION_DAYS}j) échouée: {e}");
+    }
+}
+
 /// `ALTER TABLE ADD COLUMN` n'a pas de variante `IF NOT EXISTS` en SQLite : on vérifie donc
 /// via `pragma_table_info` avant d'ajouter la colonne, pour que cette migration reste
 /// idempotente (rejouée à chaque démarrage de l'app comme le reste de `run_migrations`).
@@ -295,6 +317,51 @@ mod tests {
         let conn = Connection::open_in_memory().unwrap();
         run_migrations(&conn).unwrap();
         conn
+    }
+
+    #[test]
+    fn purge_old_events_removes_entries_older_than_retention_but_keeps_recent() {
+        let conn = memory_conn();
+        let now = chrono::Utc::now().timestamp();
+        let old = now - (RETENTION_DAYS + 1) * 24 * 60 * 60;
+        let recent = now - 24 * 60 * 60;
+
+        party::record_party_match(&conn, "match-old", "puuid-1", "buddy", "Buddy", "1111", true, "teammate")
+            .unwrap();
+        conn.execute(
+            "UPDATE party_matches SET recorded_at = ?1 WHERE match_id = 'match-old'",
+            [old],
+        )
+        .unwrap();
+        party::record_party_match(&conn, "match-recent", "puuid-1", "buddy", "Buddy", "1111", true, "teammate")
+            .unwrap();
+        conn.execute(
+            "UPDATE party_matches SET recorded_at = ?1 WHERE match_id = 'match-recent'",
+            [recent],
+        )
+        .unwrap();
+
+        conn.execute(
+            "INSERT INTO usage_metrics_events (kind, occurred_at) VALUES ('cache_hit', ?1)",
+            [old],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO usage_metrics_events (kind, occurred_at) VALUES ('cache_hit', ?1)",
+            [recent],
+        )
+        .unwrap();
+
+        purge_old_events(&conn);
+
+        let party_count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM party_matches", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(party_count, 1);
+        let metrics_count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM usage_metrics_events", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(metrics_count, 1);
     }
 
     #[test]

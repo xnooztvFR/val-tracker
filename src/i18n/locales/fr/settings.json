@@ -22,6 +22,7 @@
     "keyVerifyError": "Impossible de vérifier la clé (panne réseau ?).",
     "keySaved": "Clé enregistrée.",
     "apiKeyHint": "Obtiens une clé sur le Discord de Henrik Dev. Elle n'est jamais envoyée ailleurs qu'à l'API Henrik et reste stockée uniquement sur cette machine.",
+    "apiKeyDpapiUnreadable": "Ta clé enregistrée n'a pas pu être déchiffrée (réinstallation Windows, migration de compte...) — elle n'a pas été supprimée, mais tu dois la ressaisir ci-dessous pour continuer à l'utiliser.",
     "regionLabel": "Région par défaut"
   },
   "appearance": {
@@ -140,6 +141,7 @@
   "privacy": {
     "title": "Confidentialité",
     "description": "Verrouille l'affichage des notes perso (tags \"smurf\"/\"toxique\"/\"duo régulier\"...) derrière un PIN — pratique en stream ou sur un écran partagé. Le verrouillage se redemande à chaque changement de profil ou redémarrage de l'app.",
+    "dpapiUnreadable": "Ton PIN enregistré n'a pas pu être déchiffré (réinstallation Windows, migration de compte...) — il n'a pas été supprimé, mais tu dois en redéfinir un ci-dessous pour continuer à verrouiller tes notes.",
     "lockActive": "Verrou PIN actif.",
     "disableLock": "Désactiver le verrou",
     "confirmDisable": "Désactiver le verrou PIN des notes perso ?",
@@ -168,7 +170,10 @@
     "ctrlShiftH": "Montre ou masque la fenêtre principale — fonctionne même quand Valorant a le focus.",
     "ctrlShiftSpace": "Maintenir pour réafficher l'overlay pendant les 12s où il se masque automatiquement au lancement d'une manche (le temps de lire le roster ennemi) ; relâcher pour revenir à l'état masqué.",
     "ctrlShiftF": "Bascule le mode focus (masque titlebar/nav/bandeaux pour un partage d'écran propre). Fenêtre principale uniquement.",
-    "ctrlK": "Ouvre la palette de commande (Rechercher un joueur, aller à un écran, sauter vers un joueur récent/favori). Fenêtre principale uniquement."
+    "ctrlK": "Ouvre la palette de commande (Rechercher un joueur, aller à un écran, sauter vers un joueur récent/favori). Fenêtre principale uniquement.",
+    "recording": "Appuie sur une touche…",
+    "saved": "Raccourci mis à jour.",
+    "saveError": "Raccourci invalide ou déjà utilisé par une autre application."
   },
   "health": {
     "title": "Santé de l'app",

@@ -5,6 +5,9 @@ import { INPUT_CLASS, SectionTitle } from "./shared";
 
 interface PrivacySectionProps {
   enabled: boolean;
+  /** `true` si un blob DPAPI existe pour le PIN mais n'a pas pu être déchiffré
+   * (réinstallation Windows, migration de compte...) — distinct de "jamais configuré". */
+  dpapiUnreadable: boolean;
   onSavePin: (pin: string) => Promise<void>;
   onClearPin: () => Promise<void>;
 }
@@ -12,7 +15,12 @@ interface PrivacySectionProps {
 /** Backlog #99 : verrouillage optionnel par PIN devant les notes perso (tags "smurf"/
  * "toxique" de #12, voir `PlayerNotesPanel.tsx`) — pensé pour l'usage stream/écran partagé,
  * pas comme un vrai coffre-fort (le PIN est un simple secret court, pas une passphrase). */
-export default function PrivacySection({ enabled, onSavePin, onClearPin }: PrivacySectionProps) {
+export default function PrivacySection({
+  enabled,
+  dpapiUnreadable,
+  onSavePin,
+  onClearPin,
+}: PrivacySectionProps) {
   const { t } = useTranslation("settings");
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
@@ -45,6 +53,11 @@ export default function PrivacySection({ enabled, onSavePin, onClearPin }: Priva
     <div className="max-w-xl space-y-4">
       <SectionTitle>{t("privacy.title")}</SectionTitle>
       <p className="text-sm text-lo">{t("privacy.description")}</p>
+      {dpapiUnreadable && (
+        <p className="border border-crit/40 bg-crit/10 px-3 py-2 text-xs text-crit">
+          {t("privacy.dpapiUnreadable")}
+        </p>
+      )}
 
       {enabled ? (
         <div className="space-y-2">

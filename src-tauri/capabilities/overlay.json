@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "overlay",
+  "description": "Capacités de la fenêtre overlay V2 (always-on-top posé côté Rust à la création, pas via IPC — seul le drag en mode interactif Ctrl+Shift+V passe par la webview via `data-tauri-drag-region`). Ni updater, ni clipboard, ni autostart, ni minimize/close : cette fenêtre n'a pas de chrome et n'expose aucun de ces contrôles.",
+  "windows": ["overlay"],
+  "permissions": ["core:default", "core:window:allow-start-dragging"]
+}

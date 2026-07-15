@@ -50,6 +50,12 @@ fn main() {
             let db_path = db::resolve_db_path(&handle)?;
             let conn = db::init_db(&db_path)?;
             db::maybe_vacuum(&conn, &db_path);
+            db::purge_old_events(&conn);
+
+            // Lu avant de déplacer `conn` dans l'état partagé : les raccourcis globaux
+            // reconfigurables (voir `register_shortcuts`) doivent connaître la combinaison
+            // choisie par l'utilisateur dès le démarrage, pas seulement la valeur par défaut.
+            let startup_settings = settings::load_settings(&conn)?;
 
             let rate_limiter = Arc::new(RateLimiter::new());
             let henrik = HenrikClient::new(rate_limiter);
@@ -93,7 +99,7 @@ fn main() {
             // inactivity_reminder_enabled), voir inactivity_reminder.rs.
             inactivity_reminder::start(handle.clone());
 
-            register_shortcuts(&handle);
+            register_shortcuts(&handle, &startup_settings);
 
             // La fenêtre overlay (V2) est créée à la demande puis seulement masquée, jamais
             // détruite (voir `overlay::window::hide_overlay`) — elle reste donc « ouverte »
@@ -213,6 +219,8 @@ fn main() {
             commands::get_autostart_enabled,
             commands::save_autostart_enabled,
             commands::mark_onboarding_completed,
+            commands::save_shortcut_overlay_toggle,
+            commands::save_shortcut_main_window_toggle,
         ])
         .run(tauri::generate_context!())
         .expect("erreur lors du lancement de l'application Tauri");
@@ -222,30 +230,45 @@ fn main() {
 /// partagé `ShortcutStatus` (lu par `commands::get_overlay_shortcut_status`). Best-effort à
 /// chaque étage : un raccourci déjà pris par une autre appli ne doit jamais empêcher l'app
 /// de démarrer, juste laisser une trace dans les logs.
-fn register_shortcuts(handle: &tauri::AppHandle) {
-    // V2 overlay : Ctrl+Shift+V bascule le mode click-through de l'overlay.
-    let shortcut_registered = match overlay::window::register_toggle_shortcut(handle) {
+fn register_shortcuts(handle: &tauri::AppHandle, settings: &settings::AppSettings) {
+    // V2 overlay : bascule le mode click-through de l'overlay. Reconfigurable depuis
+    // Paramètres (backlog sécurité) — voir `settings::shortcut_overlay_toggle`.
+    let shortcut_registered = match overlay::window::register_toggle_shortcut(
+        handle,
+        &settings.shortcut_overlay_toggle,
+    ) {
         Ok(()) => true,
         Err(err) => {
             applog!(
-                "[overlay] raccourci global Ctrl+Shift+V indisponible (probablement déjà pris par une autre appli): {err}"
+                "[overlay] raccourci global overlay ({}) indisponible (probablement déjà pris par une autre appli): {err}",
+                settings.shortcut_overlay_toggle
             );
             false
         }
     };
     handle.manage(overlay::window::ShortcutStatus::registered(shortcut_registered));
 
-    // Backlog #68 : Ctrl+Shift+H montre/masque la fenêtre principale même quand
-    // Valorant a le focus. Best-effort comme le raccourci overlay ci-dessus.
-    if let Err(err) = overlay::window::register_main_window_shortcut(handle) {
+    // Backlog #68 : montre/masque la fenêtre principale même quand Valorant a le focus.
+    // Best-effort comme le raccourci overlay ci-dessus. Reconfigurable depuis Paramètres.
+    if let Err(err) = overlay::window::register_main_window_shortcut(
+        handle,
+        &settings.shortcut_main_window_toggle,
+    ) {
         applog!(
-            "[overlay] raccourci global Ctrl+Shift+H indisponible (probablement déjà pris par une autre appli): {err}"
+            "[overlay] raccourci global fenêtre principale ({}) indisponible (probablement déjà pris par une autre appli): {err}",
+            settings.shortcut_main_window_toggle
         );
     }
 
+    handle.manage(overlay::window::ActiveShortcuts::new(
+        settings.shortcut_overlay_toggle.clone(),
+        settings.shortcut_main_window_toggle.clone(),
+    ));
+
     // Ctrl+Shift+Espace, maintenu : réaffiche l'overlay pendant qu'il est masqué
-    // par IN_GAME_OVERLAY_DURATION (voir poller::on_state_changed). Best-effort
-    // comme les autres raccourcis globaux ci-dessus.
+    // par IN_GAME_OVERLAY_DURATION (voir poller::on_state_changed). Best-effort comme les
+    // autres raccourcis globaux ci-dessus. Pas reconfigurable (touche maintenue, pas un
+    // simple toggle, moins sujette à conflit qu'un raccourci "appui simple").
     if let Err(err) = overlay::window::register_recall_shortcut(handle) {
         applog!(
             "[overlay] raccourci global Ctrl+Shift+Espace indisponible (probablement déjà pris par une autre appli): {err}"

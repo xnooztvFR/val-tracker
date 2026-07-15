@@ -61,6 +61,11 @@ pub async fn reset_local_stats(state: State<'_, AppState>) -> Result<(), Command
     Ok(crate::db::reset_local_stats(&conn)?)
 }
 
+/// Longueur max d'une note perso — une note libre n'a jamais besoin de dépasser ça, et ça
+/// évite qu'une chaîne non bornée finisse en SQLite sans limite (contrairement à
+/// `save_notes_pin` qui rejette au moins le vide).
+const MAX_NOTES_LEN: usize = 2000;
+
 /// Backlog #12 : note libre sur un joueur suivi (Home.tsx).
 #[tauri::command]
 pub async fn save_player_notes(
@@ -68,6 +73,11 @@ pub async fn save_player_notes(
     puuid: String,
     notes: String,
 ) -> Result<(), CommandError> {
+    if notes.chars().count() > MAX_NOTES_LEN {
+        return Err(CommandError::Unknown {
+            message: format!("la note dépasse {MAX_NOTES_LEN} caractères"),
+        });
+    }
     let conn = state.db.lock().await;
     Ok(crate::db::set_player_notes(&conn, &puuid, &notes)?)
 }
