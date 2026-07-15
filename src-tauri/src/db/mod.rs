@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 use rusqlite::Connection;
 use tauri::{AppHandle, Manager};
 
+mod changelog;
 mod goals;
 mod metrics;
 mod party;
@@ -20,6 +21,7 @@ mod players;
 mod snapshots;
 mod timeline;
 
+pub use changelog::*;
 pub use goals::*;
 pub use metrics::*;
 pub use party::*;
@@ -225,6 +227,15 @@ pub(crate) fn run_migrations(conn: &Connection) -> rusqlite::Result<()> {
 
         CREATE INDEX IF NOT EXISTS idx_timeline_events_puuid
             ON timeline_events (puuid, occurred_at);
+
+        -- Historique des changelogs déjà installés (voir db/changelog.rs), pour un
+        -- "Nouveautés" consultable dans Paramètres au-delà de la popup post-update unique.
+        CREATE TABLE IF NOT EXISTS changelog_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            version TEXT NOT NULL,
+            notes TEXT NOT NULL,
+            installed_at INTEGER NOT NULL
+        );
         "#,
     )?;
 

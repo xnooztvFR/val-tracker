@@ -38,7 +38,10 @@ export default function MatchRow({ match, puuid, onClick }: MatchRowProps) {
       <span className={`absolute inset-y-0 left-0 w-[3px] ${barColor}`} />
 
       <div className="w-[4.5rem] shrink-0">
-        <p className={`font-display text-[11px] font-semibold uppercase tracking-hud ${resultColor}`}>
+        <p
+          className={`flex items-center gap-1 font-display text-[11px] font-semibold uppercase tracking-hud ${resultColor}`}
+        >
+          <ResultIcon won={won} />
           {resultLabel}
         </p>
         <p className="mt-1 text-[11px] text-lo">{formatRelativeTime(match.metadata.started_at)}</p>
@@ -78,5 +81,29 @@ export default function MatchRow({ match, puuid, onClick }: MatchRowProps) {
         {formatDurationMs(match.metadata.game_length_in_ms)}
       </div>
     </button>
+  );
+}
+
+/** Icône (pas seulement la couleur) distinguant victoire/défaite pour l'accessibilité
+ * daltonisme rouge-vert. */
+function ResultIcon({ won }: { won: boolean | null | undefined }) {
+  if (won === true) {
+    return (
+      <svg viewBox="0 0 12 12" fill="none" aria-hidden="true" className="h-2.5 w-2.5 shrink-0">
+        <path d="M2 6.5l2.5 2.5L10 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  if (won === false) {
+    return (
+      <svg viewBox="0 0 12 12" fill="none" aria-hidden="true" className="h-2.5 w-2.5 shrink-0">
+        <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 12 12" fill="none" aria-hidden="true" className="h-2.5 w-2.5 shrink-0">
+      <circle cx="6" cy="6" r="3.2" stroke="currentColor" strokeWidth="1.4" />
+    </svg>
   );
 }

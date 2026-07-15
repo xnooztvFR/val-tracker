@@ -51,12 +51,19 @@
     "title": "Language",
     "hint": "Changes the language for the whole interface, including the in-game overlay.",
     "fr": "French",
-    "en": "English"
+    "en": "English",
+    "es": "Spanish",
+    "pt-BR": "Portuguese (Brazil)"
   },
   "autostart": {
     "title": "Autostart",
     "label": "Launch the app on Windows startup",
     "hint": "Useful so match detection is already active by the time you launch Valorant."
+  },
+  "onboardingReplay": {
+    "title": "Welcome wizard",
+    "hint": "Replay the 3 onboarding steps (API key, default region, auto match detection).",
+    "button": "Replay wizard"
   },
   "overlay": {
     "title": "In-game overlay",
@@ -220,5 +227,12 @@
     "title": "About",
     "version": "Valorant Tracker v{{version}} — Tauri 2.x build",
     "disclaimer": "Rank and match data provided by the Henrik Dev API. Not developed or endorsed by Riot Games."
+  },
+  "changelogHistory": {
+    "title": "What's new history",
+    "loading": "Loading…",
+    "empty": "No history yet — will show up after the next update.",
+    "version": "Version {{version}}",
+    "noNotes": "No notes for this version."
   }
 }

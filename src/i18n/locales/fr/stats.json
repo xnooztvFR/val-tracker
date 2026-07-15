@@ -90,6 +90,10 @@
     "column": {
       "noData": "Aucune donnée."
     },
+    "initial": {
+      "title": "Aucune comparaison",
+      "detail": "Renseigne deux Riot ID ci-dessus pour comparer leurs statistiques côte à côte."
+    },
     "rows": {
       "winrate": "Winrate",
       "winrateValue": "{{percent}} ({{wins}}V-{{losses}}D)",
@@ -109,12 +113,14 @@
     "statsLine": "{{wins}} victoires / {{played}} matchs ensemble",
     "squad": {
       "title": "Squad (3 joueurs)",
-      "description": "Matchs où toi et deux coéquipiers précis étiez dans la même party simultanément."
+      "description": "Matchs où toi et deux coéquipiers précis étiez dans la même party simultanément.",
+      "emptyMessage": "Pas encore de squad détectée — ouvre des matchs où tu étais en party à 3 pour voir apparaître ces stats ici."
     },
     "rivalry": {
       "title": "Rivalité",
       "description": "Face-à-face contre des adversaires croisés à plusieurs reprises, accumulé au fil des matchs consultés dans Historique.",
-      "statsLine": "{{wins}} victoires / {{played}} matchs face à face"
+      "statsLine": "{{wins}} victoires / {{played}} matchs face à face",
+      "emptyMessage": "Pas encore de rival détecté — ouvre plus de matchs dans Historique pour croiser à nouveau les mêmes adversaires."
     }
   },
   "agentRoles": {

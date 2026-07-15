@@ -1,0 +1,69 @@
+{
+  "errorState": {
+    "alertLabel": "Alerta",
+    "missingApiKey": "Nenhuma chave de API da Henrik configurada.",
+    "notFound": "Jogador não encontrado, verifique o nome#tag e a região.",
+    "rateLimitedWithDelay": "Muitas solicitações, tente novamente em {{seconds}}s.",
+    "rateLimited": "Muitas solicitações, tente novamente em instantes.",
+    "circuitOpen": "Muitas falhas recentes na API da Henrik, tente novamente em instantes.",
+    "network": "Falha de rede — não foi possível contatar a API da Henrik.",
+    "api": "Erro da API da Henrik ({{status}}).",
+    "unknown": "Ocorreu um erro inesperado.",
+    "goToSettings": "Ir para configurações"
+  },
+  "staleDataBanner": {
+    "label": "Cache",
+    "message": "Dados em cache, última atualização em {{date}}."
+  },
+  "statusBanner": {
+    "defaultIncidentTitle": "Incidente em andamento",
+    "maintenance": "Manutenção",
+    "incident": "Incidente",
+    "moreOthers": "+{{count}} outro(s)",
+    "dismiss": "Ocultar"
+  },
+  "titlebar": {
+    "exitMiniMode": "Sair do modo mini",
+    "miniMode": "Modo mini (overlay)",
+    "minimize": "Minimizar",
+    "close": "Fechar"
+  },
+  "focusMode": {
+    "exit": "Foco"
+  },
+  "topNav": {
+    "tabs": {
+      "leaderboard": "Classificação",
+      "premier": "Premier",
+      "esports": "Esports",
+      "vs": "VS",
+      "home": "Início",
+      "history": "Histórico",
+      "trends": "Tendências",
+      "agents": "Agentes",
+      "maps": "Mapas",
+      "duo": "Duo"
+    },
+    "home": "Início",
+    "more": "Mais",
+    "close": "Fechar",
+    "changePlayer": "Trocar de jogador",
+    "settings": "Configurações",
+    "commandPaletteHint": "Ctrl+K para a paleta de comandos"
+  },
+  "apiStatusBadge": {
+    "ok": "API OK",
+    "rateLimited": "Rate limit",
+    "circuitOpen": "API em pausa",
+    "network": "Offline"
+  },
+  "detectionStatusBadge": {
+    "disabled": "Detecção desativada",
+    "active": "Detecção ativa",
+    "detected": "Partida detectada",
+    "tooltip": "{{label}} — ver configurações"
+  },
+  "queueStatusStrip": {
+    "label": "Filas"
+  }
+}

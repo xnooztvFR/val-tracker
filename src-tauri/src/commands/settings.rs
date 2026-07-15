@@ -33,8 +33,20 @@ pub async fn set_pending_changelog(
     crate::applog!("[changelog] set_pending_changelog appelé, version={version}");
     let conn = state.db.lock().await;
     crate::settings::set_pending_changelog(&conn, &version, &notes)?;
+    crate::db::insert_changelog_history(&conn, &version, &notes)?;
     crate::applog!("[changelog] set_pending_changelog écrit en base pour version={version}");
     Ok(())
+}
+
+/// Historique consultable des changelogs déjà installés (voir `db::changelog`) — utilisé
+/// par `ChangelogHistorySection.tsx` dans Paramètres, indépendant du changelog "en attente"
+/// à usage unique lu par `take_pending_changelog`.
+#[tauri::command]
+pub async fn list_changelog_history(
+    state: State<'_, AppState>,
+) -> Result<Vec<crate::db::ChangelogHistoryEntry>, CommandError> {
+    let conn = state.db.lock().await;
+    Ok(crate::db::list_changelog_history(&conn)?)
 }
 
 /// Lit puis efface le changelog en attente (affichage unique) — appelé par
@@ -181,13 +193,13 @@ pub async fn save_ui_accent(
     Ok(())
 }
 
-/// Système multilangue : `"fr"` | `"en"`.
+/// Système multilangue : `"fr"` | `"en"` | `"es"` | `"pt-BR"`.
 #[tauri::command]
 pub async fn save_ui_language(
     state: State<'_, AppState>,
     language: String,
 ) -> Result<(), CommandError> {
-    ensure_one_of(&language, &["fr", "en"], "language")?;
+    ensure_one_of(&language, &["fr", "en", "es", "pt-BR"], "language")?;
     let conn = state.db.lock().await;
     crate::settings::set_ui_language(&conn, &language)?;
     Ok(())
@@ -349,6 +361,16 @@ pub async fn clear_notes_pin(state: State<'_, AppState>) -> Result<(), CommandEr
 pub async fn mark_onboarding_completed(state: State<'_, AppState>) -> Result<(), CommandError> {
     let conn = state.db.lock().await;
     crate::settings::set_onboarding_completed(&conn, true)?;
+    Ok(())
+}
+
+/// Réinitialise `KEY_ONBOARDING_COMPLETED` pour permettre de rejouer le wizard
+/// d'onboarding volontairement depuis Paramètres (le flag ne se remet jamais tout seul
+/// à `false`, voir `mark_onboarding_completed`).
+#[tauri::command]
+pub async fn reset_onboarding(state: State<'_, AppState>) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::set_onboarding_completed(&conn, false)?;
     Ok(())
 }
 

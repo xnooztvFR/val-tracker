@@ -1,0 +1,133 @@
+{
+  "mapStats": {
+    "title": "Estadísticas por mapa",
+    "winratePanelTitle": "Winrate por mapa",
+    "tooltipWinrate": "Winrate",
+    "unknownMap": "Mapa desconocido",
+    "table": {
+      "map": "Mapa",
+      "matches": "Partidas",
+      "winrate": "Winrate",
+      "kd": "K/D"
+    },
+    "empty": {
+      "title": "Sin datos de mapa",
+      "detail": "Ninguna partida en esta muestra."
+    }
+  },
+  "trends": {
+    "title": "Tendencias",
+    "statCards": {
+      "recentMatches": "últimas {{count}} partidas",
+      "kdValue": "K/D {{kd}}",
+      "bestMatch": "Mejor partida",
+      "bestMatchValue": "{{kills}} kills",
+      "bestMap": "Mejor mapa",
+      "bestMapWinrate": "{{percent}}% de victorias",
+      "regularity": "Regularidad (K/D)",
+      "regularityValue": "±{{cv}}%",
+      "regularityHint": "K/D media {{mean}} en {{count}} partidas"
+    },
+    "series": {
+      "kd": "K/D",
+      "kills": "Kills",
+      "deaths": "Deaths",
+      "assists": "Assists",
+      "headshots": "Headshots"
+    },
+    "heatmapTitle": "Rendimiento por franja horaria (hora local)",
+    "sideWinrate": {
+      "title": "Winrate Ataque vs Defensa",
+      "description": "Basado en las {{count}} partidas ya consultadas en detalle (ronda por ronda) — las partidas nunca abiertas en detalle no se cuentan.",
+      "attack": "Round win % — Ataque",
+      "defense": "Round win % — Defensa",
+      "roundsHint": "{{n}} rondas"
+    },
+    "seasonComparison": {
+      "title": "Comparación por temporada",
+      "description": "Aproximación por temporada (Henrik no expone el parche exacto por partida sin una llamada de red adicional por partida) — basado en el historial de RR ya en caché.",
+      "table": {
+        "season": "Temporada",
+        "games": "Partidas clasificatorias",
+        "netRr": "RR neto",
+        "highestTier": "Mejor rango"
+      }
+    }
+  },
+  "agents": {
+    "title": "Estadísticas por agente",
+    "unknownAgent": "Agente desconocido",
+    "roleStats": "{{count}} partidas · K/D {{kd}}",
+    "table": {
+      "agent": "Agente",
+      "time": "Tiempo",
+      "matches": "Partidas",
+      "winPercent": "Win %",
+      "kd": "K/D",
+      "hsPercent": "HS %",
+      "acs": "ACS",
+      "kills": "Kills",
+      "deaths": "Deaths",
+      "assists": "Assists",
+      "hoursValue": "{{hours}} h"
+    },
+    "empty": {
+      "title": "Sin datos de agente",
+      "detail": "Ninguna partida en esta muestra."
+    }
+  },
+  "compare": {
+    "title": "Comparación VS",
+    "form": {
+      "playerA": "Jugador A",
+      "playerB": "Jugador B",
+      "placeholder": "{{label}} — nombre#tag",
+      "submit": "Comparar"
+    },
+    "error": {
+      "format": "Formato esperado para ambos jugadores: nombre#tag"
+    },
+    "column": {
+      "noData": "Sin datos."
+    },
+    "initial": {
+      "title": "Ninguna comparación",
+      "detail": "Introduce dos Riot ID arriba para comparar sus estadísticas lado a lado."
+    },
+    "rows": {
+      "winrate": "Winrate",
+      "winrateValue": "{{percent}} ({{wins}}V-{{losses}}D)",
+      "kd": "K/D",
+      "kills": "Kills",
+      "deaths": "Deaths",
+      "assists": "Assists",
+      "hsPercent": "Headshot %",
+      "acs": "ACS",
+      "topAgent": "Agente más jugado"
+    }
+  },
+  "duo": {
+    "title": "Duo y Squad",
+    "description": "Winrate con tus compañeros de party, calculado a medida que consultas partidas en Historial — consulta más partidas para afinar estas estadísticas.",
+    "emptyMessage": "Todavía no hay suficientes datos — abre algunas partidas en la pestaña Historial donde estuvieras en party para ver aparecer a tus compañeros aquí.",
+    "statsLine": "{{wins}} victorias / {{played}} partidas juntos",
+    "squad": {
+      "title": "Squad (3 jugadores)",
+      "description": "Partidas donde tú y dos compañeros concretos estuvisteis en la misma party al mismo tiempo.",
+      "emptyMessage": "Todavía no se ha detectado ningún squad — abre partidas donde estuvieras en party de 3 para ver aparecer estas estadísticas aquí."
+    },
+    "rivalry": {
+      "title": "Rivalidad",
+      "description": "Cara a cara contra rivales con los que te has cruzado repetidamente, acumulado a medida que consultas partidas en Historial.",
+      "statsLine": "{{wins}} victorias / {{played}} partidas cara a cara",
+      "emptyMessage": "Todavía no se ha detectado ningún rival — abre más partidas en Historial para cruzarte de nuevo con los mismos rivales."
+    }
+  },
+  "agentRoles": {
+    "duelist": "Duelista",
+    "controller": "Controlador",
+    "initiator": "Iniciador",
+    "sentinel": "Centinela",
+    "unknown": "Desconocido"
+  }
+}

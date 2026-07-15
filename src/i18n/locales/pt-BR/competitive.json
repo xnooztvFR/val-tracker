@@ -1,0 +1,64 @@
+{
+  "leaderboard": {
+    "title": "Classificação competitiva",
+    "searchPlaceholder": "Nome#Tag",
+    "locate": "Localizar",
+    "reset": "Redefinir",
+    "updatedAt": "Atualizado em: {{date}}",
+    "columns": {
+      "rank": "Posição",
+      "player": "Jogador",
+      "tier": "Rank",
+      "rr": "RR",
+      "wins": "Vitórias"
+    },
+    "anonymousPlayer": "Jogador anônimo",
+    "banned": "Banido",
+    "previous": "Anterior",
+    "page": "Página {{page}}",
+    "next": "Próxima"
+  },
+  "premier": {
+    "title": "Premier",
+    "teamNamePlaceholder": "Nome do time",
+    "search": "Buscar",
+    "reset": "Redefinir",
+    "emptyTitle": "Nenhum time encontrado",
+    "emptyDetail": "Tente outra busca ou região.",
+    "teamCount_one": "{{count}} time · página {{page}}/{{pageCount}}",
+    "teamCount_other": "{{count}} times · página {{page}}/{{pageCount}}",
+    "columns": {
+      "rank": "Posição",
+      "team": "Time",
+      "conferenceDivision": "Conferência / Divisão",
+      "score": "Pontuação",
+      "winsLosses": "V / D"
+    },
+    "division": "Div {{division}}",
+    "previous": "Anterior",
+    "pageOf": "Página {{page}} / {{pageCount}}",
+    "next": "Próxima"
+  },
+  "premierTeamDetail": {
+    "backToPremier": "← Voltar para Premier",
+    "teamNotFound": "Time não encontrado.",
+    "enrolled": "Inscrito na temporada atual",
+    "notEnrolled": "Não inscrito",
+    "stats": {
+      "ranking": "Classificação",
+      "conference": "Conferência",
+      "conferenceDivision": "{{conference}} · Div {{division}}",
+      "points": "Pontos",
+      "matches": "Partidas",
+      "wins": "Vitórias",
+      "losses": "Derrotas",
+      "roundsWonLost": "Rounds V/P"
+    },
+    "roster": "Elenco ({{count}})",
+    "rosterEmpty": "Elenco não informado.",
+    "seasonHistory": "Histórico da temporada",
+    "pointsTransition": "{{before}} → {{after}} pts",
+    "tournament": "Torneio · {{count}} partidas",
+    "tournamentPlacement": "Posição #{{placement}} · {{before}} → {{after}} pts"
+  }
+}

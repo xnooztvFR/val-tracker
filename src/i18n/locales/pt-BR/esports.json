@@ -1,0 +1,106 @@
+{
+  "esports": {
+    "title": "Calendário de esports (VCT)",
+    "browseLink": "Ver eventos, times e jogadores profissionais →",
+    "allLeagues": "Todas as ligas",
+    "empty": {
+      "title": "Nenhuma partida programada",
+      "detail": "Nada para exibir no momento."
+    },
+    "teamTbd": "A definir",
+    "state": {
+      "completed": "Encerrado",
+      "ongoing": "Em andamento",
+      "unstarted": "Em breve"
+    }
+  },
+  "vlrEvents": {
+    "backLink": "← Calendário",
+    "title": "Eventos de esports",
+    "typeAll": "Todos",
+    "typeUpcoming": "Em breve",
+    "typeCompleted": "Encerrados",
+    "regions": {
+      "all": "Todas as regiões",
+      "north_america": "América do Norte",
+      "europe": "Europa",
+      "brazil": "Brasil",
+      "asia_pacific": "Ásia-Pacífico",
+      "korea": "Coreia",
+      "japan": "Japão",
+      "latin_america": "América Latina",
+      "oceania": "Oceania",
+      "mena": "MENA",
+      "gc": "Game Changers",
+      "collegiate": "Universitário"
+    },
+    "status": {
+      "completed": "Encerrado",
+      "ongoing": "Em andamento",
+      "upcoming": "Em breve",
+      "unknown": "?"
+    },
+    "empty": {
+      "title": "Nenhum evento"
+    },
+    "pagination": {
+      "previous": "Anterior",
+      "page": "Página {{page}}",
+      "next": "Próxima"
+    }
+  },
+  "vlrEventDetail": {
+    "backLink": "← Eventos",
+    "fallbackTitle": "Partidas do evento",
+    "empty": {
+      "title": "Nenhuma partida"
+    },
+    "vs": "vs"
+  },
+  "vlrMatchDetail": {
+    "backLink": "← Calendário de esports",
+    "notFound": "Partida não encontrada.",
+    "mapHeader": "Mapa {{index}} — {{map}}",
+    "patch": "Patch {{patch}}",
+    "columns": {
+      "agent": "Agente",
+      "rating": "Rating",
+      "acs": "ACS",
+      "kda": "K/D/A",
+      "adr": "ADR",
+      "kast": "KAST",
+      "hsPct": "HS%"
+    }
+  },
+  "vlrTeamDetail": {
+    "backLink": "← Esports",
+    "notFound": "Time não encontrado.",
+    "totalWinnings": "Ganhos totais",
+    "roster": "Elenco",
+    "rosterEmpty": "Elenco não informado.",
+    "achievements": "Conquistas",
+    "recentMatches": "Últimas partidas"
+  },
+  "vlrPlayerDetail": {
+    "backLink": "← Esports",
+    "notFound": "Jogador não encontrado.",
+    "timespans": {
+      "30d": "30 dias",
+      "60d": "60 dias",
+      "90d": "90 dias",
+      "all": "Carreira"
+    },
+    "statsByAgent": "Estatísticas por agente",
+    "columns": {
+      "agent": "Agente",
+      "usage": "Uso",
+      "rating": "Rating",
+      "acs": "ACS",
+      "kd": "K/D",
+      "adr": "ADR",
+      "kast": "KAST"
+    },
+    "noStats": "Sem estatísticas nesse período.",
+    "recentMatches": "Últimas partidas"
+  }
+}

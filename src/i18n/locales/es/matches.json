@@ -1,0 +1,138 @@
+{
+  "history": {
+    "title": "Historial · últimos {{count}} enfrentamientos",
+    "exportCsv": "Exportar CSV",
+    "exportJson": "Exportar JSON",
+    "empty": {
+      "title": "No se encontró ninguna partida competitiva",
+      "detail": "Este perfil no tiene historial competitivo en esta muestra."
+    },
+    "session": {
+      "matchCount_one": "{{count}} partida",
+      "matchCount_other": "{{count}} partidas",
+      "record": "{{wins}}V - {{losses}}D"
+    },
+    "filters": {
+      "resultAll": "Todos",
+      "resultWin": "Victorias",
+      "resultLoss": "Derrotas",
+      "reset": "Restablecer",
+      "noMatch": {
+        "title": "Ninguna partida coincide",
+        "detail": "Intenta ampliar tus filtros."
+      }
+    },
+    "csv": {
+      "header": {
+        "date": "fecha",
+        "map": "mapa",
+        "agent": "agente",
+        "result": "resultado",
+        "kills": "kills",
+        "deaths": "deaths",
+        "assists": "assists",
+        "score": "puntuacion"
+      },
+      "result": {
+        "win": "victoria",
+        "loss": "derrota",
+        "empty": ""
+      }
+    }
+  },
+  "detail": {
+    "endType": {
+      "elimination": "Eliminación",
+      "bomb": "Spike",
+      "defuse": "Desactivación",
+      "roundTimerExpired": "Tiempo agotado",
+      "surrendered": "Rendición"
+    },
+    "backToHistory": "← Volver al historial",
+    "notFound": "Partida no encontrada.",
+    "unknownMap": "Mapa desconocido",
+    "reportButton": "Informe de la partida",
+    "roundTimeline": {
+      "title": "Desarrollo de la partida ({{count}} rondas) — haz clic en una ronda para ver el detalle",
+      "roundTooltip": "Ronda {{number}} — {{endType}}"
+    },
+    "table": {
+      "player": "Jugador",
+      "team": "Equipo",
+      "kda": "KDA",
+      "kd": "K/D",
+      "score": "Puntuación",
+      "acs": "ACS",
+      "headshotPercent": "HS%",
+      "damageDealtReceived": "Daño hecho/recibido",
+      "avgEconomy": "Econ. media",
+      "tooltip": {
+        "kda": "Kills / Muertes / Asistencias en esta partida.",
+        "kd": "Ratio de kills entre muertes (kills ÷ muertes).",
+        "score": "Puntuación de combate acumulada en la partida (puntos de impacto de Riot).",
+        "acs": "Average Combat Score: puntuación de combate media por ronda.",
+        "headshotPercent": "Porcentaje de disparos que impactan la cabeza.",
+        "damageDealtReceived": "Daño infligido a los rivales / daño recibido.",
+        "avgEconomy": "Valor medio del equipamiento (armas + armadura) en las rondas de compra."
+      }
+    },
+    "roundDetail": {
+      "title": "Ronda {{number}} — {{endType}}",
+      "bombPlanted": " · Spike colocado",
+      "bombDefused": " · Spike desactivado",
+      "table": {
+        "player": "Jugador",
+        "kills": "Kills",
+        "damage": "Daño",
+        "weapon": "Arma",
+        "loadout": "Equipamiento"
+      }
+    },
+    "economy": {
+      "title": "Tu economía",
+      "spent": "Gasto total: {{spent}} créditos · {{average}} / ronda de media",
+      "avgLoadout": "Valor medio del equipamiento: {{value}}"
+    }
+  },
+  "report": {
+    "tier": {
+      "eco": "Eco",
+      "force": "Force-buy",
+      "full": "Full-buy"
+    },
+    "backToDetail": "← Volver al detalle de la partida",
+    "title": "Informe de la partida",
+    "recapButton": "Tarjeta resumen",
+    "notEnoughData": "No hay datos suficientes para generar un informe de esta partida.",
+    "economyTimeline": {
+      "title": "Desarrollo económico ({{count}} rondas)",
+      "tooltip": "Ronda {{index}} — {{status}} — {{tier}} ({{avgLoadout}} cr. media)",
+      "won": "ganada",
+      "lost": "perdida"
+    },
+    "winrateByBuyType": {
+      "title": "Winrate por tipo de compra",
+      "ratio": "{{won}}/{{played}} ({{percent}}%)",
+      "note": "Estimado a partir del valor medio de equipamiento de tu equipo en cada ronda — no es un cálculo oficial de Riot, solo una referencia."
+    },
+    "bestRound": {
+      "title": "Mejor ronda",
+      "label": "Ronda {{index}}",
+      "detail": "{{kills}} kill(s) · {{damage}} de daño"
+    },
+    "worstRound": {
+      "title": "Ronda más discreta",
+      "label": "Ronda {{index}}",
+      "detail": "{{kills}} kill(s) · {{damage}} de daño"
+    },
+    "afk": {
+      "title": "AFK detectado",
+      "rounds_one": "Ronda {{list}}",
+      "rounds_other": "Rondas {{list}}"
+    }
+  },
+  "recap": {
+    "unknownMap": "Mapa desconocido",
+    "defaultMode": "Competitivo"
+  }
+}

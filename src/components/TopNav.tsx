@@ -84,6 +84,14 @@ export default function TopNav() {
         <img src={logo} alt="" className="h-6 w-6 object-contain" />
       </button>
 
+      <span
+        title={t("topNav.commandPaletteHint")}
+        aria-hidden="true"
+        className="hud-label mr-3 hidden shrink-0 self-center border border-line px-1.5 py-0.5 text-[9px] text-lo/70 sm:inline-block"
+      >
+        Ctrl+K
+      </span>
+
       {player && (
         <div className="flex items-stretch">
           {orderedTabs.map((tab) => (

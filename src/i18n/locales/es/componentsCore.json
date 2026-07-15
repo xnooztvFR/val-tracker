@@ -1,0 +1,69 @@
+{
+  "errorState": {
+    "alertLabel": "Alerta",
+    "missingApiKey": "No hay ninguna clave API de Henrik configurada.",
+    "notFound": "Jugador no encontrado, verifica el nombre#tag y la región.",
+    "rateLimitedWithDelay": "Demasiadas solicitudes, vuelve a intentarlo en {{seconds}}s.",
+    "rateLimited": "Demasiadas solicitudes, vuelve a intentarlo en unos instantes.",
+    "circuitOpen": "Demasiados fallos recientes hacia la API de Henrik, vuelve a intentarlo en unos instantes.",
+    "network": "Fallo de red — no se puede contactar con la API de Henrik.",
+    "api": "Error de la API de Henrik ({{status}}).",
+    "unknown": "Se produjo un error inesperado.",
+    "goToSettings": "Ir a ajustes"
+  },
+  "staleDataBanner": {
+    "label": "Caché",
+    "message": "Datos en caché, última actualización el {{date}}."
+  },
+  "statusBanner": {
+    "defaultIncidentTitle": "Incidente en curso",
+    "maintenance": "Mantenimiento",
+    "incident": "Incidente",
+    "moreOthers": "+{{count}} más",
+    "dismiss": "Ocultar"
+  },
+  "titlebar": {
+    "exitMiniMode": "Salir del modo mini",
+    "miniMode": "Modo mini (overlay)",
+    "minimize": "Minimizar",
+    "close": "Cerrar"
+  },
+  "focusMode": {
+    "exit": "Enfoque"
+  },
+  "topNav": {
+    "tabs": {
+      "leaderboard": "Clasificación",
+      "premier": "Premier",
+      "esports": "Esports",
+      "vs": "VS",
+      "home": "Inicio",
+      "history": "Historial",
+      "trends": "Tendencias",
+      "agents": "Agentes",
+      "maps": "Mapas",
+      "duo": "Duo"
+    },
+    "home": "Inicio",
+    "more": "Más",
+    "close": "Cerrar",
+    "changePlayer": "Cambiar de jugador",
+    "settings": "Ajustes",
+    "commandPaletteHint": "Ctrl+K para la paleta de comandos"
+  },
+  "apiStatusBadge": {
+    "ok": "API OK",
+    "rateLimited": "Rate limit",
+    "circuitOpen": "API en pausa",
+    "network": "Sin conexión"
+  },
+  "detectionStatusBadge": {
+    "disabled": "Detección desactivada",
+    "active": "Detección activa",
+    "detected": "Partida detectada",
+    "tooltip": "{{label}} — ver ajustes"
+  },
+  "queueStatusStrip": {
+    "label": "Colas"
+  }
+}

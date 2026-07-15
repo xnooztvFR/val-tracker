@@ -90,6 +90,10 @@
     "column": {
       "noData": "No data."
     },
+    "initial": {
+      "title": "No comparison yet",
+      "detail": "Enter two Riot IDs above to compare their stats side by side."
+    },
     "rows": {
       "winrate": "Winrate",
       "winrateValue": "{{percent}} ({{wins}}W-{{losses}}L)",
@@ -109,12 +113,14 @@
     "statsLine": "{{wins}} wins / {{played}} matches together",
     "squad": {
       "title": "Squad (3 players)",
-      "description": "Matches where you and two specific teammates were in the same party at the same time."
+      "description": "Matches where you and two specific teammates were in the same party at the same time.",
+      "emptyMessage": "No squad detected yet — open matches where you were in a 3-player party to see these stats appear here."
     },
     "rivalry": {
       "title": "Rivalry",
       "description": "Head-to-head against opponents you've faced repeatedly, accumulated as you browse matches in History.",
-      "statsLine": "{{wins}} wins / {{played}} head-to-head matches"
+      "statsLine": "{{wins}} wins / {{played}} head-to-head matches",
+      "emptyMessage": "No rival detected yet — open more matches in History to cross paths with the same opponents again."
     }
   },
   "agentRoles": {

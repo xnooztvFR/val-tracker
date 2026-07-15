@@ -51,12 +51,19 @@
     "title": "Langue",
     "hint": "Change la langue de toute l'interface, y compris l'overlay en jeu.",
     "fr": "Français",
-    "en": "Anglais"
+    "en": "Anglais",
+    "es": "Espagnol",
+    "pt-BR": "Portugais (Brésil)"
   },
   "autostart": {
     "title": "Démarrage automatique",
     "label": "Lancer l'app au démarrage de Windows",
     "hint": "Utile pour que la détection de partie soit déjà active quand tu lances Valorant."
+  },
+  "onboardingReplay": {
+    "title": "Assistant de bienvenue",
+    "hint": "Revoir les 3 étapes d'accueil (clé API, région par défaut, détection auto de partie).",
+    "button": "Relancer l'assistant"
   },
   "overlay": {
     "title": "Overlay en jeu",
@@ -220,5 +227,12 @@
     "title": "À propos",
     "version": "Valorant Tracker v{{version}} — build Tauri 2.x",
     "disclaimer": "Données de rank et de matchs fournies par l'API Henrik Dev. N'est ni développé ni approuvé par Riot Games."
+  },
+  "changelogHistory": {
+    "title": "Historique des nouveautés",
+    "loading": "Chargement…",
+    "empty": "Aucun historique pour l'instant — apparaîtra après la prochaine mise à jour.",
+    "version": "Version {{version}}",
+    "noNotes": "Aucune note pour cette version."
   }
 }

@@ -147,6 +147,7 @@ fn main() {
             commands::get_settings,
             commands::set_pending_changelog,
             commands::take_pending_changelog,
+            commands::list_changelog_history,
             commands::log_updater_trace,
             commands::save_henrik_api_key,
             commands::save_default_region,
@@ -229,6 +230,7 @@ fn main() {
             commands::get_autostart_enabled,
             commands::save_autostart_enabled,
             commands::mark_onboarding_completed,
+            commands::reset_onboarding,
             commands::save_shortcut_overlay_toggle,
             commands::save_shortcut_main_window_toggle,
         ])

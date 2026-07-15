@@ -1,0 +1,43 @@
+{
+  "rank": {
+    "unranked": "Sin clasificar",
+    "iron": "Hierro",
+    "bronze": "Bronce",
+    "silver": "Plata",
+    "gold": "Oro",
+    "platinum": "Platino",
+    "diamond": "Diamante",
+    "ascendant": "Ascendente",
+    "immortal": "Inmortal",
+    "radiant": "Radiante"
+  },
+  "tier": {
+    "sub": "{{rank}} {{sub}}",
+    "radiant": "Radiante"
+  },
+  "region": {
+    "eu": "Europa",
+    "na": "Norteamérica",
+    "ap": "Asia-Pacífico",
+    "kr": "Corea"
+  },
+  "relative": {
+    "now": "justo ahora",
+    "minutes": "hace {{count}}min",
+    "hours": "hace {{count}}h",
+    "days": "hace {{count}}d",
+    "months": "hace {{count}} meses"
+  },
+  "duration": {
+    "value": "{{minutes}}min {{seconds}}s"
+  },
+  "dateTimeShort": {
+    "unknown": "fecha desconocida",
+    "value": "{{day}}/{{month}} a las {{hours}}:{{minutes}}"
+  },
+  "session": {
+    "label": "Sesión",
+    "dated": "Sesión del {{day}}/{{month}}"
+  },
+  "unknown": "—"
+}

@@ -48,7 +48,8 @@
     "more": "More",
     "close": "Close",
     "changePlayer": "Change player",
-    "settings": "Settings"
+    "settings": "Settings",
+    "commandPaletteHint": "Ctrl+K for the command palette"
   },
   "apiStatusBadge": {
     "ok": "API OK",

@@ -1,0 +1,23 @@
+{
+  "title": {
+    "prefix": "Rastrea tu",
+    "highlight": "rango"
+  },
+  "subtitle": "Introduce un Riot ID completo para consultar su rango y sus partidas recientes.",
+  "form": {
+    "placeholder": "nombre#tag",
+    "submit": "Buscar"
+  },
+  "formError": "Formato esperado: nombre#tag (ej. Sentinel#EU1)",
+  "favorites": {
+    "title": "Favoritos",
+    "hint": "Arrastra y suelta para reordenar."
+  },
+  "recent": {
+    "title": "Búsquedas recientes",
+    "toggleFavorite": "Alternar favorito"
+  },
+  "hoverPreview": {
+    "loading": "Cargando…"
+  }
+}

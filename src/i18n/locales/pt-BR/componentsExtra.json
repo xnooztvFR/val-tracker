@@ -1,0 +1,180 @@
+{
+  "copyButton": {
+    "copied": "Copiado!"
+  },
+  "accountSwitcher": {
+    "myAccounts": "Minhas contas",
+    "close": "Fechar",
+    "noAccountLinked": "Nenhuma conta vinculada. Marque um perfil como seu abaixo, ou vincule a conta detectada se o cliente Riot estiver aberto.",
+    "unlinkAccount": "Desvincular esta conta",
+    "markAsMine": "Marcar {{name}}#{{tag}} como minha conta",
+    "detectedAccount": "Conta detectada: {{name}}#{{tag}} — Vincular",
+    "searchToLink": "+ Buscar um perfil para vincular"
+  },
+  "commandPalette": {
+    "settings": "Configurações",
+    "leaderboard": "Classificação",
+    "esport": "Esports",
+    "premier": "Premier",
+    "vsComparison": "Comparação VS",
+    "search": "Buscar um jogador",
+    "screenHint": "Tela",
+    "favoriteHint": "Favorito",
+    "recentHint": "Recente",
+    "placeholder": "Ir para... (tela, jogador recente/favorito)",
+    "noResults": "Nenhum resultado."
+  },
+  "miniOverlay": {
+    "choosePlayer": "Escolha um jogador antes de entrar no modo mini.",
+    "rrSuffix": "{{rr}} RR",
+    "recentMatches": "últimas {{count}} partidas"
+  },
+  "updateBanner": {
+    "title": "Atualização",
+    "versionAvailable": "Versão {{version}} disponível",
+    "readyToInstall": "Uma nova versão do Val Tracker está pronta para ser instalada.",
+    "later": "Mais tarde",
+    "installNow": "Instalar agora",
+    "downloading": "Baixando…",
+    "installing": "Instalando, reiniciando…",
+    "updateFailed": "Falha na atualização",
+    "closeButton": "Fechar"
+  },
+  "changelogModal": {
+    "title": "Novidades",
+    "version": "Val Tracker {{version}}",
+    "noNotes": "Atualização instalada com sucesso.",
+    "close": "Fechar"
+  },
+  "playerNotesPanel": {
+    "title": "Notas",
+    "locked": "Bloqueado",
+    "pinPlaceholder": "PIN",
+    "unlock": "Desbloquear",
+    "pinIncorrect": "PIN incorreto.",
+    "pinLocked": "Muitas tentativas incorretas. Tente novamente em {{seconds}}s.",
+    "saved": "Salvo",
+    "saving": "…",
+    "notesPlaceholder": "Smurf, duo frequente, jogar de novo..."
+  },
+  "onboardingWizard": {
+    "step1": {
+      "title": "1. Chave de API da Henrik",
+      "description": "Necessária para consultar a API da Henrik Dev (rank, partidas). Entre no Discord da Henrik Dev para obter uma (veja o README).",
+      "placeholder": "Cole sua chave de API da Henrik aqui",
+      "invalid": "Chave inválida.",
+      "networkError": "Não foi possível verificar (problema de rede?).",
+      "verifying": "Verificando…",
+      "verifyAndSave": "Verificar e salvar",
+      "next": "Próximo",
+      "proxyAvailable": "Já há um acesso sem chave própria disponível nesta instalação — você pode pular esta etapa.",
+      "skip": "Pular"
+    },
+    "step2": {
+      "title": "2. Região padrão",
+      "description": "Usada para as buscas e a classificação.",
+      "next": "Próximo"
+    },
+    "step3": {
+      "title": "3. Detecção automática de partida",
+      "checking": "Procurando o cliente Riot local…",
+      "found": "Cliente Riot detectado — o overlay e a detecção de partida funcionarão automaticamente.",
+      "notFound": "Cliente Riot não detectado por enquanto (sem problema, o app volta ao modo de busca manual) — reinicie o cliente Riot e verifique Configurações → Overlay se necessário.",
+      "finish": "Concluir"
+    }
+  },
+  "accountTimeline": {
+    "empty": "Ainda não há histórico — volte após algumas atualizações e partidas jogadas.",
+    "rankChange": "Rank: {{tier}} ({{rr}} RR)",
+    "goalAchieved": "Objetivo alcançado: {{goal}}",
+    "goalMatches": "número de partidas",
+    "goalWinrate": "winrate",
+    "noteUpdated": "Nota pessoal atualizada"
+  },
+  "periodRecapModal": {
+    "weekTitle": "RESUMO DA SEMANA",
+    "monthTitle": "RESUMO DO MÊS",
+    "winrate": "{{percent}} de vitórias",
+    "kd": "K/D",
+    "headshotPercent": "HS%",
+    "acs": "ACS",
+    "topAgent": "Agente principal",
+    "noAgent": "—"
+  },
+  "recapCardModal": {
+    "victory": "VITÓRIA",
+    "defeat": "DERROTA",
+    "copyImage": "Copiar imagem",
+    "download": "Baixar",
+    "close": "Fechar",
+    "copied": "Copiado — cole diretamente no Discord (Ctrl+V).",
+    "copyUnsupported": "Cópia não suportada aqui — use \"Baixar\" em vez disso.",
+    "copyError": "Falha ao copiar, tente novamente."
+  },
+  "profileCardModal": {
+    "stats": {
+      "winrate": "Winrate",
+      "kd": "K/D",
+      "headshotPercent": "HS%",
+      "acs": "ACS"
+    },
+    "record": "{{wins}}V – {{losses}}D ({{played}} partidas)",
+    "topAgent": "Agente principal: {{agent}}",
+    "footer": "Cartão de visita gerado pelo Valorant Tracker"
+  },
+  "rankHistoryChart": {
+    "limitedHistoryTitle": "Histórico limitado",
+    "limitedHistoryBody": "Volte a consultar este perfil após algumas partidas para ver a curva de progressão do rank se desenhar.",
+    "unknownTier": "Desconhecido",
+    "tooltipLabel": "Rank"
+  },
+  "performanceHeatmap": {
+    "days": {
+      "mon": "Seg",
+      "tue": "Ter",
+      "wed": "Qua",
+      "thu": "Qui",
+      "fri": "Sex",
+      "sat": "Sáb",
+      "sun": "Dom"
+    },
+    "cellTooltip_one": "{{day}} {{hour}}h — {{count}} partida, {{winPercent}}% de vitórias",
+    "cellTooltip_other": "{{day}} {{hour}}h — {{count}} partidas, {{winPercent}}% de vitórias",
+    "cellTooltipEmpty": "{{day}} {{hour}}h — nenhuma partida"
+  },
+  "progressionGoalPanel": {
+    "title": "Objetivo de progressão",
+    "edit": "Editar",
+    "setGoal": "Definir um objetivo",
+    "targetRr": "RR alvo",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "reached": "Alcançado",
+    "removeGoal": "Remover objetivo",
+    "rrSuffix": "({{rr}} RR)"
+  },
+  "weeklyGoalsPanel": {
+    "title": "Objetivos semanais",
+    "addGoal": "Adicionar um objetivo",
+    "matchesLabel": "Número de partidas",
+    "winrateLabel": "Winrate alvo (%)",
+    "typeMatches": "Partidas jogadas",
+    "typeWinrate": "Winrate",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "reached": "Alcançado",
+    "remove": "Remover",
+    "matchesProgress": "{{current}} / {{target}} partidas nesta semana",
+    "winrateProgress": "{{current}}% / {{target}}% winrate nesta semana ({{matches}} partidas)"
+  },
+  "matchRow": {
+    "victory": "Vitória",
+    "defeat": "Derrota",
+    "noResult": "—",
+    "unknownMap": "Mapa desconhecido",
+    "unknownAgent": "Agente desconhecido",
+    "kdLabel": "K/D {{ratio}}",
+    "acsLabel": "{{acs}} ACS",
+    "scoreLabel": "Pontuação {{score}}"
+  }
+}

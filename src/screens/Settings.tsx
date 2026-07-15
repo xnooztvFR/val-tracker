@@ -7,6 +7,7 @@ import GeneralSection from "./settings/GeneralSection";
 import AppearanceSection from "./settings/AppearanceSection";
 import LanguageSection from "./settings/LanguageSection";
 import AutostartSection from "./settings/AutostartSection";
+import OnboardingReplaySection from "./settings/OnboardingReplaySection";
 import OverlaySection from "./settings/OverlaySection";
 import DiscordSection from "./settings/DiscordSection";
 import CrosshairSection from "./settings/CrosshairSection";
@@ -19,6 +20,7 @@ import LogsSection from "./settings/LogsSection";
 import HealthSection from "./settings/HealthSection";
 import DiagnosticsSection from "./settings/DiagnosticsSection";
 import AboutSection from "./settings/AboutSection";
+import ChangelogHistorySection from "./settings/ChangelogHistorySection";
 
 // Regroupement en 6 catégories (au lieu de 13) : chaque page peut empiler plusieurs
 // sections thématiquement proches (séparées par SectionDivider) plutôt qu'une entrée de
@@ -118,6 +120,8 @@ export default function Settings() {
             />
             <SectionDivider />
             <AutostartSection />
+            <SectionDivider />
+            <OnboardingReplaySection />
           </div>
         )}
         {category === "game" && (
@@ -197,7 +201,13 @@ export default function Settings() {
             <DiagnosticsSection />
           </div>
         )}
-        {category === "about" && <AboutSection />}
+        {category === "about" && (
+          <div className="space-y-10">
+            <AboutSection />
+            <SectionDivider />
+            <ChangelogHistorySection />
+          </div>
+        )}
       </div>
     </div>
   );

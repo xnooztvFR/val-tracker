@@ -1,0 +1,238 @@
+{
+  "nav": {
+    "title": "Ajustes",
+    "general": "General",
+    "game": "En partida",
+    "alerts": "Alertas y privacidad",
+    "updates": "Actualizaciones",
+    "data": "Datos y diagnóstico",
+    "about": "Acerca de"
+  },
+  "general": {
+    "title": "General",
+    "apiKeySet": "Clave API de Henrik configurada.",
+    "apiKeyNotSet": "No hay ninguna clave API de Henrik configurada.",
+    "apiKeyLabel": "Clave API de Henrik",
+    "apiKeyPlaceholder": "Pega aquí tu clave API de Henrik",
+    "verify": "Verificar",
+    "verifying": "Verificando…",
+    "save": "Guardar",
+    "keyValid": "Clave válida.",
+    "keyInvalid": "Clave no válida — comprueba que sea correcta.",
+    "keyVerifyError": "No se pudo verificar la clave (¿problema de red?).",
+    "keySaved": "Clave guardada.",
+    "apiKeyHint": "Obtén una clave en el Discord de Henrik Dev. Nunca se envía a ningún sitio salvo a la API de Henrik y solo se guarda en esta máquina.",
+    "apiKeyDpapiUnreadable": "Tu clave guardada no se pudo descifrar (reinstalación de Windows, migración de cuenta...) — no se ha eliminado, pero debes volver a introducirla abajo para seguir usándola.",
+    "regionLabel": "Región predeterminada"
+  },
+  "appearance": {
+    "title": "Apariencia",
+    "themeLabel": "Tema",
+    "theme": {
+      "dark": "Oscuro (predeterminado)",
+      "light": "Claro"
+    },
+    "accentLabel": "Color de acento",
+    "accentHint": "Identidad HUD predeterminada en rojo — hay algunas variantes disponibles sin romper el resto del diseño (esquinas cortadas, tipografía, contrastes).",
+    "accent": {
+      "red": "Rojo (predeterminado)",
+      "cyan": "Cian",
+      "violet": "Violeta",
+      "amber": "Ámbar"
+    },
+    "densityLabel": "Densidad de visualización",
+    "densityHint": "Reduce ligeramente los espacios y el tamaño del texto en toda la app (no solo el overlay en partida) — útil en una ventana más pequeña.",
+    "density": {
+      "comfortable": "Cómoda (predeterminada)",
+      "compact": "Compacta"
+    }
+  },
+  "language": {
+    "title": "Idioma",
+    "hint": "Cambia el idioma de toda la interfaz, incluido el overlay en partida.",
+    "fr": "Francés",
+    "en": "Inglés",
+    "es": "Español",
+    "pt-BR": "Portugués (Brasil)"
+  },
+  "autostart": {
+    "title": "Inicio automático",
+    "label": "Iniciar la app al arrancar Windows",
+    "hint": "Útil para que la detección de partida ya esté activa cuando inicies Valorant."
+  },
+  "onboardingReplay": {
+    "title": "Asistente de bienvenida",
+    "hint": "Vuelve a ver los 3 pasos de bienvenida (clave API, región predeterminada, detección automática de partida).",
+    "button": "Reiniciar el asistente"
+  },
+  "overlay": {
+    "title": "Overlay en partida",
+    "description": "Detecta automáticamente una partida en curso mediante la API local del cliente de Riot y muestra un overlay siempre visible con el rango de los jugadores del lobby. Sin inyección en el juego: solo una ventana superpuesta. Funciona en «pantalla completa sin bordes» (la pantalla completa exclusiva puede ocultar el overlay).",
+    "enableLabel": "Activar la detección automática de partida y el overlay",
+    "layoutLabel": "Diseño",
+    "layout": {
+      "full": "Completo (predeterminado)",
+      "mini": "Mini resumen"
+    },
+    "layoutHint": "«Completo» (predeterminado) enumera a todos los jugadores detectados, aliados y rivales. «Mini resumen» reduce el overlay a una sola línea de insignias de rango, sin nombre ni recomendación de agente — para una intrusión mínima en partida.",
+    "densityLabel": "Densidad de visualización",
+    "density": {
+      "compact": "Compacta",
+      "detailed": "Detallada (predeterminada)"
+    },
+    "densityHint": "«Compacta» solo muestra la insignia de rango de los jugadores detectados; «Detallada» (predeterminada) añade el nombre del rango y el RR.",
+    "monitorLabel": "Pantalla de visualización",
+    "monitor": {
+      "auto": "Automática (última pantalla usada)",
+      "primary": "principal"
+    },
+    "monitorHint": "Por defecto, el overlay reaparece en la última configuración de pantallas usada. Elegir una pantalla explícita aquí hace que siempre aparezca en ella, útil en configuraciones multimonitor (p. ej. siempre en la pantalla de juego).",
+    "rankGapAlertTitle": "Alerta de diferencia de rango rival",
+    "rankGapAlertLabel": "Reproducir un sonido discreto si un rival tiene un rango mucho más alto que el mío",
+    "rankGapAlertUnit": "tiers de diferencia mínima",
+    "rankGapAlertHint": "Cada rango (Bronce, Oro...) abarca 3 tiers de Henrik — 9 (predeterminado) corresponde aproximadamente a 3 rangos completos de diferencia. Por lo demás es puramente visual, fácil de pasar por alto durante la carga de la ronda. Una sola alerta por partida detectada.",
+    "shortcutConflictTitle": "Atajo no disponible",
+    "shortcutConflictBody": "<shortcut>Ctrl+Shift+V</shortcut> ya está siendo usado por otra aplicación en esta máquina (a menudo un atajo de \"pegar sin formato\"). El overlay sigue siendo clicable a través de él, pero no se puede mover mientras este conflicto no se resuelva — libera el atajo en otro lugar y reinicia la app.",
+    "shortcutLabel": "Atajo",
+    "shortcutHint": "<shortcut>Ctrl+Shift+V</shortcut> — alterna el overlay entre modo click-through (transparente a los clics) e interactivo (movible). Su posición se recuerda de una sesión a otra.",
+    "apiWarning": "Esta detección se basa en una API local no oficial de Riot: si deja de estar disponible (incluso durante la partida, p. ej. un fallo del cliente de Riot), la app vuelve silenciosamente al modo de búsqueda manual."
+  },
+  "discord": {
+    "title": "Rich Presence de Discord",
+    "description": "Muestra automáticamente lo que haces en el tracker (partida en curso, selección de agentes, región) como estado de Discord. Totalmente local: una conexión IPC directa a tu cliente de escritorio de Discord, sin datos enviados por la red.",
+    "enableLabel": "Activar la Rich Presence de Discord",
+    "clientIdLabel": "Client ID de la aplicación de Discord",
+    "clientIdPlaceholder": "123456789012345678",
+    "save": "Guardar",
+    "saved": "Client ID guardado.",
+    "clientIdHint": "Crea una aplicación (gratuita) en el <portal>Discord Developer Portal</portal> y pega aquí su «Application ID» — sin secretos ni tokens, solo un identificador público.",
+    "bestEffort": "Best-effort, como la detección de partida: si Discord no está abierto o el client_id no es válido, la Rich Presence simplemente permanece inactiva, sin error bloqueante."
+  },
+  "notifications": {
+    "title": "Notificaciones",
+    "rankChangeTitle": "Cambio de rango",
+    "rankChangeBody": "Siempre activa: se muestra una notificación nativa en cuanto se detecta una subida/bajada de rango al consultar un perfil (ascenso, descenso). No requiere ningún ajuste — no genera ninguna llamada de red adicional, solo observa lo que la app ya obtiene.",
+    "statusTitle": "Estado del servidor y de la cola",
+    "statusLabel": "Notificarme incidentes y cambios de cola en mi región predeterminada",
+    "statusHint": "Único ajuste (junto con el recordatorio de inactividad de abajo) que genera una llamada de red periódica incluso cuando no estás mirando la app (cada ~3 min, respeta el caché/rate limiter existente) — desactivado por defecto, actívalo si quieres recibir alertas en segundo plano.",
+    "lossStreakTitle": "Racha de derrotas",
+    "lossStreakLabel": "Notificarme tras varias derrotas seguidas",
+    "lossStreakUnit": "derrotas seguidas",
+    "lossStreakHint": "Se comprueba en tus cuentas marcadas como «propias» (ver TopNav) cada vez que consultas el historial de partidas — sin llamada de red dedicada.",
+    "inactivityTitle": "Recordatorio de inactividad",
+    "inactivityLabel": "Recordarme si no he consultado mis estadísticas en un tiempo",
+    "inactivityAfter": "Tras",
+    "inactivityUnit": "días sin consultar una cuenta «propia»",
+    "inactivityHint": "Recordatorio suave, nunca más de una vez al día — requiere al menos una cuenta marcada como «propia» (ver TopNav → selector de cuentas)."
+  },
+  "updates": {
+    "title": "Actualizaciones",
+    "autoCheckLabel": "Buscar actualizaciones automáticamente al iniciar",
+    "checkNow": "Buscar ahora",
+    "checking": "Buscando…",
+    "upToDate": "Versión actual al día.",
+    "installVersion": "Instalar la versión {{version}}",
+    "downloading": "Descargando…",
+    "error": "Error: {{error}}",
+    "distributionNote": "Las actualizaciones se distribuyen mediante GitHub Releases y están firmadas (updater + Authenticode). Sin un certificado de firma de código de pago, Windows SmartScreen puede mostrar una advertencia al instalar a pesar de la firma."
+  },
+  "crosshair": {
+    "title": "Vista previa de mira",
+    "description": "Pega un código de mira de Valorant (copiado del juego o de un vídeo/configuración compartida) para previsualizar su aspecto sin abrir el juego.",
+    "placeholder": "0;s;1;P;c;1;o;1;...",
+    "preview": "Previsualizar",
+    "generating": "Generando…",
+    "error": "No se pudo generar la vista previa — comprueba el código y tu clave API.",
+    "previewAlt": "Vista previa de la mira"
+  },
+  "privacy": {
+    "title": "Privacidad",
+    "description": "Bloquea la visualización de las notas personales (etiquetas \"smurf\"/\"tóxico\"/\"dúo habitual\"...) tras un PIN — útil en streaming o en una pantalla compartida. El bloqueo se vuelve a pedir en cada cambio de perfil o reinicio de la app.",
+    "dpapiUnreadable": "Tu PIN guardado no se pudo descifrar (reinstalación de Windows, migración de cuenta...) — no se ha eliminado, pero debes definir uno nuevo abajo para seguir bloqueando tus notas.",
+    "lockActive": "Bloqueo por PIN activo.",
+    "disableLock": "Desactivar el bloqueo",
+    "confirmDisable": "¿Desactivar el bloqueo por PIN de las notas personales?",
+    "newPin": "Nuevo PIN",
+    "confirmPin": "Confirmar",
+    "activateLock": "Activar el bloqueo",
+    "mismatch": "Los dos PIN no coinciden.",
+    "saveError": "Error al guardar el PIN.",
+    "lockActivated": "Bloqueo activado."
+  },
+  "data": {
+    "title": "Datos locales",
+    "description": "La app guarda una copia local (caché SQLite) de tus búsquedas, la caché de la API y el historial de progresión de rango para seguir siendo rápida y funcionar sin conexión como respaldo.",
+    "resetTitle": "Borrar la caché y el historial local",
+    "resetDescription": "Elimina la caché de la API, el historial de progresión de rango y el historial de búsqueda. Tu clave API y tus preferencias se conservan.",
+    "resetConfirm": "¿Borrar la caché local, el historial de rango y el historial de búsqueda? Esta acción es irreversible (los ajustes se conservan).",
+    "delete": "Eliminar",
+    "deleting": "Eliminando…",
+    "deleted": "Datos borrados.",
+    "deleteError": "Error al eliminar."
+  },
+  "shortcuts": {
+    "title": "Atajos de teclado",
+    "description": "Lista centralizada de todos los atajos de teclado de la app. Podrán añadirse más en futuras versiones.",
+    "ctrlShiftV": "Alterna el overlay en partida entre modo click-through (solo visualización) y modo interactivo (movible con el ratón).",
+    "ctrlShiftH": "Muestra u oculta la ventana principal — funciona incluso cuando Valorant tiene el foco.",
+    "ctrlShiftSpace": "Mantener pulsado para volver a mostrar el overlay durante los 12s en que se oculta automáticamente al iniciar una ronda (el tiempo de leer el roster rival); soltar para volver al estado oculto.",
+    "ctrlShiftF": "Alterna el modo enfoque (oculta la barra de título/navegación/banners para compartir pantalla de forma limpia). Solo en la ventana principal.",
+    "ctrlK": "Abre la paleta de comandos (buscar un jugador, ir a una pantalla, saltar a un jugador reciente/favorito). Solo en la ventana principal.",
+    "recording": "Pulsa una tecla…",
+    "saved": "Atajo actualizado.",
+    "saveError": "Atajo no válido o ya usado por otra aplicación."
+  },
+  "health": {
+    "title": "Salud de la app",
+    "description": "Panel 100% local (tasa de acierto de caché, errores de API de los últimos 7 días) — nada se envía nunca a ningún sitio, queda en tu base de datos SQLite local.",
+    "accumulateLabel": "Acumular estas métricas localmente",
+    "accumulateHint": "Desactivado por defecto: añade una pequeña escritura SQLite en cada llamada a Henrik para contar los eventos, actívalo solo si quieres este seguimiento.",
+    "refresh": "Actualizar",
+    "refreshing": "Actualizando…",
+    "cacheHitRate": "Tasa de acierto de caché (7d)",
+    "cacheHitHint": "{{hits}} / {{total}} solicitudes servidas desde la caché",
+    "networkCalls": "Llamadas de red (7d)",
+    "networkCallsHint": "Caché fallida o caducada, solicitud a Henrik realizada",
+    "apiErrors": "Errores de API (7d)",
+    "apiErrorsHint": "Rate limit, circuit breaker, fallo de red...",
+    "latencyTitle": "Latencia de las solicitudes de red (7d)",
+    "latencyAvg": "Media: {{ms}} ms",
+    "latencyEmpty": "No se ha medido ninguna solicitud de red en este período."
+  },
+  "diagnostics": {
+    "title": "Diagnóstico",
+    "description": "Último tick / último error de las tareas en segundo plano de la app — útil para entender por qué una función best-effort (overlay, watcher de estado, recordatorio de inactividad, Rich Presence de Discord) parece silenciosa.",
+    "refresh": "Actualizar",
+    "refreshing": "Actualizando…",
+    "lastTick": "Último tick:",
+    "never": "nunca",
+    "noError": "Sin errores recientes",
+    "tasks": {
+      "riot_local_poller": "Detección de partida (API local de Riot)",
+      "status_watcher": "Watcher de estado del servidor / cola",
+      "inactivity_reminder": "Recordatorio de inactividad",
+      "discord_rpc": "Rich Presence de Discord"
+    }
+  },
+  "logs": {
+    "title": "Registros",
+    "description": "Últimas entradas del archivo de registro local de la app — útil para soporte/depuración sin tener que buscar a mano en %APPDATA%.",
+    "refresh": "Actualizar",
+    "refreshing": "Actualizando…",
+    "copy": "Copiar",
+    "copied": "¡Copiado!",
+    "empty": "Sin registros por ahora."
+  },
+  "about": {
+    "title": "Acerca de",
+    "version": "Valorant Tracker v{{version}} — build de Tauri 2.x",
+    "disclaimer": "Datos de rango y de partidas proporcionados por la API de Henrik Dev. No está desarrollado ni respaldado por Riot Games."
+  },
+  "changelogHistory": {
+    "title": "Historial de novedades",
+    "loading": "Cargando…",
+    "empty": "Aún no hay historial — aparecerá tras la próxima actualización.",
+    "version": "Versión {{version}}",
+    "noNotes": "Sin notas para esta versión."
+  }
+}

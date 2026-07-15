@@ -1,0 +1,64 @@
+{
+  "statusBar": {
+    "operator": "Operador · {{region}}",
+    "summary": "Balanço · últimos {{n}}",
+    "wins": "{{n}}V",
+    "losses": "{{n}}D",
+    "winrateShort": "WR",
+    "updateIn": "Atualização em {{time}}",
+    "refreshAvailable": "Atualização disponível",
+    "refresh": "Atualizar",
+    "copyRiotId": "Copiar o Riot ID",
+    "exportCard": "Cartão de visita",
+    "recapWeek": "Resumo da semana",
+    "recapMonth": "Resumo do mês"
+  },
+  "leaderboardPercentile": {
+    "label": "Classificação regional",
+    "value": "#{{rank}}",
+    "hintWithPercentile": "Top {{percent}}% de {{tier}}",
+    "hint": "{{tier}}"
+  },
+  "overview": {
+    "title": "Visão geral",
+    "notEnoughData": "Dados insuficientes.",
+    "stats": {
+      "winrate": "Winrate",
+      "kd": "K/D",
+      "headshotPercent": "Headshot %",
+      "acs": "ACS",
+      "kdHint": "{{n}} kills",
+      "tooltip": {
+        "kd": "Proporção de kills por mortes (kills ÷ mortes).",
+        "headshotPercent": "Porcentagem de tiros que acertam a cabeça.",
+        "acs": "Average Combat Score: pontuação de combate média por round."
+      }
+    },
+    "miniStats": {
+      "wins": "Vitórias",
+      "losses": "Derrotas",
+      "kills": "Kills",
+      "deaths": "Deaths",
+      "assists": "Assists",
+      "headshots": "Headshots"
+    },
+    "winLossHint": "{{wins}}V — {{losses}}D",
+    "topAgent": {
+      "title": "Agente mais jogado",
+      "stats": "{{matches}} partidas · {{winPercent}} de vitórias · K/D {{kd}}"
+    },
+    "accuracy": {
+      "title": "Precisão (cabeça / corpo / pernas)",
+      "head": "Cabeça",
+      "body": "Corpo",
+      "legs": "Pernas"
+    },
+    "lastMap": {
+      "title": "Último mapa jogado"
+    }
+  },
+  "rankProgression": "Progressão do rank",
+  "accountTimeline": {
+    "title": "Histórico da conta"
+  }
+}

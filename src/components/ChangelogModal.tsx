@@ -4,27 +4,11 @@ import { invoke } from "@tauri-apps/api/core";
 import { getVersion } from "@tauri-apps/api/app";
 
 import Panel from "./Panel";
+import { resolveChangelogNotes } from "../lib/format";
 
 interface PendingChangelog {
   version: string;
   notes: string;
-}
-
-/** Backlog #72 (fix bilingue) : `scripts/release.ps1` encode désormais `notes` en JSON
- * `{"fr": "...", "en": "..."}` plutôt qu'une chaîne brute mono-langue, pour afficher le
- * changelog dans la langue active de l'app (`ui_language`) plutôt que systématiquement
- * dans la langue où la release a été rédigée. Une release plus ancienne (avant ce fix) a
- * pu écrire une simple chaîne : `resolveNotes` la renvoie alors telle quelle. */
-function resolveNotes(rawNotes: string, language: string): string {
-  try {
-    const parsed = JSON.parse(rawNotes);
-    if (parsed && typeof parsed === "object" && (typeof parsed.fr === "string" || typeof parsed.en === "string")) {
-      return (language === "en" ? parsed.en : parsed.fr) || parsed.fr || parsed.en || "";
-    }
-  } catch {
-    // Chaîne brute (release antérieure au format bilingue) — on la renvoie telle quelle.
-  }
-  return rawNotes;
 }
 
 /** Backlog #72 : modal "Quoi de neuf" au premier lancement suivant une mise à jour
@@ -53,7 +37,7 @@ export default function ChangelogModal() {
 
   if (!changelog) return null;
 
-  const notes = resolveNotes(changelog.notes, i18n.language);
+  const notes = resolveChangelogNotes(changelog.notes, i18n.language);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6">

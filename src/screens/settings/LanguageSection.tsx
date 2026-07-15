@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 
 import { SectionTitle } from "./shared";
 
-const LANGUAGE_IDS = ["fr", "en"] as const;
+const LANGUAGE_IDS = ["fr", "en", "es", "pt-BR"] as const;
 
 interface LanguageSectionProps {
   language: string;
@@ -15,7 +15,7 @@ export default function LanguageSection({ language, onChangeLanguage }: Language
     <div className="max-w-xl space-y-2">
       <SectionTitle>{t("language.title")}</SectionTitle>
       <p className="text-xs text-lo">{t("language.hint")}</p>
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {LANGUAGE_IDS.map((id) => (
           <button
             key={id}

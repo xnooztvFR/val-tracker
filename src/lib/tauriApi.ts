@@ -3,6 +3,12 @@ import { invoke } from "@tauri-apps/api/core";
 // Types miroir des DTO Rust (voir src-tauri/src/api/henrik/types.rs, commands.rs, db.rs).
 // Tenus à jour manuellement — pas de génération automatique dans ce scaffold V1.
 
+export interface ChangelogHistoryEntry {
+  version: string;
+  notes: string;
+  installed_at: number;
+}
+
 export interface AccountData {
   puuid: string;
   region: string | null;
@@ -948,6 +954,7 @@ export const tauriApi = {
   saveNotesPin: (pin: string) => invoke<void>("save_notes_pin", { pin }),
   clearNotesPin: () => invoke<void>("clear_notes_pin"),
   markOnboardingCompleted: () => invoke<void>("mark_onboarding_completed"),
+  resetOnboarding: () => invoke<void>("reset_onboarding"),
   verifyNotesPin: (pin: string) => invoke<boolean>("verify_notes_pin", { pin }),
   fetchExternalImage: (url: string) => invoke<string>("fetch_external_image", { url }),
   getAutostartEnabled: () => invoke<boolean>("get_autostart_enabled"),
@@ -956,6 +963,7 @@ export const tauriApi = {
   logUpdaterTrace: (step: string) => invoke<void>("log_updater_trace", { step }),
   setPendingChangelog: (version: string, notes: string) =>
     invoke<void>("set_pending_changelog", { version, notes }),
+  listChangelogHistory: () => invoke<ChangelogHistoryEntry[]>("list_changelog_history"),
   verifyUpdateHash: (url: string, expectedSha256: string) =>
     invoke<boolean>("verify_update_hash", { url, expectedSha256 }),
 

@@ -48,7 +48,8 @@
     "more": "Plus",
     "close": "Fermer",
     "changePlayer": "Changer de joueur",
-    "settings": "Paramètres"
+    "settings": "Paramètres",
+    "commandPaletteHint": "Ctrl+K pour la palette de commandes"
   },
   "apiStatusBadge": {
     "ok": "API OK",

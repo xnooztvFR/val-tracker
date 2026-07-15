@@ -5,6 +5,7 @@ import { Skeleton } from "../components/Skeleton";
 import { useAccount, useDuoStats, useRivalryStats, useSquadStats } from "../hooks/usePlayer";
 import Panel from "../components/Panel";
 import ErrorState from "../components/ErrorState";
+import EmptyState from "../components/EmptyState";
 import { formatPercent } from "../lib/format";
 
 /** Winrate en duo/squad (V3), calculé à partir des `party_id` accumulés localement à
@@ -31,7 +32,7 @@ export default function Duo() {
       {duo.isLoading && <Skeleton className="h-32 w-full" />}
 
       {duo.data && duo.data.length === 0 && (
-        <p className="text-sm text-lo">{t("duo.emptyMessage")}</p>
+        <EmptyState icon="team" title={t("duo.emptyMessage")} />
       )}
 
       {duo.data && duo.data.length > 0 && (
@@ -99,6 +100,16 @@ export default function Duo() {
         </div>
       )}
 
+      {squad.data && squad.data.length === 0 && (
+        <div className="space-y-2">
+          <div>
+            <h2 className="hud-label text-sm">{t("duo.squad.title")}</h2>
+            <p className="mt-1 text-xs text-lo">{t("duo.squad.description")}</p>
+          </div>
+          <EmptyState icon="team" title={t("duo.squad.emptyMessage")} />
+        </div>
+      )}
+
       {rivalry.data && rivalry.data.length > 0 && (
         <div className="space-y-2">
           <div>
@@ -130,6 +141,16 @@ export default function Duo() {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {rivalry.data && rivalry.data.length === 0 && (
+        <div className="space-y-2">
+          <div>
+            <h2 className="hud-label text-sm">{t("duo.rivalry.title")}</h2>
+            <p className="mt-1 text-xs text-lo">{t("duo.rivalry.description")}</p>
+          </div>
+          <EmptyState icon="team" title={t("duo.rivalry.emptyMessage")} />
         </div>
       )}
     </div>

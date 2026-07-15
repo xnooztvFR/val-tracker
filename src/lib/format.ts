@@ -281,3 +281,21 @@ export function formatSessionHeader(iso: string | null): string {
   const month = (date.getMonth() + 1).toString().padStart(2, "0");
   return i18n.t("format:session.dated", { day, month });
 }
+
+/** Backlog #72 (fix bilingue) : `scripts/release.ps1` encode `notes` en JSON
+ * `{"fr": "...", "en": "..."}` — résout dans la langue active de l'app plutôt que
+ * systématiquement dans la langue où la release a été rédigée. Une release plus ancienne
+ * (avant ce fix) a pu écrire une simple chaîne : renvoyée telle quelle dans ce cas.
+ * Partagé entre `ChangelogModal.tsx` (changelog "en attente", affichage unique) et
+ * `ChangelogHistorySection.tsx` (historique consultable dans Paramètres). */
+export function resolveChangelogNotes(rawNotes: string, language: string): string {
+  try {
+    const parsed = JSON.parse(rawNotes);
+    if (parsed && typeof parsed === "object" && (typeof parsed.fr === "string" || typeof parsed.en === "string")) {
+      return (language === "en" ? parsed.en : parsed.fr) || parsed.fr || parsed.en || "";
+    }
+  } catch {
+    // Chaîne brute (release antérieure au format bilingue) — on la renvoie telle quelle.
+  }
+  return rawNotes;
+}

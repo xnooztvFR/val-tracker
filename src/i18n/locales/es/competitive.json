@@ -1,0 +1,64 @@
+{
+  "leaderboard": {
+    "title": "Clasificación competitiva",
+    "searchPlaceholder": "Nombre#Tag",
+    "locate": "Localizar",
+    "reset": "Restablecer",
+    "updatedAt": "Actualizado: {{date}}",
+    "columns": {
+      "rank": "Puesto",
+      "player": "Jugador",
+      "tier": "Rango",
+      "rr": "RR",
+      "wins": "Victorias"
+    },
+    "anonymousPlayer": "Jugador anónimo",
+    "banned": "Baneado",
+    "previous": "Anterior",
+    "page": "Página {{page}}",
+    "next": "Siguiente"
+  },
+  "premier": {
+    "title": "Premier",
+    "teamNamePlaceholder": "Nombre del equipo",
+    "search": "Buscar",
+    "reset": "Restablecer",
+    "emptyTitle": "No se encontró ningún equipo",
+    "emptyDetail": "Prueba otra búsqueda o región.",
+    "teamCount_one": "{{count}} equipo · página {{page}}/{{pageCount}}",
+    "teamCount_other": "{{count}} equipos · página {{page}}/{{pageCount}}",
+    "columns": {
+      "rank": "Puesto",
+      "team": "Equipo",
+      "conferenceDivision": "Conferencia / División",
+      "score": "Puntuación",
+      "winsLosses": "V / D"
+    },
+    "division": "Div {{division}}",
+    "previous": "Anterior",
+    "pageOf": "Página {{page}} / {{pageCount}}",
+    "next": "Siguiente"
+  },
+  "premierTeamDetail": {
+    "backToPremier": "← Volver a Premier",
+    "teamNotFound": "Equipo no encontrado.",
+    "enrolled": "Inscrito en la temporada actual",
+    "notEnrolled": "No inscrito",
+    "stats": {
+      "ranking": "Clasificación",
+      "conference": "Conferencia",
+      "conferenceDivision": "{{conference}} · Div {{division}}",
+      "points": "Puntos",
+      "matches": "Partidas",
+      "wins": "Victorias",
+      "losses": "Derrotas",
+      "roundsWonLost": "Rondas G/P"
+    },
+    "roster": "Plantilla ({{count}})",
+    "rosterEmpty": "Plantilla no comunicada.",
+    "seasonHistory": "Historial de temporada",
+    "pointsTransition": "{{before}} → {{after}} pts",
+    "tournament": "Torneo · {{count}} partidas",
+    "tournamentPlacement": "Puesto #{{placement}} · {{before}} → {{after}} pts"
+  }
+}

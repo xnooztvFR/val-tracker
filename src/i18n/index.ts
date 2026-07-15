@@ -25,6 +25,30 @@ import enSettings from "./locales/en/settings.json";
 import enOverlay from "./locales/en/overlay.json";
 import enFormat from "./locales/en/format.json";
 
+import esComponentsCore from "./locales/es/componentsCore.json";
+import esComponentsExtra from "./locales/es/componentsExtra.json";
+import esSearch from "./locales/es/search.json";
+import esHome from "./locales/es/home.json";
+import esMatches from "./locales/es/matches.json";
+import esStats from "./locales/es/stats.json";
+import esCompetitive from "./locales/es/competitive.json";
+import esEsports from "./locales/es/esports.json";
+import esSettings from "./locales/es/settings.json";
+import esOverlay from "./locales/es/overlay.json";
+import esFormat from "./locales/es/format.json";
+
+import ptBRComponentsCore from "./locales/pt-BR/componentsCore.json";
+import ptBRComponentsExtra from "./locales/pt-BR/componentsExtra.json";
+import ptBRSearch from "./locales/pt-BR/search.json";
+import ptBRHome from "./locales/pt-BR/home.json";
+import ptBRMatches from "./locales/pt-BR/matches.json";
+import ptBRStats from "./locales/pt-BR/stats.json";
+import ptBRCompetitive from "./locales/pt-BR/competitive.json";
+import ptBREsports from "./locales/pt-BR/esports.json";
+import ptBRSettings from "./locales/pt-BR/settings.json";
+import ptBROverlay from "./locales/pt-BR/overlay.json";
+import ptBRFormat from "./locales/pt-BR/format.json";
+
 export const defaultNS = "componentsCore";
 
 // Chaque écran/composant a son propre namespace (voir CLAUDE.md pas de mention, convention
@@ -56,6 +80,32 @@ export const resources = {
     settings: enSettings,
     overlay: enOverlay,
     format: enFormat,
+  },
+  es: {
+    componentsCore: esComponentsCore,
+    componentsExtra: esComponentsExtra,
+    search: esSearch,
+    home: esHome,
+    matches: esMatches,
+    stats: esStats,
+    competitive: esCompetitive,
+    esports: esEsports,
+    settings: esSettings,
+    overlay: esOverlay,
+    format: esFormat,
+  },
+  "pt-BR": {
+    componentsCore: ptBRComponentsCore,
+    componentsExtra: ptBRComponentsExtra,
+    search: ptBRSearch,
+    home: ptBRHome,
+    matches: ptBRMatches,
+    stats: ptBRStats,
+    competitive: ptBRCompetitive,
+    esports: ptBREsports,
+    settings: ptBRSettings,
+    overlay: ptBROverlay,
+    format: ptBRFormat,
   },
 } as const;
 

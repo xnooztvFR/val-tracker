@@ -76,11 +76,13 @@ export default function Compare() {
 
       {formError && <p className="text-sm text-crit">{formError}</p>}
 
-      {sideA && sideB && (
+      {sideA && sideB ? (
         <div className="grid gap-3 sm:grid-cols-2">
           <PlayerColumn side={sideA} sampleSize={sampleSize} />
           <PlayerColumn side={sideB} sampleSize={sampleSize} />
         </div>
+      ) : (
+        <EmptyState icon="team" title={t("compare.initial.title")} detail={t("compare.initial.detail")} />
       )}
     </div>
   );
