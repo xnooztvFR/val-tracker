@@ -12,6 +12,7 @@ import {
 
 import type { MmrHistoryEntry, RankSnapshot } from "../lib/tauriApi";
 import { formatDateTimeShort } from "../lib/format";
+import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
 import Panel from "./Panel";
 
 interface RankHistoryChartProps {
@@ -79,6 +80,7 @@ function mergeHistory(snapshots: RankSnapshot[], serverHistory: MmrHistoryEntry[
 
 export default function RankHistoryChart({ snapshots, serverHistory = [] }: RankHistoryChartProps) {
   const { t } = useTranslation("componentsExtra");
+  const reducedMotion = usePrefersReducedMotion();
   const points = useMemo(
     () => mergeHistory(snapshots, serverHistory, t("rankHistoryChart.unknownTier")),
     [snapshots, serverHistory, t],
@@ -146,6 +148,7 @@ export default function RankHistoryChart({ snapshots, serverHistory = [] }: Rank
             strokeWidth={1.5}
             dot={{ r: 2, fill: LINE_COLOR, strokeWidth: 0 }}
             activeDot={{ r: 4 }}
+            isAnimationActive={!reducedMotion}
           />
         </LineChart>
       </ResponsiveContainer>

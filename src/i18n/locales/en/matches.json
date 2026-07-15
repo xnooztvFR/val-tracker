@@ -90,6 +90,7 @@
     },
     "economy": {
       "title": "Your economy",
+      "tooltip": "Spend and average loadout value across bought rounds (excludes free-equipment/save rounds).",
       "spent": "Total spent: {{spent}} credits · {{average}} avg. per round",
       "avgLoadout": "Average loadout value: {{value}}"
     },

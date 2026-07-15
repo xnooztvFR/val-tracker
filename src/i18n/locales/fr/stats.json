@@ -38,6 +38,7 @@
     "heatmapTitle": "Performance par créneau (heure locale)",
     "sideWinrate": {
       "title": "Winrate Attaque vs Défense",
+      "tooltip": "Pourcentage de rounds gagnés en jouant côté Attaque vs côté Défense — permet de repérer un déséquilibre de performance entre les deux camps.",
       "description": "Basé sur les {{count}} matchs déjà consultés en détail (round par round) — les matchs jamais ouverts en détail ne sont pas comptés.",
       "attack": "Round win % — Attaque",
       "defense": "Round win % — Défense",
@@ -45,6 +46,7 @@
     },
     "economyStats": {
       "title": "Winrate par type d'achat",
+      "tooltip": "Rounds classés par valeur d'équipement individuelle au moment du round : Eco (achat minimal/save), Half-buy (achat partiel) et Full-buy (armure + arme principale complète) — seuils approximatifs, pas une règle officielle Riot.",
       "description": "Basé sur les {{count}} matchs déjà consultés en détail (round par round) — les matchs jamais ouverts en détail ne sont pas comptés. Classification par seuils de valeur d'équipement individuelle (approximative, pas une règle officielle Riot).",
       "eco": "Round win % — Eco",
       "halfBuy": "Round win % — Half-buy",

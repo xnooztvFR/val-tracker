@@ -11,6 +11,10 @@
     "unknown": "An unexpected error occurred.",
     "goToSettings": "Go to Settings"
   },
+  "confirmDialog": {
+    "confirm": "Confirm",
+    "cancel": "Cancel"
+  },
   "staleDataBanner": {
     "label": "Cache",
     "message": "Cached data, last updated on {{date}}."

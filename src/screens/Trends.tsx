@@ -17,6 +17,7 @@ import { useAccount, useMmrHistory } from "../hooks/usePlayer";
 import { useEconomyStats, useMatches, useSideWinrate } from "../hooks/useMatches";
 import StatCard from "../components/StatCard";
 import Panel from "../components/Panel";
+import InfoTooltip from "../components/InfoTooltip";
 import SampleSizeSwitch, { type SampleSize } from "../components/SampleSizeSwitch";
 import ErrorState from "../components/ErrorState";
 import StaleDataBanner from "../components/StaleDataBanner";
@@ -24,6 +25,7 @@ import PerformanceHeatmap from "../components/PerformanceHeatmap";
 import type { MatchEntry } from "../lib/tauriApi";
 import { formatKdRatio, formatPercent, formatRelativeTime } from "../lib/format";
 import { computeHeatmap, computeRegularity, computeSeasonComparison, computeSessions } from "../lib/stats";
+import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
 
 const MONO = '"JetBrains Mono", Consolas, monospace';
 
@@ -90,6 +92,7 @@ export default function Trends() {
   const { region, name, tag } = useParams<{ region: string; name: string; tag: string }>();
   const [sampleSize, setSampleSize] = useState<SampleSize>(20);
   const [hidden, setHidden] = useState<Set<SeriesKey>>(new Set(["deaths", "assists", "headshots"]));
+  const reducedMotion = usePrefersReducedMotion();
 
   const account = useAccount(name, tag);
   const puuid = account.data?.data.puuid;
@@ -233,6 +236,7 @@ export default function Trends() {
                     dot={false}
                     activeDot={{ r: 3 }}
                     hide={hidden.has(s.key)}
+                    isAnimationActive={!reducedMotion}
                   />
                 ))}
               </ComposedChart>
@@ -250,7 +254,10 @@ export default function Trends() {
 
           {sideWinrate.data && sideWinrate.data.matches_considered > 0 && (
             <div>
-              <h2 className="hud-label mb-2">{t("trends.sideWinrate.title")}</h2>
+              <h2 className="hud-label mb-2 inline-flex items-center gap-1">
+                {t("trends.sideWinrate.title")}
+                <InfoTooltip text={t("trends.sideWinrate.tooltip")} />
+              </h2>
               <p className="mb-2 text-xs text-lo">
                 {t("trends.sideWinrate.description", { count: sideWinrate.data.matches_considered })}
               </p>
@@ -291,7 +298,10 @@ export default function Trends() {
 
           {economyStats.data && economyStats.data.matches_considered > 0 && (
             <div>
-              <h2 className="hud-label mb-2">{t("trends.economyStats.title")}</h2>
+              <h2 className="hud-label mb-2 inline-flex items-center gap-1">
+                {t("trends.economyStats.title")}
+                <InfoTooltip text={t("trends.economyStats.tooltip")} />
+              </h2>
               <p className="mb-2 text-xs text-lo">
                 {t("trends.economyStats.description", { count: economyStats.data.matches_considered })}
               </p>

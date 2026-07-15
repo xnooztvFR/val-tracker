@@ -90,6 +90,7 @@
     },
     "economy": {
       "title": "Ton économie",
+      "tooltip": "Dépenses et valeur de loadout moyenne sur les rounds achetés (hors rounds à équipement gratuit/save).",
       "spent": "Dépenses totales : {{spent}} crédits · {{average}} / round en moyenne",
       "avgLoadout": "Valeur de loadout moyenne : {{value}}"
     },

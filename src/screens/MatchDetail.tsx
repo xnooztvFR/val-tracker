@@ -184,7 +184,10 @@ export default function MatchDetail() {
 
       {activePlayer?.economy && (
         <Panel className="p-4">
-          <p className="hud-label mb-2">{t("detail.economy.title")}</p>
+          <p className="hud-label mb-2 inline-flex items-center gap-1">
+            {t("detail.economy.title")}
+            <InfoTooltip text={t("detail.economy.tooltip")} />
+          </p>
           <p className="stat-value text-sm text-hi">
             {t("detail.economy.spent", {
               spent: activePlayer.economy.spent?.overall ?? "—",

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+import ConfirmDialog from "../../components/ConfirmDialog";
 import { INPUT_CLASS, SectionTitle } from "./shared";
 
 interface PrivacySectionProps {
@@ -25,6 +26,7 @@ export default function PrivacySection({
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
   const [status, setStatus] = useState<"idle" | "saved" | "mismatch" | "error">("idle");
+  const [confirmingClear, setConfirmingClear] = useState(false);
 
   async function handleSave() {
     if (!pin.trim()) return;
@@ -44,8 +46,7 @@ export default function PrivacySection({
   }
 
   async function handleClear() {
-    const confirmed = window.confirm(t("privacy.confirmDisable"));
-    if (!confirmed) return;
+    setConfirmingClear(false);
     await onClearPin();
   }
 
@@ -64,7 +65,7 @@ export default function PrivacySection({
           <p className="text-sm text-hi">{t("privacy.lockActive")}</p>
           <button
             type="button"
-            onClick={handleClear}
+            onClick={() => setConfirmingClear(true)}
             className="border border-crit/60 px-4 py-2 font-display text-xs font-semibold uppercase tracking-hud text-crit transition-colors hover:bg-crit/10"
           >
             {t("privacy.disableLock")}
@@ -113,6 +114,14 @@ export default function PrivacySection({
           {status === "saved" && <p className="text-xs text-lo">{t("privacy.lockActivated")}</p>}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmingClear}
+        message={t("privacy.confirmDisable")}
+        confirmLabel={t("privacy.disableLock")}
+        onConfirm={handleClear}
+        onCancel={() => setConfirmingClear(false)}
+      />
     </div>
   );
 }

@@ -159,6 +159,40 @@ pub fn monitor_signature(app_handle: &AppHandle) -> String {
     parts.join("|")
 }
 
+const OVERLAY_SIZE: (f64, f64) = (360.0, 520.0);
+
+/// Vérifie que le rectangle `(x, y, width, height)` tient entièrement dans au moins un des
+/// moniteurs actuellement connectés — filet de sécurité en plus de l'invalidation par
+/// `monitor_signature` (qui repose sur la clé de setup, pas une vérification géométrique
+/// directe) pour le cas où la position sauvegardée déborderait quand même de l'écran actuel
+/// (ex. signature identique par coïncidence après un changement de moniteur). Repli sur
+/// `DEFAULT_POSITION` si aucun moniteur ne contient le rectangle.
+fn clamp_to_available_monitors(app_handle: &AppHandle, x: f64, y: f64, width: f64, height: f64) -> (f64, f64) {
+    let monitors = app_handle
+        .get_webview_window("main")
+        .and_then(|w| w.available_monitors().ok())
+        .unwrap_or_default();
+
+    if monitors.is_empty() {
+        return (x, y);
+    }
+
+    let fits = monitors.iter().any(|m| {
+        let pos = m.position();
+        let size = m.size();
+        x >= pos.x as f64
+            && y >= pos.y as f64
+            && x + width <= pos.x as f64 + size.width as f64
+            && y + height <= pos.y as f64 + size.height as f64
+    });
+
+    if fits {
+        (x, y)
+    } else {
+        DEFAULT_POSITION
+    }
+}
+
 /// Crée la fenêtre overlay si elle n'existe pas encore (cachée par défaut, affichée par
 /// le poller quand une partie démarre), à la position sauvegardée si connue.
 fn create_overlay_window(app_handle: &AppHandle, position: Option<(f64, f64)>) -> tauri::Result<()> {
@@ -166,7 +200,8 @@ fn create_overlay_window(app_handle: &AppHandle, position: Option<(f64, f64)>) -
         return Ok(());
     }
 
-    let (x, y) = position.unwrap_or(DEFAULT_POSITION);
+    let (raw_x, raw_y) = position.unwrap_or(DEFAULT_POSITION);
+    let (x, y) = clamp_to_available_monitors(app_handle, raw_x, raw_y, OVERLAY_SIZE.0, OVERLAY_SIZE.1);
 
     let window = WebviewWindowBuilder::new(
         app_handle,
@@ -174,7 +209,7 @@ fn create_overlay_window(app_handle: &AppHandle, position: Option<(f64, f64)>) -
         WebviewUrl::App("index.html".into()),
     )
     .title("Valorant Tracker — Overlay")
-    .inner_size(360.0, 520.0)
+    .inner_size(OVERLAY_SIZE.0, OVERLAY_SIZE.1)
     .position(x, y)
     .resizable(false)
     .decorations(false)

@@ -4,17 +4,17 @@ import { useTranslation } from "react-i18next";
 import { tauriApi } from "../../lib/tauriApi";
 import { buildLocalStatsExport, toCsv, toJson } from "../../lib/exportLocalStats";
 import { downloadTextFile } from "../../lib/downloadFile";
+import ConfirmDialog from "../../components/ConfirmDialog";
 import { SectionTitle } from "./shared";
 
 export default function DataSection() {
   const { t } = useTranslation("settings");
   const [status, setStatus] = useState<"idle" | "working" | "done" | "error">("idle");
   const [exportStatus, setExportStatus] = useState<"idle" | "working" | "error">("idle");
+  const [confirmingReset, setConfirmingReset] = useState(false);
 
   async function handleReset() {
-    const confirmed = window.confirm(t("data.resetConfirm"));
-    if (!confirmed) return;
-
+    setConfirmingReset(false);
     setStatus("working");
     try {
       await tauriApi.resetLocalStats();
@@ -76,7 +76,7 @@ export default function DataSection() {
         <p className="mt-1 text-xs text-lo">{t("data.resetDescription")}</p>
         <button
           type="button"
-          onClick={handleReset}
+          onClick={() => setConfirmingReset(true)}
           disabled={status === "working"}
           className="mt-3 border border-crit/60 px-4 py-2 font-display text-xs font-semibold uppercase tracking-hud text-crit transition-colors hover:bg-crit/10 disabled:opacity-50"
         >
@@ -85,6 +85,14 @@ export default function DataSection() {
         {status === "done" && <p className="mt-2 text-sm text-accent">{t("data.deleted")}</p>}
         {status === "error" && <p className="mt-2 text-sm text-crit">{t("data.deleteError")}</p>}
       </div>
+
+      <ConfirmDialog
+        open={confirmingReset}
+        message={t("data.resetConfirm")}
+        confirmLabel={t("data.delete")}
+        onConfirm={handleReset}
+        onCancel={() => setConfirmingReset(false)}
+      />
     </div>
   );
 }

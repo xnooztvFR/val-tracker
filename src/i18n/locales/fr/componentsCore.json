@@ -11,6 +11,10 @@
     "unknown": "Une erreur inattendue est survenue.",
     "goToSettings": "Aller aux paramètres"
   },
+  "confirmDialog": {
+    "confirm": "Confirmer",
+    "cancel": "Annuler"
+  },
   "staleDataBanner": {
     "label": "Cache",
     "message": "Données en cache, dernière mise à jour le {{date}}."

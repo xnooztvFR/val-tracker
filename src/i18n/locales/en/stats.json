@@ -38,6 +38,7 @@
     "heatmapTitle": "Performance by time slot (local time)",
     "sideWinrate": {
       "title": "Attack vs Defense winrate",
+      "tooltip": "Percentage of rounds won while playing Attack vs Defense — useful to spot a performance imbalance between the two sides.",
       "description": "Based on the {{count}} matches already opened in detail (round by round) — matches never opened in detail aren't counted.",
       "attack": "Round win % — Attack",
       "defense": "Round win % — Defense",
@@ -45,6 +46,7 @@
     },
     "economyStats": {
       "title": "Winrate by buy type",
+      "tooltip": "Rounds classified by individual loadout value at round start: Eco (minimal buy/save), Half-buy (partial buy), and Full-buy (armor + full primary weapon) — approximate thresholds, not an official Riot rule.",
       "description": "Based on the {{count}} matches already opened in detail (round by round) — matches never opened in detail aren't counted. Classified by individual loadout value thresholds (approximate, not an official Riot rule).",
       "eco": "Round win % — Eco",
       "halfBuy": "Round win % — Half-buy",
