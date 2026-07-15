@@ -121,6 +121,22 @@ pub async fn get_map_average_stats(
     Ok(crate::map_averages::compute_map_average(&matches, &puuid, &map))
 }
 
+/// TODO stats & analyse joueur : winrate solo-queue vs party (duo/squad) agrégé sur tous les
+/// détails de match déjà en cache pour ce puuid (aucun appel réseau — voir
+/// `queue_stats::compute_queue_stats`).
+#[tauri::command]
+pub async fn get_queue_stats(
+    state: State<'_, AppState>,
+    puuid: String,
+) -> Result<crate::queue_stats::QueueStat, CommandError> {
+    let matches = {
+        let conn = state.db.lock().await;
+        crate::api::henrik::endpoints::get_cached_match_details_for_puuid(&conn, &puuid)?
+    };
+
+    Ok(crate::queue_stats::compute_queue_stats(&matches, &puuid))
+}
+
 fn team_won(detail: &MatchDetailData, team: &str) -> bool {
     let team_data = if team.eq_ignore_ascii_case("red") {
         detail.teams.red.as_ref()

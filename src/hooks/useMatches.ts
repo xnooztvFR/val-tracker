@@ -56,3 +56,13 @@ export function useMapAverageStats(puuid: string | undefined, map: string | unde
     enabled: Boolean(puuid && map),
   });
 }
+
+/** TODO stats & analyse joueur : winrate solo-queue vs party, même principe que
+ * `useSideWinrate` — agrégé côté Rust sur les détails de match déjà en cache. */
+export function useQueueStats(puuid: string | undefined) {
+  return useQuery({
+    queryKey: ["queue_stats", puuid],
+    queryFn: () => tauriApi.getQueueStats(puuid!),
+    enabled: Boolean(puuid),
+  });
+}

@@ -5,6 +5,11 @@
     "wins": "{{n}}V",
     "losses": "{{n}}D",
     "winrateShort": "WR",
+    "queueSplit": {
+      "title": "Solo vs Party",
+      "solo": "Solo {{percent}} ({{n}})",
+      "party": "Party {{percent}} ({{n}})"
+    },
     "updateIn": "Atualização em {{time}}",
     "refreshAvailable": "Atualização disponível",
     "refresh": "Atualizar",

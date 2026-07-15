@@ -4,6 +4,7 @@ import CopyButton from "./CopyButton";
 import Panel from "./Panel";
 import RankBadge from "./RankBadge";
 import { formatCountdown } from "../hooks/useCountdown";
+import { useQueueStats } from "../hooks/useMatches";
 import { formatPercent, playerCardIconUrl } from "../lib/format";
 import type { Overview } from "../lib/stats";
 import type { ProfileCardData } from "../lib/profileCard";
@@ -12,6 +13,7 @@ interface HomeStatusBarProps {
   region: string | undefined;
   name: string | undefined;
   tag: string | undefined;
+  puuid: string | undefined;
   cardId: string | null | undefined;
   glowColor: string;
   currentTier: number | null | undefined;
@@ -37,6 +39,7 @@ export default function HomeStatusBar({
   region,
   name,
   tag,
+  puuid,
   cardId,
   glowColor,
   currentTier,
@@ -55,6 +58,10 @@ export default function HomeStatusBar({
   onOpenPeriodRecap,
 }: HomeStatusBarProps) {
   const { t } = useTranslation("home");
+  // TODO stats & analyse joueur : distinction solo-queue vs party en tête de profil.
+  const queueStats = useQueueStats(puuid);
+  const solo = queueStats.data?.solo;
+  const party = queueStats.data?.party;
 
   return (
     <Panel className="flex flex-wrap items-stretch gap-x-6 gap-y-4 px-5 py-4">
@@ -108,6 +115,36 @@ export default function HomeStatusBar({
                   {" "}
                   · {formatPercent(overview.winPercent)} {t("statusBar.winrateShort")}
                 </span>
+              </p>
+            </div>
+          </div>
+        </>
+      )}
+
+      {solo && party && solo.matches_played + party.matches_played > 0 && (
+        <>
+          <div className="hidden w-px self-stretch bg-line sm:block" />
+          <div className="flex items-center">
+            <div>
+              <p className="hud-label text-[10px]">{t("statusBar.queueSplit.title")}</p>
+              <p className="stat-value mt-1 text-sm">
+                {solo.matches_played > 0 && (
+                  <span className="text-hi">
+                    {t("statusBar.queueSplit.solo", {
+                      percent: formatPercent((solo.matches_won / solo.matches_played) * 100),
+                      n: solo.matches_played,
+                    })}
+                  </span>
+                )}
+                {solo.matches_played > 0 && party.matches_played > 0 && <span className="text-lo"> · </span>}
+                {party.matches_played > 0 && (
+                  <span className="text-hi">
+                    {t("statusBar.queueSplit.party", {
+                      percent: formatPercent((party.matches_won / party.matches_played) * 100),
+                      n: party.matches_played,
+                    })}
+                  </span>
+                )}
               </p>
             </div>
           </div>

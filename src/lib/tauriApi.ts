@@ -309,6 +309,20 @@ export interface MapAverageStat {
   avg_score: number;
 }
 
+// ---- queue stats (solo vs party) ----
+
+export interface QueueTally {
+  matches_played: number;
+  matches_won: number;
+}
+
+/** TODO stats & analyse joueur : winrate solo-queue vs party, agrégé côté Rust sur les
+ * détails de match déjà en cache — mêmes limites que `SideWinrateStat`. */
+export interface QueueStat {
+  solo: QueueTally;
+  party: QueueTally;
+}
+
 export interface LeaderboardPlayer {
   puuid: string | null;
   name: string;
@@ -1128,6 +1142,7 @@ export const tauriApi = {
   getEconomyStats: (puuid: string) => invoke<EconomyStat>("get_economy_stats", { puuid }),
   getMapAverageStats: (puuid: string, map: string) =>
     invoke<MapAverageStat | null>("get_map_average_stats", { puuid, map }),
+  getQueueStats: (puuid: string) => invoke<QueueStat>("get_queue_stats", { puuid }),
 
   recordPartyFromMatch: (matchId: string, trackedPuuid: string) =>
     invoke<void>("record_party_from_match", { matchId, trackedPuuid }),

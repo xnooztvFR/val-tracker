@@ -80,6 +80,7 @@ export default function Home() {
         region={region}
         name={name}
         tag={tag}
+        puuid={puuid}
         cardId={accountData?.card}
         glowColor={glow}
         currentTier={current?.currenttier}

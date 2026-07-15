@@ -15,6 +15,7 @@ mod overlay;
 mod riot_local;
 mod economy_stats;
 mod map_averages;
+mod queue_stats;
 mod settings;
 mod side_stats;
 mod status_watcher;
@@ -204,6 +205,7 @@ fn main() {
             commands::get_side_winrate,
             commands::get_economy_stats,
             commands::get_map_average_stats,
+            commands::get_queue_stats,
             commands::list_duo_stats,
             commands::list_squad_stats,
             commands::list_rivalry_stats,
