@@ -11,6 +11,39 @@ l'app. **À mettre à jour manuellement à chaque release** (relecture humaine o
 > dépôt GitHub héberge...). Les tags Git (`v0.3.5` à `v0.3.24`) existent toujours mais leurs
 > notes de release, elles, sont perdues.
 
+## [0.3.31] - 2026-07-16
+
+### Nouvelles fonctionnalités
+
+- Écran « Aujourd'hui » : bilan condensé de la journée (winrate, K/D, HS%, dernières games)
+  accessible depuis un nouvel onglet du profil.
+- Recommandation carte/agent basée sur ton historique perso, affichée sur l'accueil.
+- Notes horodatées liées à un match précis (au-delà de la note libre par joueur déjà
+  existante).
+- Comparaison de progression entre ce mois-ci et le mois dernier sur le graphique de rang.
+- Historique de composition d'équipe : détection et bilan des rosters complets à 5 joueurs
+  rencontrés plusieurs fois (écran Duo).
+- Notification « série de victoires », pendant positif de l'alerte de défaites déjà
+  existante.
+- Objectifs hebdomadaires étendus au K/D et au HS% cible (en plus du nombre de matchs et du
+  winrate).
+- Toggle séparé pour désactiver la notification de changement de rang (Paramètres →
+  Notifications).
+- Filtrage de l'historique de matchs par mode de jeu et plage de dates, en plus des filtres
+  existants ; export CSV enrichi avec le mode de queue.
+- Cartes de partage : 3 mises en page au choix (HUD, Minimal, Affiche).
+- Alertes Discord via webhook optionnel (rank up), en complément du Rich Presence existant.
+- Lien manuel vers un profil pro VLR connu, croisé automatiquement dans l'overlay pour
+  repérer un joueur pro détecté en partie.
+- Overlay : indice « smurf potentiel » sur les adversaires (compte non classé + winrate
+  élevé sur un petit échantillon récent) — un repère, pas une certitude.
+- Récap automatique de session : une popup de bilan s'affiche à l'accueil dès qu'une session
+  de jeu vient de se terminer.
+- Mode « spectateur ami » (opt-in) : suis passivement un joueur tiers et reçois une
+  notification quand il termine une partie compétitive — l'API Henrik n'exposant aucune
+  présence en direct par joueur, ce signal reste "a posteriori" (partie terminée), pas un
+  vrai statut en direct.
+
 ## [0.3.30] - 2026-07-16
 
 ### Fiabilité & outillage interne
