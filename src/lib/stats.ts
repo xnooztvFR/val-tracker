@@ -1,7 +1,7 @@
 // Fonctions d'agrégation pures sur des matchs/historique déjà en cache (aucun appel réseau
 // ici) — réutilisées entre Home.tsx, Compare.tsx (backlog #11) et Trends.tsx (#15, #21).
 
-import { formatKdRatio } from "./format";
+import { formatKdRatio, groupMatchesIntoSessions, SESSION_GAP_MS as MATCH_SESSION_GAP_MS } from "./format";
 import type { LeaderboardThreshold, MatchEntry, MmrHistoryEntry, RankSnapshot } from "./tauriApi";
 
 export interface AgentTally {
@@ -178,6 +178,11 @@ export interface WeeklyMatchStats {
   matches: number;
   wins: number;
   winPercent: number;
+  /** TODO Fonctionnalités#7 : agrégats pour les objectifs K/D et HS% cible. */
+  kills: number;
+  deaths: number;
+  kd: number;
+  hsPercent: number;
 }
 
 /** Début de la semaine ISO en cours (lundi 00:00, heure locale) pour la date donnée. */
@@ -189,29 +194,66 @@ function startOfIsoWeek(date: Date): Date {
   return start;
 }
 
-/** Backlog #55 : agrège les matchs de la semaine en cours pour les objectifs hebdo custom
- * ("X matchs cette semaine", "winrate ≥ Y%") — pure fonction sur `MatchEntry[]` déjà en
- * cache, aucun appel réseau ni période stockée en base : la fenêtre "cette semaine" est
- * recalculée à chaque affichage à partir de `metadata.started_at`. */
-export function computeWeeklyMatchStats(matches: MatchEntry[], puuid: string, now = new Date()): WeeklyMatchStats {
-  const weekStart = startOfIsoWeek(now);
+/** Fonction partagée par `computeWeeklyMatchStats` et `computeTodayStats` (TODO
+ * Fonctionnalités#13) : agrège tous les matchs dont `started_at >= since`. */
+function computeMatchStatsSince(matches: MatchEntry[], puuid: string, since: Date): WeeklyMatchStats {
   let count = 0;
   let wins = 0;
+  let kills = 0;
+  let deaths = 0;
+  let headshots = 0;
+  let bodyshots = 0;
+  let legshots = 0;
 
   for (const match of matches) {
     const startedAt = match.metadata.started_at;
     if (!startedAt) continue;
     const date = new Date(startedAt);
-    if (Number.isNaN(date.getTime()) || date < weekStart) continue;
+    if (Number.isNaN(date.getTime()) || date < since) continue;
 
     const player = match.players.find((p) => p.puuid === puuid);
     if (!player) continue;
     count += 1;
     const team = match.teams.find((t) => t.team_id === player.team_id);
     if (team?.won) wins += 1;
+    kills += player.stats?.kills ?? 0;
+    deaths += player.stats?.deaths ?? 0;
+    headshots += player.stats?.headshots ?? 0;
+    bodyshots += player.stats?.bodyshots ?? 0;
+    legshots += player.stats?.legshots ?? 0;
   }
 
-  return { matches: count, wins, winPercent: count > 0 ? (wins / count) * 100 : 0 };
+  const totalShots = headshots + bodyshots + legshots;
+  return {
+    matches: count,
+    wins,
+    winPercent: count > 0 ? (wins / count) * 100 : 0,
+    kills,
+    deaths,
+    kd: deaths > 0 ? kills / deaths : kills,
+    hsPercent: totalShots > 0 ? (headshots / totalShots) * 100 : 0,
+  };
+}
+
+/** Backlog #55 : agrège les matchs de la semaine en cours pour les objectifs hebdo custom
+ * ("X matchs cette semaine", "winrate ≥ Y%") — pure fonction sur `MatchEntry[]` déjà en
+ * cache, aucun appel réseau ni période stockée en base : la fenêtre "cette semaine" est
+ * recalculée à chaque affichage à partir de `metadata.started_at`. */
+export function computeWeeklyMatchStats(matches: MatchEntry[], puuid: string, now = new Date()): WeeklyMatchStats {
+  return computeMatchStatsSince(matches, puuid, startOfIsoWeek(now));
+}
+
+/** Début du jour calendaire (00:00 heure locale) pour la date donnée. */
+function startOfDay(date: Date): Date {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
+/** TODO Fonctionnalités#13 : agrège les matchs joués aujourd'hui (vue "aujourd'hui" —
+ * dashboard condensé, écran Today.tsx), même principe que `computeWeeklyMatchStats`. */
+export function computeTodayStats(matches: MatchEntry[], puuid: string, now = new Date()): WeeklyMatchStats {
+  return computeMatchStatsSince(matches, puuid, startOfDay(now));
 }
 
 /** Clé de semaine ISO ("2026-W03") pour dédupliquer un objectif hebdo atteint une seule
@@ -246,11 +288,33 @@ export interface PeriodRankChange {
 }
 
 export interface PeriodRecap {
-  period: "week" | "month";
+  period: "week" | "month" | "session";
   start: Date;
   end: Date;
   overview: Overview;
   rankChange: PeriodRankChange | null;
+}
+
+/** Compare le dernier snapshot avant `startMs` (ou le premier après, s'il n'y en a pas
+ * avant) au tout dernier snapshot connu — partagé par `computePeriodRecap` et
+ * `computeSessionRecap`. */
+function computeRankChangeSince(snapshots: RankSnapshot[], startMs: number): PeriodRankChange | null {
+  const sorted = [...snapshots].sort((a, b) => a.recorded_at - b.recorded_at);
+  const startSec = startMs / 1000;
+  const beforePeriod = sorted.filter((s) => s.recorded_at < startSec);
+  const fromPeriod = sorted.filter((s) => s.recorded_at >= startSec);
+  const startSnapshot = beforePeriod[beforePeriod.length - 1] ?? fromPeriod[0] ?? null;
+  const endSnapshot = sorted[sorted.length - 1] ?? null;
+
+  if (!startSnapshot || !endSnapshot) return null;
+  return {
+    tierStart: startSnapshot.tier,
+    tierPatchedStart: startSnapshot.tier_patched,
+    rrStart: startSnapshot.rr,
+    tierEnd: endSnapshot.tier,
+    tierPatchedEnd: endSnapshot.tier_patched,
+    rrEnd: endSnapshot.rr,
+  };
 }
 
 /** Backlog #56 : récap hebdo/mensuel — agrégation locale des matchs et snapshots de rang
@@ -278,27 +342,48 @@ export function computePeriodRecap(
   });
 
   const overview = computeOverview(periodMatches, puuid);
-
-  const sorted = [...snapshots].sort((a, b) => a.recorded_at - b.recorded_at);
-  const startSec = startMs / 1000;
-  const beforePeriod = sorted.filter((s) => s.recorded_at < startSec);
-  const fromPeriod = sorted.filter((s) => s.recorded_at >= startSec);
-  const startSnapshot = beforePeriod[beforePeriod.length - 1] ?? fromPeriod[0] ?? null;
-  const endSnapshot = sorted[sorted.length - 1] ?? null;
-
-  const rankChange: PeriodRankChange | null =
-    startSnapshot && endSnapshot
-      ? {
-          tierStart: startSnapshot.tier,
-          tierPatchedStart: startSnapshot.tier_patched,
-          rrStart: startSnapshot.rr,
-          tierEnd: endSnapshot.tier,
-          tierPatchedEnd: endSnapshot.tier_patched,
-          rrEnd: endSnapshot.rr,
-        }
-      : null;
+  const rankChange = computeRankChangeSince(snapshots, startMs);
 
   return { period, start, end: now, overview, rankChange };
+}
+
+/** TODO Fonctionnalités#9 : "mode session" — récap borné à la session de jeu la plus
+ * récente (regroupement existant de `groupMatchesIntoSessions`, écart de 30 min entre deux
+ * matchs = nouvelle session) plutôt qu'une fenêtre calendaire fixe. `null` si aucun match
+ * n'est chargé. Contrairement à `computePeriodRecap`, le `start`/`end` viennent des matchs
+ * de la session elle-même (premier/dernier), pas d'une date arbitraire. */
+export function computeSessionRecap(
+  matches: MatchEntry[],
+  snapshots: RankSnapshot[],
+  puuid: string,
+): PeriodRecap | null {
+  const sessions = groupMatchesIntoSessions(matches, puuid);
+  const latest = sessions[0];
+  if (!latest || latest.matches.length === 0) return null;
+
+  // `matches` est trié du plus récent au plus ancien (comme renvoyé par Henrik) : le premier
+  // élément de la session est donc son match le plus récent, le dernier le plus ancien.
+  const newest = latest.matches[0];
+  const oldest = latest.matches[latest.matches.length - 1];
+  const end = newest.metadata.started_at ? new Date(newest.metadata.started_at) : new Date();
+  const start = oldest.metadata.started_at ? new Date(oldest.metadata.started_at) : end;
+
+  const overview = computeOverview(latest.matches, puuid);
+  const rankChange = computeRankChangeSince(snapshots, start.getTime());
+
+  return { period: "session", start, end, overview, rankChange };
+}
+
+/** TODO Fonctionnalités#9 : une session est considérée "terminée" si le dernier match connu
+ * remonte à plus de `SESSION_GAP_MS` (même seuil que `groupMatchesIntoSessions`) — sert à
+ * déclencher le récap automatique sans rouvrir la fenêtre tant que le joueur enchaîne
+ * encore des matchs. */
+export function isSessionOver(matches: MatchEntry[], now = new Date()): boolean {
+  const latest = matches[0]?.metadata.started_at;
+  if (!latest) return false;
+  const latestMs = new Date(latest).getTime();
+  if (Number.isNaN(latestMs)) return false;
+  return now.getTime() - latestMs > MATCH_SESSION_GAP_MS;
 }
 
 export interface RegularityScore {

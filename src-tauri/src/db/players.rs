@@ -66,6 +66,22 @@ pub struct TrackedPlayer {
     /// qu'aucune surcharge n'a été définie pour ce compte — voir `loss_streak.rs::maybe_notify`
     /// et `set_loss_streak_alert_count_override`.
     pub loss_streak_alert_count: Option<i64>,
+    /// TODO Fonctionnalités#10 : lien manuel vers un profil pro VLR (`player_id` de
+    /// `types_esports::VlrPlayer`), renseigné par l'utilisateur lui-même sur son profil (pas
+    /// de recherche automatique par nom — l'API Henrik n'expose aucun endpoint VLR par nom,
+    /// seulement par `player_id` numérique) — voir `PlayerNotesPanel.tsx`. Croisé dans
+    /// l'overlay contre les joueurs détectés en partie pour repérer un smurf de joueur
+    /// connu.
+    pub vlr_player_id: Option<i64>,
+    pub vlr_player_name: Option<String>,
+    /// TODO Fonctionnalités#19 : "mode spectateur ami" — suivi passif du statut d'un joueur
+    /// tiers, sans lancer sa propre partie. Henrik n'expose aucun endpoint de présence par
+    /// joueur (seulement un statut serveur régional, voir `api/henrik/endpoints.rs::get_status`)
+    /// : ce qu'on peut réellement observer est "un nouveau match vient d'apparaître dans son
+    /// historique", donc un signal *a posteriori* (partie terminée), pas une vraie présence
+    /// en direct — voir `friend_watcher.rs` pour l'implémentation et sa limite documentée.
+    pub is_followed_friend: bool,
+    pub last_followed_match_id: Option<String>,
 }
 
 /// Liste fermée de tags autorisés — un slug hors de cette liste est rejeté par
@@ -89,6 +105,10 @@ fn map_tracked_player(row: &rusqlite::Row) -> rusqlite::Result<TrackedPlayer> {
         notes: decrypt_notes(row.get(7)?),
         tags: parse_tags(row.get(8)?),
         loss_streak_alert_count: row.get(9)?,
+        vlr_player_id: row.get(10)?,
+        vlr_player_name: row.get(11)?,
+        is_followed_friend: row.get::<_, i64>(12)? != 0,
+        last_followed_match_id: row.get(13)?,
     })
 }
 
@@ -116,7 +136,7 @@ pub fn upsert_tracked_player(
 /// Historique des dernières recherches, favoris en tête puis par date de consultation.
 pub fn list_recent_players(conn: &Connection, limit: i64) -> rusqlite::Result<Vec<TrackedPlayer>> {
     let mut stmt = conn.prepare(
-        "SELECT puuid, name, tag, region, is_favorite, last_viewed_at, is_self, notes, tags, loss_streak_alert_count
+        "SELECT puuid, name, tag, region, is_favorite, last_viewed_at, is_self, notes, tags, loss_streak_alert_count, vlr_player_id, vlr_player_name, is_followed_friend, last_followed_match_id
          FROM tracked_players
          ORDER BY is_favorite DESC, last_viewed_at DESC
          LIMIT ?1",
@@ -130,7 +150,7 @@ pub fn list_recent_players(conn: &Connection, limit: i64) -> rusqlite::Result<Ve
 /// de fin de partie (backlog #81 ; voir `riot_local::poller::on_state_changed`).
 pub fn find_tracked_player(conn: &Connection, puuid: &str) -> rusqlite::Result<Option<TrackedPlayer>> {
     conn.query_row(
-        "SELECT puuid, name, tag, region, is_favorite, last_viewed_at, is_self, notes, tags, loss_streak_alert_count
+        "SELECT puuid, name, tag, region, is_favorite, last_viewed_at, is_self, notes, tags, loss_streak_alert_count, vlr_player_id, vlr_player_name, is_followed_friend, last_followed_match_id
          FROM tracked_players WHERE puuid = ?1",
         [puuid],
         map_tracked_player,
@@ -167,7 +187,7 @@ pub fn set_loss_streak_alert_count_override(
 /// consulté/switché en premier) — alimente le sélecteur de comptes de TopNav.
 pub fn list_self_accounts(conn: &Connection) -> rusqlite::Result<Vec<TrackedPlayer>> {
     let mut stmt = conn.prepare(
-        "SELECT puuid, name, tag, region, is_favorite, last_viewed_at, is_self, notes, tags, loss_streak_alert_count
+        "SELECT puuid, name, tag, region, is_favorite, last_viewed_at, is_self, notes, tags, loss_streak_alert_count, vlr_player_id, vlr_player_name, is_followed_friend, last_followed_match_id
          FROM tracked_players
          WHERE is_self = 1
          ORDER BY last_viewed_at DESC",
@@ -192,6 +212,52 @@ pub fn set_player_notes(conn: &Connection, puuid: &str, notes: &str) -> rusqlite
     conn.execute(
         "UPDATE tracked_players SET notes = ?2, notes_updated_at = ?3 WHERE puuid = ?1",
         (puuid, value, updated_at),
+    )?;
+    Ok(())
+}
+
+/// TODO Fonctionnalités#10 : lie (ou délie, si `None`) ce joueur suivi à un profil pro VLR
+/// connu de l'utilisateur — voir `TrackedPlayer::vlr_player_id`.
+pub fn set_vlr_player_link(
+    conn: &Connection,
+    puuid: &str,
+    vlr_player_id: Option<i64>,
+    vlr_player_name: Option<&str>,
+) -> rusqlite::Result<()> {
+    conn.execute(
+        "UPDATE tracked_players SET vlr_player_id = ?2, vlr_player_name = ?3 WHERE puuid = ?1",
+        (puuid, vlr_player_id, vlr_player_name),
+    )?;
+    Ok(())
+}
+
+/// TODO Fonctionnalités#19 : bascule le suivi passif ("spectateur ami") d'un joueur suivi.
+pub fn set_followed_friend(conn: &Connection, puuid: &str, followed: bool) -> rusqlite::Result<()> {
+    conn.execute(
+        "UPDATE tracked_players SET is_followed_friend = ?2 WHERE puuid = ?1",
+        (puuid, followed as i64),
+    )?;
+    Ok(())
+}
+
+/// Amis actuellement suivis, triés par dernière consultation.
+pub fn list_followed_friends(conn: &Connection) -> rusqlite::Result<Vec<TrackedPlayer>> {
+    let mut stmt = conn.prepare(
+        "SELECT puuid, name, tag, region, is_favorite, last_viewed_at, is_self, notes, tags, loss_streak_alert_count, vlr_player_id, vlr_player_name, is_followed_friend, last_followed_match_id
+         FROM tracked_players
+         WHERE is_followed_friend = 1
+         ORDER BY last_viewed_at DESC",
+    )?;
+    let rows = stmt.query_map([], map_tracked_player)?;
+    rows.collect()
+}
+
+/// Dernier `match_id` observé dans l'historique de cet ami suivi — dédup pour ne notifier
+/// qu'une fois par nouvelle partie détectée (voir `friend_watcher.rs`).
+pub fn set_last_followed_match_id(conn: &Connection, puuid: &str, match_id: &str) -> rusqlite::Result<()> {
+    conn.execute(
+        "UPDATE tracked_players SET last_followed_match_id = ?2 WHERE puuid = ?1",
+        (puuid, match_id),
     )?;
     Ok(())
 }
@@ -240,6 +306,33 @@ pub fn set_last_loss_streak_notified_match_id(
     Ok(())
 }
 
+/// TODO Fonctionnalités#5 : pendant positif de `last_loss_streak_notified_match_id`, pour la
+/// notification "N victoires d'affilée" (voir `win_streak.rs`).
+pub fn last_win_streak_notified_match_id(
+    conn: &Connection,
+    puuid: &str,
+) -> rusqlite::Result<Option<String>> {
+    conn.query_row(
+        "SELECT last_win_streak_notified_match_id FROM tracked_players WHERE puuid = ?1",
+        [puuid],
+        |row| row.get::<_, Option<String>>(0),
+    )
+    .optional()
+    .map(|opt| opt.flatten())
+}
+
+pub fn set_last_win_streak_notified_match_id(
+    conn: &Connection,
+    puuid: &str,
+    match_id: &str,
+) -> rusqlite::Result<()> {
+    conn.execute(
+        "UPDATE tracked_players SET last_win_streak_notified_match_id = ?2 WHERE puuid = ?1",
+        (puuid, match_id),
+    )?;
+    Ok(())
+}
+
 /// Bascule le favori d'un joueur et renvoie le nouvel état.
 pub fn toggle_favorite(conn: &Connection, puuid: &str) -> rusqlite::Result<bool> {
     conn.execute(
@@ -259,7 +352,7 @@ pub fn toggle_favorite(conn: &Connection, puuid: &str) -> rusqlite::Result<bool>
 /// Search.tsx — distinct de `list_recent_players` qui trie par date de consultation.
 pub fn list_favorite_players(conn: &Connection) -> rusqlite::Result<Vec<TrackedPlayer>> {
     let mut stmt = conn.prepare(
-        "SELECT puuid, name, tag, region, is_favorite, last_viewed_at, is_self, notes, tags, loss_streak_alert_count
+        "SELECT puuid, name, tag, region, is_favorite, last_viewed_at, is_self, notes, tags, loss_streak_alert_count, vlr_player_id, vlr_player_name, is_followed_friend, last_followed_match_id
          FROM tracked_players
          WHERE is_favorite = 1
          ORDER BY sort_order ASC, last_viewed_at DESC",
@@ -487,6 +580,48 @@ mod tests {
             .unwrap()
             .loss_streak_alert_count
             .is_none());
+    }
+
+    #[test]
+    fn vlr_player_link_round_trip_and_clear() {
+        let conn = memory_conn();
+        upsert_tracked_player(&conn, "puuid-1", "Player1", "1234", "eu").unwrap();
+        let player = find_tracked_player(&conn, "puuid-1").unwrap().unwrap();
+        assert!(player.vlr_player_id.is_none());
+        assert!(player.vlr_player_name.is_none());
+
+        set_vlr_player_link(&conn, "puuid-1", Some(12345), Some("ProPlayer")).unwrap();
+        let player = find_tracked_player(&conn, "puuid-1").unwrap().unwrap();
+        assert_eq!(player.vlr_player_id, Some(12345));
+        assert_eq!(player.vlr_player_name.as_deref(), Some("ProPlayer"));
+
+        set_vlr_player_link(&conn, "puuid-1", None, None).unwrap();
+        let player = find_tracked_player(&conn, "puuid-1").unwrap().unwrap();
+        assert!(player.vlr_player_id.is_none());
+        assert!(player.vlr_player_name.is_none());
+    }
+
+    #[test]
+    fn follow_friend_then_list_and_unfollow() {
+        let conn = memory_conn();
+        upsert_tracked_player(&conn, "puuid-1", "Player1", "1234", "eu").unwrap();
+        upsert_tracked_player(&conn, "puuid-2", "Player2", "5678", "eu").unwrap();
+        assert!(list_followed_friends(&conn).unwrap().is_empty());
+
+        set_followed_friend(&conn, "puuid-1", true).unwrap();
+        let followed = list_followed_friends(&conn).unwrap();
+        assert_eq!(followed.len(), 1);
+        assert_eq!(followed[0].puuid, "puuid-1");
+        assert!(followed[0].last_followed_match_id.is_none());
+
+        set_last_followed_match_id(&conn, "puuid-1", "match-1").unwrap();
+        assert_eq!(
+            find_tracked_player(&conn, "puuid-1").unwrap().unwrap().last_followed_match_id.as_deref(),
+            Some("match-1")
+        );
+
+        set_followed_friend(&conn, "puuid-1", false).unwrap();
+        assert!(list_followed_friends(&conn).unwrap().is_empty());
     }
 
     #[test]

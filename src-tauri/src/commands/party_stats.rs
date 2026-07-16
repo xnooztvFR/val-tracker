@@ -4,7 +4,7 @@ use tauri::State;
 
 use super::CommandError;
 use crate::api::henrik::types::MatchDetailData;
-use crate::db::{AccountTimelineEvent, DuoStat, RivalryStat, SquadStat};
+use crate::db::{AccountTimelineEvent, DuoStat, FullRosterStat, MatchNote, RivalryStat, SquadStat};
 use crate::AppState;
 
 /// Reconstruit les co-occurrences de `party_id` pour ce match et les enregistre en local
@@ -137,6 +137,23 @@ pub async fn get_queue_stats(
     Ok(crate::queue_stats::compute_queue_stats(&matches, &puuid))
 }
 
+/// TODO Fonctionnalités#14 : recommandation de carte/agent basée sur l'historique perso
+/// (winrate), agrégée sur tous les détails de match déjà en cache pour ce puuid (aucun appel
+/// réseau — voir `recommendations::compute_recommendations`).
+#[tauri::command]
+pub async fn get_recommendations(
+    state: State<'_, AppState>,
+    puuid: String,
+    min_matches: i64,
+) -> Result<crate::recommendations::RecommendationStats, CommandError> {
+    let matches = {
+        let conn = state.db.lock().await;
+        crate::api::henrik::endpoints::get_cached_match_details_for_puuid(&conn, &puuid)?
+    };
+
+    Ok(crate::recommendations::compute_recommendations(&matches, &puuid, min_matches.max(1)))
+}
+
 /// TODO Social/multi-comptes : recherche manuelle d'un rival — au lieu d'attendre que
 /// `record_party_from_match` le croise passivement en consultant un détail de match,
 /// rétro-peuple `party_matches` (relation "opponent") pour tous les matchs *déjà en cache*
@@ -223,6 +240,19 @@ pub async fn list_squad_stats(
     Ok(crate::db::list_squad_stats(&conn, &puuid, min_matches.max(1), since_ts)?)
 }
 
+/// TODO Fonctionnalités#1 : historique de composition d'équipe — rosters complets à 5
+/// (tracked_puuid + 4 coéquipiers) rencontrés plusieurs fois, avec leur bilan.
+#[tauri::command]
+pub async fn list_full_roster_stats(
+    state: State<'_, AppState>,
+    puuid: String,
+    min_matches: i64,
+    since_ts: Option<i64>,
+) -> Result<Vec<FullRosterStat>, CommandError> {
+    let conn = state.db.lock().await;
+    Ok(crate::db::list_full_roster_stats(&conn, &puuid, min_matches.max(1), since_ts)?)
+}
+
 /// Backlog #58 : rivalité suivie en continu — pendant "adversaire" de `list_duo_stats`.
 #[tauri::command]
 pub async fn list_rivalry_stats(
@@ -257,4 +287,34 @@ pub async fn list_account_timeline(
 ) -> Result<Vec<AccountTimelineEvent>, CommandError> {
     let conn = state.db.lock().await;
     Ok(crate::db::list_account_timeline(&conn, &puuid)?)
+}
+
+/// TODO Fonctionnalités#15 : notes horodatées liées à un match précis (voir
+/// `db::match_notes`), affichées dans MatchDetail.tsx.
+#[tauri::command]
+pub async fn list_match_notes(
+    state: State<'_, AppState>,
+    match_id: String,
+    puuid: String,
+) -> Result<Vec<MatchNote>, CommandError> {
+    let conn = state.db.lock().await;
+    Ok(crate::db::list_match_notes(&conn, &match_id, &puuid)?)
+}
+
+#[tauri::command]
+pub async fn add_match_note(
+    state: State<'_, AppState>,
+    match_id: String,
+    puuid: String,
+    note: String,
+) -> Result<MatchNote, CommandError> {
+    let conn = state.db.lock().await;
+    Ok(crate::db::add_match_note(&conn, &match_id, &puuid, &note)?)
+}
+
+#[tauri::command]
+pub async fn delete_match_note(state: State<'_, AppState>, id: i64) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::db::delete_match_note(&conn, id)?;
+    Ok(())
 }

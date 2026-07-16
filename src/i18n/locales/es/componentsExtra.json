@@ -65,7 +65,14 @@
       "toxic": "Tóxico",
       "carry": "Carry",
       "regular_duo": "Dúo habitual"
-    }
+    },
+    "vlrLinkTitle": "Enlace a un perfil pro de VLR (opcional)",
+    "vlrLinkIdPlaceholder": "ID de VLR",
+    "vlrLinkNamePlaceholder": "Nombre mostrado",
+    "vlrLinkSave": "Guardar",
+    "vlrLinkHint": "Si sabes que esta cuenta pertenece a un jugador pro conocido en VLR.gg, indica aquí su ID de perfil (visible en la URL vlr.gg/player/<id>/...) — se cruza automáticamente en el overlay si este jugador es detectado en una partida.",
+    "followFriendLabel": "Seguir a este jugador (modo espectador)",
+    "followFriendHint": "Te notifica cuando este jugador termina una partida competitiva (nuevo match detectado en su historial) — no es presencia en vivo, la API de Henrik no la expone."
   },
   "onboardingWizard": {
     "step1": {
@@ -104,6 +111,7 @@
   "periodRecapModal": {
     "weekTitle": "RESUMEN SEMANAL",
     "monthTitle": "RESUMEN MENSUAL",
+    "sessionTitle": "RESUMEN DE SESIÓN",
     "winrate": "{{percent}} de victorias",
     "kd": "K/D",
     "headshotPercent": "HS%",
@@ -114,6 +122,11 @@
   "recapCardModal": {
     "victory": "VICTORIA",
     "defeat": "DERROTA",
+    "template": {
+      "hud": "HUD",
+      "minimal": "Minimal",
+      "poster": "Póster"
+    },
     "copyImage": "Copiar imagen",
     "download": "Descargar",
     "close": "Cerrar",
@@ -136,7 +149,10 @@
     "limitedHistoryTitle": "Historial limitado",
     "limitedHistoryBody": "Vuelve a consultar este perfil tras algunas partidas para ver dibujarse la curva de progresión del rango.",
     "unknownTier": "Desconocido",
-    "tooltipLabel": "Rango"
+    "tooltipLabel": "Rango",
+    "thisMonth": "Este mes:",
+    "lastMonth": "Mes pasado:",
+    "noData": "sin datos"
   },
   "performanceHeatmap": {
     "days": {
@@ -169,14 +185,33 @@
     "addGoal": "Añadir un objetivo",
     "matchesLabel": "Número de partidas",
     "winrateLabel": "Winrate objetivo (%)",
+    "kdLabel": "K/D objetivo",
+    "hsLabel": "HS% objetivo",
     "typeMatches": "Partidas jugadas",
     "typeWinrate": "Winrate",
+    "typeKd": "K/D",
+    "typeHs": "HS%",
     "save": "Guardar",
     "cancel": "Cancelar",
     "reached": "Alcanzado",
     "remove": "Quitar",
     "matchesProgress": "{{current}} / {{target}} partidas esta semana",
-    "winrateProgress": "{{current}}% / {{target}}% winrate esta semana ({{matches}} partidas)"
+    "winrateProgress": "{{current}}% / {{target}}% winrate esta semana ({{matches}} partidas)",
+    "kdProgress": "K/D {{current}} / {{target}} esta semana ({{matches}} partidas)",
+    "hsProgress": "{{current}}% / {{target}}% HS esta semana ({{matches}} partidas)"
+  },
+  "recommendationsPanel": {
+    "title": "Puntos fuertes",
+    "bestMap": "Mejor mapa",
+    "bestAgent": "Mejor agente",
+    "statsLine": "({{wins}}/{{played}})"
+  },
+  "matchNotesPanel": {
+    "title": "Notas sobre esta partida",
+    "placeholder": "Añadir una nota con fecha...",
+    "add": "Añadir",
+    "empty": "Todavía no hay notas sobre esta partida.",
+    "remove": "Quitar"
   },
   "matchRow": {
     "victory": "Victoria",

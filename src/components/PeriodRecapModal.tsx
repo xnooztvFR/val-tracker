@@ -81,7 +81,9 @@ async function draw(canvas: HTMLCanvasElement, recap: PeriodRecap, playerLabel: 
   const periodLabel =
     recap.period === "week"
       ? i18n.t("componentsExtra:periodRecapModal.weekTitle")
-      : i18n.t("componentsExtra:periodRecapModal.monthTitle");
+      : recap.period === "month"
+        ? i18n.t("componentsExtra:periodRecapModal.monthTitle")
+        : i18n.t("componentsExtra:periodRecapModal.sessionTitle");
   ctx.font = '700 20px "Chakra Petch", sans-serif';
   ctx.fillStyle = COLORS.hi;
   const labelWidth = ctx.measureText(periodLabel).width;

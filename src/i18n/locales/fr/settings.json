@@ -106,7 +106,13 @@
     "save": "Enregistrer",
     "saved": "Client ID enregistré.",
     "clientIdHint": "Crée une application (gratuite) sur le <portal>Discord Developer Portal</portal> et colle son « Application ID » ici — pas de secret ni de token, juste un identifiant public.",
-    "bestEffort": "Best-effort, comme la détection de partie : si Discord n'est pas lancé ou que le client_id est invalide, la Rich Presence reste simplement inactive, sans erreur bloquante."
+    "bestEffort": "Best-effort, comme la détection de partie : si Discord n'est pas lancé ou que le client_id est invalide, la Rich Presence reste simplement inactive, sans erreur bloquante.",
+    "webhookTitle": "Alertes Discord (webhook)",
+    "webhookDescription": "Envoie un message vers un salon Discord de ton choix quand ton rank change — au-delà de la Rich Presence ci-dessus (qui reste locale), ceci est un vrai appel réseau sortant vers l'URL de webhook fournie.",
+    "webhookEnableLabel": "Activer les alertes webhook",
+    "webhookUrlLabel": "URL du webhook Discord",
+    "webhookUrlPlaceholder": "https://discord.com/api/webhooks/...",
+    "webhookUrlHint": "Créé dans les paramètres d'un salon Discord (Intégrations → Webhooks). Cette URL donne le droit d'écrire dans ce salon — garde-la privée, ne la partage jamais."
   },
   "notifications": {
     "title": "Notifications",
@@ -119,6 +125,10 @@
     "lossStreakLabel": "Me notifier après plusieurs défaites d'affilée",
     "lossStreakUnit": "défaites d'affilée",
     "lossStreakHint": "Vérifié sur tes comptes marqués « à soi » (voir TopNav) à chaque consultation de l'historique de matchs — pas d'appel réseau dédié.",
+    "winStreakTitle": "Série de victoires",
+    "winStreakLabel": "Me notifier après plusieurs victoires d'affilée",
+    "winStreakUnit": "victoires d'affilée",
+    "winStreakHint": "Vérifié sur tes comptes marqués « à soi » (voir TopNav) à chaque consultation de l'historique de matchs — pas d'appel réseau dédié.",
     "inactivityTitle": "Rappel d'inactivité",
     "inactivityLabel": "Me rappeler si je n'ai pas consulté mes stats depuis un moment",
     "inactivityAfter": "Après",

@@ -17,6 +17,8 @@
       "resultWin": "Wins",
       "resultLoss": "Losses",
       "reset": "Reset",
+      "dateFrom": "From",
+      "dateTo": "To",
       "noMatch": {
         "title": "No match found",
         "detail": "Try widening your filters."
@@ -26,6 +28,7 @@
       "header": {
         "date": "date",
         "map": "map",
+        "mode": "mode",
         "agent": "agent",
         "result": "result",
         "kills": "kills",

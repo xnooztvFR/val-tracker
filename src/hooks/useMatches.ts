@@ -66,3 +66,12 @@ export function useQueueStats(puuid: string | undefined) {
     enabled: Boolean(puuid),
   });
 }
+
+/** TODO Fonctionnalités#14 : recommandation de carte/agent basée sur l'historique perso. */
+export function useRecommendations(puuid: string | undefined, minMatches = 3) {
+  return useQuery({
+    queryKey: ["recommendations", puuid, minMatches],
+    queryFn: () => tauriApi.getRecommendations(puuid!, minMatches),
+    enabled: Boolean(puuid),
+  });
+}

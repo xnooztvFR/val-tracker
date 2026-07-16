@@ -44,6 +44,8 @@ export default function Settings() {
     setRiotLocalDisabled,
     setDiscordRpcEnabled,
     setDiscordRpcClientId,
+    setDiscordWebhookEnabled,
+    setDiscordWebhookUrl,
     setStatusWatcherEnabled,
     setUsageMetricsEnabled,
     setUiTheme,
@@ -57,6 +59,9 @@ export default function Settings() {
     setRankGapAlertThreshold,
     setLossStreakAlertEnabled,
     setLossStreakAlertCount,
+    setWinStreakAlertEnabled,
+    setWinStreakAlertCount,
+    setRankChangeAlertEnabled,
     setInactivityReminderEnabled,
     setInactivityReminderDays,
     setNotesPin,
@@ -146,6 +151,10 @@ export default function Settings() {
               clientId={settings?.discord_rpc_client_id ?? ""}
               onChangeEnabled={setDiscordRpcEnabled}
               onSaveClientId={setDiscordRpcClientId}
+              webhookEnabled={settings?.discord_webhook_enabled ?? false}
+              webhookUrl={settings?.discord_webhook_url ?? ""}
+              onChangeWebhookEnabled={setDiscordWebhookEnabled}
+              onSaveWebhookUrl={setDiscordWebhookUrl}
             />
             <SectionDivider />
             <CrosshairSection />
@@ -163,10 +172,16 @@ export default function Settings() {
             <NotificationsSection
               statusWatcherEnabled={settings?.status_watcher_enabled ?? false}
               onChangeStatusWatcher={setStatusWatcherEnabled}
+              rankChangeAlertEnabled={settings?.rank_change_alert_enabled ?? true}
+              onChangeRankChangeAlertEnabled={setRankChangeAlertEnabled}
               lossStreakAlertEnabled={settings?.loss_streak_alert_enabled ?? false}
               lossStreakAlertCount={settings?.loss_streak_alert_count ?? 3}
               onChangeLossStreakAlertEnabled={setLossStreakAlertEnabled}
               onChangeLossStreakAlertCount={setLossStreakAlertCount}
+              winStreakAlertEnabled={settings?.win_streak_alert_enabled ?? false}
+              winStreakAlertCount={settings?.win_streak_alert_count ?? 3}
+              onChangeWinStreakAlertEnabled={setWinStreakAlertEnabled}
+              onChangeWinStreakAlertCount={setWinStreakAlertCount}
               inactivityReminderEnabled={settings?.inactivity_reminder_enabled ?? false}
               inactivityReminderDays={settings?.inactivity_reminder_days ?? 3}
               onChangeInactivityReminderEnabled={setInactivityReminderEnabled}

@@ -6,7 +6,7 @@ import { useMatches } from "./useMatches";
 import { useCountdown } from "./useCountdown";
 import { SAMPLE_SIZES, type SampleSize } from "../components/SampleSizeSwitch";
 import { tauriApi } from "../lib/tauriApi";
-import { computeOverview, computePeriodRecap, type PeriodRecap } from "../lib/stats";
+import { computeOverview, computePeriodRecap, computeSessionRecap, isSessionOver, type PeriodRecap } from "../lib/stats";
 
 const MMR_TTL_SECONDS = 600;
 // Backlog : auto-actualisation périodique — rafraîchit toutes les données (MMR, matchs,
@@ -113,6 +113,29 @@ export function useHomeData(region: string | undefined, name: string | undefined
     [puuid, matches.data, snapshots.data],
   );
 
+  // TODO Fonctionnalités#9 : "mode session" — récap automatique une fois la session de jeu
+  // terminée (dernier match connu remontant à plus de 30 min, voir `isSessionOver`), sans
+  // rouvrir la fenêtre à chaque revisite de l'écran Accueil (dédupliqué par `match_id` du
+  // dernier match de la session, en `localStorage`, par joueur — même esprit que
+  // `ChangelogModal` qui ne s'affiche qu'une fois par version installée).
+  const [autoSessionRecap, setAutoSessionRecap] = useState<PeriodRecap | null>(null);
+  useEffect(() => {
+    if (!puuid || !matches.data) return;
+    const list = matches.data.data;
+    if (!isSessionOver(list)) return;
+    const lastShownKey = `session-recap-shown:${puuid}`;
+    const latestMatchId = list[0]?.metadata.match_id;
+    if (!latestMatchId) return;
+    if (localStorage.getItem(lastShownKey) === latestMatchId) return;
+
+    const recap = computeSessionRecap(list, snapshots.data ?? [], puuid);
+    if (!recap) return;
+    setAutoSessionRecap(recap);
+    localStorage.setItem(lastShownKey, latestMatchId);
+  }, [puuid, matches.data, snapshots.data]);
+
+  const dismissAutoSessionRecap = useCallback(() => setAutoSessionRecap(null), []);
+
   return {
     sampleSize,
     setSampleSize,
@@ -130,5 +153,7 @@ export function useHomeData(region: string | undefined, name: string | undefined
     rankPulse,
     handleRefresh,
     buildPeriodRecap,
+    autoSessionRecap,
+    dismissAutoSessionRecap,
   };
 }

@@ -106,7 +106,13 @@
     "save": "Salvar",
     "saved": "Client ID salvo.",
     "clientIdHint": "Crie um aplicativo (gratuito) no <portal>Discord Developer Portal</portal> e cole seu \"Application ID\" aqui — sem segredo nem token, apenas um identificador público.",
-    "bestEffort": "Best-effort, como a detecção de partida: se o Discord não estiver aberto ou o client_id for inválido, o Rich Presence simplesmente fica inativo, sem erro bloqueante."
+    "bestEffort": "Best-effort, como a detecção de partida: se o Discord não estiver aberto ou o client_id for inválido, o Rich Presence simplesmente fica inativo, sem erro bloqueante.",
+    "webhookTitle": "Alertas do Discord (webhook)",
+    "webhookDescription": "Envia uma mensagem para um canal do Discord de sua escolha quando seu rank mudar — além do Rich Presence acima (que permanece local), isso é uma chamada de rede real de saída para a URL de webhook fornecida.",
+    "webhookEnableLabel": "Ativar alertas via webhook",
+    "webhookUrlLabel": "URL do webhook do Discord",
+    "webhookUrlPlaceholder": "https://discord.com/api/webhooks/...",
+    "webhookUrlHint": "Criado nas configurações de um canal do Discord (Integrações → Webhooks). Essa URL concede permissão de escrita nesse canal — mantenha-a privada, nunca a compartilhe."
   },
   "notifications": {
     "title": "Notificações",
@@ -119,6 +125,10 @@
     "lossStreakLabel": "Notificar-me após várias derrotas seguidas",
     "lossStreakUnit": "derrotas seguidas",
     "lossStreakHint": "Verificado nas suas contas marcadas como \"minhas\" (veja TopNav) a cada consulta do histórico de partidas — sem chamada de rede dedicada.",
+    "winStreakTitle": "Sequência de vitórias",
+    "winStreakLabel": "Notificar-me após várias vitórias seguidas",
+    "winStreakUnit": "vitórias seguidas",
+    "winStreakHint": "Verificado nas suas contas marcadas como \"minhas\" (veja TopNav) a cada consulta do histórico de partidas — sem chamada de rede dedicada.",
     "inactivityTitle": "Lembrete de inatividade",
     "inactivityLabel": "Lembrar-me se eu não consultar minhas estatísticas por um tempo",
     "inactivityAfter": "Após",

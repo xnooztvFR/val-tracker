@@ -8,6 +8,7 @@ import { useSettingsStore } from "../store/settingsStore";
 import { tauriApi, type TrackedPlayer } from "../lib/tauriApi";
 import { getRegions, rankInfo, splitRiotId } from "../lib/format";
 import OnboardingWizard from "../components/OnboardingWizard";
+import FollowedFriendsPanel from "../components/FollowedFriendsPanel";
 import logo from "../assets/logo.png";
 
 export default function Search() {
@@ -207,6 +208,8 @@ export default function Search() {
           </div>
         </div>
       )}
+
+      <FollowedFriendsPanel onOpenPlayer={goToPlayer} />
     </div>
   );
 }

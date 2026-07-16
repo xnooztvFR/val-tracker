@@ -27,6 +27,12 @@ const KEY_OVERLAY_POSITION: &str = "overlay_position";
 const KEY_OVERLAY_MONITOR: &str = "overlay_monitor";
 const KEY_DISCORD_RPC_ENABLED: &str = "discord_rpc_enabled";
 const KEY_DISCORD_RPC_CLIENT_ID: &str = "discord_rpc_client_id";
+/// TODO Fonctionnalités#12 : webhook Discord optionnel notifiant un rank up vers un salon
+/// perso — distinct du Rich Presence (`discord_rpc_client_id`, IPC local, pas d'API réseau).
+/// Ici un vrai POST HTTP sortant vers `discord.com/api/webhooks/...` (voir
+/// `discord_webhook.rs`), désactivé par défaut et jamais rempli automatiquement.
+const KEY_DISCORD_WEBHOOK_ENABLED: &str = "discord_webhook_enabled";
+const KEY_DISCORD_WEBHOOK_URL: &str = "discord_webhook_url";
 const KEY_STATUS_WATCHER_ENABLED: &str = "status_watcher_enabled";
 const KEY_USAGE_METRICS_ENABLED: &str = "usage_metrics_enabled";
 const KEY_UI_THEME: &str = "ui_theme";
@@ -37,6 +43,15 @@ const KEY_OVERLAY_DENSITY: &str = "overlay_density";
 const KEY_OVERLAY_LAYOUT: &str = "overlay_layout";
 const KEY_LOSS_STREAK_ALERT_ENABLED: &str = "loss_streak_alert_enabled";
 const KEY_LOSS_STREAK_ALERT_COUNT: &str = "loss_streak_alert_count";
+/// TODO Fonctionnalités#5 : pendant positif de l'alerte "N défaites d'affilée" — voir
+/// `win_streak.rs`.
+const KEY_WIN_STREAK_ALERT_ENABLED: &str = "win_streak_alert_enabled";
+const KEY_WIN_STREAK_ALERT_COUNT: &str = "win_streak_alert_count";
+/// Backlog TODO#8 : notification native de rank up/down (déjà envoyée par défaut depuis
+/// `notify_rank_change` dans `commands/henrik_fetch.rs`) — toggle séparé pour la désactiver
+/// indépendamment des autres notifications (fin de partie, loss streak...). Activé par défaut
+/// pour préserver le comportement historique (aucun opt-in nécessaire pour ce qui existait déjà).
+const KEY_RANK_CHANGE_ALERT_ENABLED: &str = "rank_change_alert_enabled";
 const KEY_RANK_GAP_ALERT_ENABLED: &str = "rank_gap_alert_enabled";
 const KEY_RANK_GAP_ALERT_THRESHOLD: &str = "rank_gap_alert_threshold";
 const KEY_INACTIVITY_REMINDER_ENABLED: &str = "inactivity_reminder_enabled";
@@ -89,6 +104,7 @@ const DEFAULT_UI_DENSITY: &str = "comfortable";
 const DEFAULT_OVERLAY_DENSITY: &str = "detailed";
 const DEFAULT_OVERLAY_LAYOUT: &str = "full";
 const DEFAULT_LOSS_STREAK_ALERT_COUNT: i64 = 3;
+const DEFAULT_WIN_STREAK_ALERT_COUNT: i64 = 3;
 const DEFAULT_INACTIVITY_REMINDER_DAYS: i64 = 3;
 /// Écart de `currenttier` Henrik à partir duquel l'alerte sonore se déclenche (voir
 /// `rank_gap_alert_enabled`) — chaque rang (Bronze, Or...) couvre 3 tiers consécutifs, donc
@@ -139,6 +155,9 @@ pub struct AppSettings {
     /// s'active qu'une fois un `discord_rpc_client_id` renseigné.
     pub discord_rpc_enabled: bool,
     pub discord_rpc_client_id: Option<String>,
+    /// TODO Fonctionnalités#12 : webhook Discord (rank up), désactivé par défaut.
+    pub discord_webhook_enabled: bool,
+    pub discord_webhook_url: Option<String>,
     /// V3 : watcher de statut serveur/file d'attente en arrière-plan (voir
     /// `status_watcher.rs`) — désactivé par défaut, opt-in car c'est le seul appel réseau
     /// périodique qui tourne même quand l'utilisateur ne regarde pas l'app.
@@ -177,6 +196,13 @@ pub struct AppSettings {
     /// `loss_streak_alert_count` défaites d'affilée. Désactivé par défaut.
     pub loss_streak_alert_enabled: bool,
     pub loss_streak_alert_count: i64,
+    /// TODO Fonctionnalités#5 : pendant positif de `loss_streak_alert_enabled`. Désactivé par
+    /// défaut, comme son pendant négatif.
+    pub win_streak_alert_enabled: bool,
+    pub win_streak_alert_count: i64,
+    /// Backlog TODO#8 : toggle séparé pour la notification de rank up/down, distincte de la
+    /// notification de fin de partie (`tauri-plugin-notification`). Activé par défaut.
+    pub rank_change_alert_enabled: bool,
     /// Alerte sonore discrète (opt-in) quand un adversaire détecté en overlay a un
     /// `currenttier` Henrik supérieur au joueur local d'au moins `rank_gap_alert_threshold`
     /// (voir `Overlay.tsx`) — facile à manquer visuellement en chargement de manche.
@@ -223,6 +249,11 @@ impl fmt::Debug for AppSettings {
                 "discord_rpc_client_id",
                 &self.discord_rpc_client_id.as_ref().map(|_| "<masqué>"),
             )
+            .field("discord_webhook_enabled", &self.discord_webhook_enabled)
+            .field(
+                "discord_webhook_url",
+                &self.discord_webhook_url.as_ref().map(|_| "<masqué>"),
+            )
             .field("status_watcher_enabled", &self.status_watcher_enabled)
             .field("usage_metrics_enabled", &self.usage_metrics_enabled)
             .field("ui_theme", &self.ui_theme)
@@ -234,6 +265,9 @@ impl fmt::Debug for AppSettings {
             .field("overlay_monitor", &self.overlay_monitor)
             .field("loss_streak_alert_enabled", &self.loss_streak_alert_enabled)
             .field("loss_streak_alert_count", &self.loss_streak_alert_count)
+            .field("win_streak_alert_enabled", &self.win_streak_alert_enabled)
+            .field("win_streak_alert_count", &self.win_streak_alert_count)
+            .field("rank_change_alert_enabled", &self.rank_change_alert_enabled)
             .field("rank_gap_alert_enabled", &self.rank_gap_alert_enabled)
             .field("rank_gap_alert_threshold", &self.rank_gap_alert_threshold)
             .field(
@@ -356,6 +390,10 @@ pub fn load_settings(conn: &Connection) -> rusqlite::Result<AppSettings> {
         // disponible (utilisateur ou valeur compilée), pour que la RPC marche "out of the
         // box" sur un build donné à quelqu'un.
         .unwrap_or_else(|| discord_rpc_client_id.is_some());
+    let discord_webhook_url = get_raw(conn, KEY_DISCORD_WEBHOOK_URL)?.filter(|v| !v.is_empty());
+    let discord_webhook_enabled = get_raw(conn, KEY_DISCORD_WEBHOOK_ENABLED)?
+        .map(|v| v == "true")
+        .unwrap_or(false);
     let status_watcher_enabled = get_raw(conn, KEY_STATUS_WATCHER_ENABLED)?
         .map(|v| v == "true")
         .unwrap_or(false);
@@ -382,6 +420,15 @@ pub fn load_settings(conn: &Connection) -> rusqlite::Result<AppSettings> {
     let loss_streak_alert_count = get_raw(conn, KEY_LOSS_STREAK_ALERT_COUNT)?
         .and_then(|v| v.parse::<i64>().ok())
         .unwrap_or(DEFAULT_LOSS_STREAK_ALERT_COUNT);
+    let win_streak_alert_enabled = get_raw(conn, KEY_WIN_STREAK_ALERT_ENABLED)?
+        .map(|v| v == "true")
+        .unwrap_or(false);
+    let win_streak_alert_count = get_raw(conn, KEY_WIN_STREAK_ALERT_COUNT)?
+        .and_then(|v| v.parse::<i64>().ok())
+        .unwrap_or(DEFAULT_WIN_STREAK_ALERT_COUNT);
+    let rank_change_alert_enabled = get_raw(conn, KEY_RANK_CHANGE_ALERT_ENABLED)?
+        .map(|v| v == "true")
+        .unwrap_or(true);
     let rank_gap_alert_enabled = get_raw(conn, KEY_RANK_GAP_ALERT_ENABLED)?
         .map(|v| v == "true")
         .unwrap_or(false);
@@ -417,6 +464,8 @@ pub fn load_settings(conn: &Connection) -> rusqlite::Result<AppSettings> {
         riot_local_disabled,
         discord_rpc_enabled,
         discord_rpc_client_id,
+        discord_webhook_enabled,
+        discord_webhook_url,
         status_watcher_enabled,
         usage_metrics_enabled,
         ui_theme,
@@ -428,6 +477,9 @@ pub fn load_settings(conn: &Connection) -> rusqlite::Result<AppSettings> {
         overlay_monitor,
         loss_streak_alert_enabled,
         loss_streak_alert_count,
+        win_streak_alert_enabled,
+        win_streak_alert_count,
+        rank_change_alert_enabled,
         rank_gap_alert_enabled,
         rank_gap_alert_threshold,
         inactivity_reminder_enabled,
@@ -541,6 +593,19 @@ pub fn set_discord_rpc_client_id(conn: &Connection, client_id: &str) -> rusqlite
     set_raw(conn, KEY_DISCORD_RPC_CLIENT_ID, client_id.trim())
 }
 
+/// TODO Fonctionnalités#12 : webhook Discord optionnel (rank up).
+pub fn set_discord_webhook_enabled(conn: &Connection, enabled: bool) -> rusqlite::Result<()> {
+    set_raw(
+        conn,
+        KEY_DISCORD_WEBHOOK_ENABLED,
+        if enabled { "true" } else { "false" },
+    )
+}
+
+pub fn set_discord_webhook_url(conn: &Connection, url: &str) -> rusqlite::Result<()> {
+    set_raw(conn, KEY_DISCORD_WEBHOOK_URL, url.trim())
+}
+
 pub fn set_status_watcher_enabled(conn: &Connection, enabled: bool) -> rusqlite::Result<()> {
     set_raw(
         conn,
@@ -594,8 +659,31 @@ pub fn set_loss_streak_alert_enabled(conn: &Connection, enabled: bool) -> rusqli
     )
 }
 
+/// Backlog TODO#8 : toggle de la notification de rank up/down, séparé de la notification de
+/// fin de partie.
+pub fn set_rank_change_alert_enabled(conn: &Connection, enabled: bool) -> rusqlite::Result<()> {
+    set_raw(
+        conn,
+        KEY_RANK_CHANGE_ALERT_ENABLED,
+        if enabled { "true" } else { "false" },
+    )
+}
+
 pub fn set_loss_streak_alert_count(conn: &Connection, count: i64) -> rusqlite::Result<()> {
     set_raw(conn, KEY_LOSS_STREAK_ALERT_COUNT, &count.max(1).to_string())
+}
+
+/// TODO Fonctionnalités#5 : toggle + seuil de l'alerte "N victoires d'affilée".
+pub fn set_win_streak_alert_enabled(conn: &Connection, enabled: bool) -> rusqlite::Result<()> {
+    set_raw(
+        conn,
+        KEY_WIN_STREAK_ALERT_ENABLED,
+        if enabled { "true" } else { "false" },
+    )
+}
+
+pub fn set_win_streak_alert_count(conn: &Connection, count: i64) -> rusqlite::Result<()> {
+    set_raw(conn, KEY_WIN_STREAK_ALERT_COUNT, &count.max(1).to_string())
 }
 
 /// Backlog #32 : toggle + seuil (en jours) du rappel d'inactivité.
@@ -996,6 +1084,51 @@ mod tests {
         let settings = load_settings(&conn).unwrap();
         assert!(settings.loss_streak_alert_enabled);
         assert_eq!(settings.loss_streak_alert_count, 5);
+    }
+
+    #[test]
+    fn win_streak_alert_defaults_then_round_trip() {
+        let conn = memory_conn();
+        let defaults = load_settings(&conn).unwrap();
+        assert!(!defaults.win_streak_alert_enabled);
+        assert_eq!(defaults.win_streak_alert_count, 3);
+
+        set_win_streak_alert_enabled(&conn, true).unwrap();
+        set_win_streak_alert_count(&conn, 4).unwrap();
+
+        let settings = load_settings(&conn).unwrap();
+        assert!(settings.win_streak_alert_enabled);
+        assert_eq!(settings.win_streak_alert_count, 4);
+    }
+
+    #[test]
+    fn discord_webhook_defaults_then_round_trip() {
+        let conn = memory_conn();
+        let defaults = load_settings(&conn).unwrap();
+        assert!(!defaults.discord_webhook_enabled);
+        assert!(defaults.discord_webhook_url.is_none());
+
+        set_discord_webhook_enabled(&conn, true).unwrap();
+        set_discord_webhook_url(&conn, "  https://discord.com/api/webhooks/123/abc  ").unwrap();
+
+        let settings = load_settings(&conn).unwrap();
+        assert!(settings.discord_webhook_enabled);
+        assert_eq!(
+            settings.discord_webhook_url.as_deref(),
+            Some("https://discord.com/api/webhooks/123/abc")
+        );
+    }
+
+    #[test]
+    fn rank_change_alert_defaults_then_round_trip() {
+        let conn = memory_conn();
+        assert!(load_settings(&conn).unwrap().rank_change_alert_enabled);
+
+        set_rank_change_alert_enabled(&conn, false).unwrap();
+        assert!(!load_settings(&conn).unwrap().rank_change_alert_enabled);
+
+        set_rank_change_alert_enabled(&conn, true).unwrap();
+        assert!(load_settings(&conn).unwrap().rank_change_alert_enabled);
     }
 
     #[test]

@@ -40,6 +40,9 @@ export default function HomeGoalsSection({
           puuid={puuid}
           initialNotes={trackedPlayer?.notes ?? null}
           initialTags={trackedPlayer?.tags ?? []}
+          initialVlrPlayerId={trackedPlayer?.vlr_player_id ?? null}
+          initialVlrPlayerName={trackedPlayer?.vlr_player_name ?? null}
+          initialFollowedFriend={trackedPlayer?.is_followed_friend ?? false}
         />
         <WeeklyGoalsPanel key={`weekly-${puuid}`} puuid={puuid} matches={matches} />
       </div>

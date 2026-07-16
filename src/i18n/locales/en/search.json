@@ -17,6 +17,10 @@
     "title": "Recent searches",
     "toggleFavorite": "Toggle favorite"
   },
+  "followedFriends": {
+    "title": "Followed friends (spectator mode)",
+    "lastMatch": "Last match {{time}}"
+  },
   "hoverPreview": {
     "loading": "Loading…"
   }

@@ -64,6 +64,7 @@ function exportMatches(matches: MatchEntry[], puuid: string, riotId: string, for
   const header = [
     i18n.t("matches:history.csv.header.date"),
     i18n.t("matches:history.csv.header.map"),
+    i18n.t("matches:history.csv.header.mode"),
     i18n.t("matches:history.csv.header.agent"),
     i18n.t("matches:history.csv.header.result"),
     i18n.t("matches:history.csv.header.kills"),
@@ -84,6 +85,7 @@ function exportMatches(matches: MatchEntry[], puuid: string, riotId: string, for
     return [
       match.metadata.started_at ?? "",
       match.metadata.map?.name ?? "",
+      match.metadata.queue?.name ?? "",
       player?.agent?.name ?? "",
       resultat,
       stats?.kills ?? 0,
@@ -111,22 +113,29 @@ export default function MatchHistory() {
   const [resultFilter, setResultFilter] = useState<ResultFilter>("all");
   const [agentFilter, setAgentFilter] = useState<string | null>(null);
   const [mapFilter, setMapFilter] = useState<string | null>(null);
+  const [modeFilter, setModeFilter] = useState<string | null>(null);
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
 
-  const { agents, maps } = useMemo(() => {
+  const { agents, maps, modes } = useMemo(() => {
     const agentSet = new Map<string, string>();
     const mapSet = new Set<string>();
+    const modeSet = new Set<string>();
     if (matches.data && puuid) {
       for (const match of matches.data.data) {
         const player = match.players.find((p) => p.puuid === puuid);
         if (player?.agent?.name) agentSet.set(player.agent.name, player.agent.name);
         if (match.metadata.map?.name) mapSet.add(match.metadata.map.name);
+        if (match.metadata.queue?.name) modeSet.add(match.metadata.queue.name);
       }
     }
-    return { agents: [...agentSet.keys()].sort(), maps: [...mapSet].sort() };
+    return { agents: [...agentSet.keys()].sort(), maps: [...mapSet].sort(), modes: [...modeSet].sort() };
   }, [matches.data, puuid]);
 
   const filteredMatches = useMemo(() => {
     if (!matches.data || !puuid) return [];
+    const fromTs = dateFrom ? new Date(dateFrom).getTime() : null;
+    const toTs = dateTo ? new Date(dateTo).getTime() + 24 * 60 * 60 * 1000 - 1 : null;
     return matches.data.data.filter((match) => {
       if (resultFilter !== "all") {
         const won = matchResult(match, puuid);
@@ -138,11 +147,24 @@ export default function MatchHistory() {
         if (player?.agent?.name !== agentFilter) return false;
       }
       if (mapFilter && match.metadata.map?.name !== mapFilter) return false;
+      if (modeFilter && match.metadata.queue?.name !== modeFilter) return false;
+      if (fromTs !== null || toTs !== null) {
+        const startedAt = match.metadata.started_at ? new Date(match.metadata.started_at).getTime() : null;
+        if (startedAt === null) return false;
+        if (fromTs !== null && startedAt < fromTs) return false;
+        if (toTs !== null && startedAt > toTs) return false;
+      }
       return true;
     });
-  }, [matches.data, puuid, resultFilter, agentFilter, mapFilter]);
+  }, [matches.data, puuid, resultFilter, agentFilter, mapFilter, modeFilter, dateFrom, dateTo]);
 
-  const hasActiveFilters = resultFilter !== "all" || agentFilter !== null || mapFilter !== null;
+  const hasActiveFilters =
+    resultFilter !== "all" ||
+    agentFilter !== null ||
+    mapFilter !== null ||
+    modeFilter !== null ||
+    dateFrom !== "" ||
+    dateTo !== "";
 
   return (
     <div className="space-y-4">
@@ -209,6 +231,38 @@ export default function MatchHistory() {
               onClick={() => setMapFilter((m) => (m === mapName ? null : mapName))}
             />
           ))}
+          {modes.length > 1 && (
+            <>
+              <span className="mx-1 h-4 w-px bg-line" />
+              {modes.map((mode) => (
+                <Chip
+                  key={mode}
+                  label={mode}
+                  active={modeFilter === mode}
+                  onClick={() => setModeFilter((m) => (m === mode ? null : mode))}
+                />
+              ))}
+            </>
+          )}
+          <span className="mx-1 h-4 w-px bg-line" />
+          <label className="hud-label flex items-center gap-1 text-[11px] text-lo">
+            {t("history.filters.dateFrom")}
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="border border-line bg-transparent px-1.5 py-0.5 text-hi"
+            />
+          </label>
+          <label className="hud-label flex items-center gap-1 text-[11px] text-lo">
+            {t("history.filters.dateTo")}
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="border border-line bg-transparent px-1.5 py-0.5 text-hi"
+            />
+          </label>
           {hasActiveFilters && (
             <button
               type="button"
@@ -216,6 +270,9 @@ export default function MatchHistory() {
                 setResultFilter("all");
                 setAgentFilter(null);
                 setMapFilter(null);
+                setModeFilter(null);
+                setDateFrom("");
+                setDateTo("");
               }}
               className="hud-label whitespace-nowrap px-2 py-1 text-[11px] text-lo underline decoration-dotted hover:text-hi"
             >

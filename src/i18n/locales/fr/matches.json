@@ -17,6 +17,8 @@
       "resultWin": "Victoires",
       "resultLoss": "Défaites",
       "reset": "Réinitialiser",
+      "dateFrom": "Du",
+      "dateTo": "Au",
       "noMatch": {
         "title": "Aucun match ne correspond",
         "detail": "Essaie d'élargir tes filtres."
@@ -26,6 +28,7 @@
       "header": {
         "date": "date",
         "map": "carte",
+        "mode": "mode",
         "agent": "agent",
         "result": "resultat",
         "kills": "kills",

@@ -9,6 +9,16 @@ interface PlayerNotesPanelProps {
   puuid: string;
   initialNotes: string | null;
   initialTags: PlayerTag[];
+  /** TODO Fonctionnalités#10 : lien manuel vers un profil pro VLR connu de l'utilisateur —
+   * pas de recherche automatique par nom (l'API Henrik n'expose aucun endpoint VLR par nom,
+   * uniquement par `player_id` numérique). Croisé dans l'overlay contre les joueurs
+   * détectés en partie. */
+  initialVlrPlayerId?: number | null;
+  initialVlrPlayerName?: string | null;
+  /** TODO Fonctionnalités#19 : "mode spectateur ami" — suivi passif, opt-in par joueur.
+   * Voir `friend_watcher.rs` pour la limite documentée (pas de vraie présence en direct,
+   * seulement la détection d'un nouveau match dans l'historique). */
+  initialFollowedFriend?: boolean;
 }
 
 const SAVE_DEBOUNCE_MS = 800;
@@ -21,11 +31,24 @@ const SAVE_DEBOUNCE_MS = 800;
  * état local, pas persistant : redemandé à chaque remount (changement de profil via `key`
  * côté Home.tsx, ou fermeture/réouverture de l'app), pensé pour l'usage stream/écran
  * partagé plutôt que comme un vrai coffre-fort. */
-export default function PlayerNotesPanel({ puuid, initialNotes, initialTags }: PlayerNotesPanelProps) {
+export default function PlayerNotesPanel({
+  puuid,
+  initialNotes,
+  initialTags,
+  initialVlrPlayerId,
+  initialVlrPlayerName,
+  initialFollowedFriend,
+}: PlayerNotesPanelProps) {
   const { t } = useTranslation("componentsExtra");
   const notesPinEnabled = useSettingsStore((s) => s.settings?.notes_pin_enabled ?? false);
   const [value, setValue] = useState(initialNotes ?? "");
   const [tags, setTags] = useState<PlayerTag[]>(initialTags);
+  const [vlrPlayerIdInput, setVlrPlayerIdInput] = useState(
+    initialVlrPlayerId != null ? String(initialVlrPlayerId) : "",
+  );
+  const [vlrPlayerNameInput, setVlrPlayerNameInput] = useState(initialVlrPlayerName ?? "");
+  const [vlrSaved, setVlrSaved] = useState(true);
+  const [followedFriend, setFollowedFriend] = useState(initialFollowedFriend ?? false);
   const [saved, setSaved] = useState(true);
   const [unlocked, setUnlocked] = useState(!notesPinEnabled);
   const [pinInput, setPinInput] = useState("");
@@ -53,6 +76,20 @@ export default function PlayerNotesPanel({ puuid, initialNotes, initialTags }: P
     const next = tags.includes(tag) ? tags.filter((t) => t !== tag) : [...tags, tag];
     setTags(next);
     await tauriApi.savePlayerTags(puuid, next);
+  }
+
+  async function toggleFollowedFriend() {
+    const next = !followedFriend;
+    setFollowedFriend(next);
+    await tauriApi.saveFollowedFriend(puuid, next);
+  }
+
+  async function handleSaveVlrLink() {
+    const trimmedId = vlrPlayerIdInput.trim();
+    const id = trimmedId ? Number(trimmedId) : null;
+    const name = vlrPlayerNameInput.trim() || null;
+    await tauriApi.saveVlrPlayerLink(puuid, Number.isFinite(id) ? id : null, name);
+    setVlrSaved(true);
   }
 
   async function handleUnlock() {
@@ -150,6 +187,54 @@ export default function PlayerNotesPanel({ puuid, initialNotes, initialTags }: P
             </button>
           );
         })}
+      </div>
+
+      <div className="mt-3 space-y-1.5 border-t border-line pt-3">
+        <p className="hud-label text-[10px] text-lo">{t("playerNotesPanel.vlrLinkTitle")}</p>
+        <div className="flex gap-1.5">
+          <input
+            type="number"
+            value={vlrPlayerIdInput}
+            onChange={(e) => {
+              setVlrPlayerIdInput(e.target.value);
+              setVlrSaved(false);
+            }}
+            placeholder={t("playerNotesPanel.vlrLinkIdPlaceholder")}
+            className="w-24 border border-line bg-base px-2 py-1.5 text-xs text-hi placeholder:text-lo/60 focus:border-accent focus:outline-none"
+          />
+          <input
+            type="text"
+            value={vlrPlayerNameInput}
+            onChange={(e) => {
+              setVlrPlayerNameInput(e.target.value);
+              setVlrSaved(false);
+            }}
+            placeholder={t("playerNotesPanel.vlrLinkNamePlaceholder")}
+            className="flex-1 border border-line bg-base px-2 py-1.5 text-xs text-hi placeholder:text-lo/60 focus:border-accent focus:outline-none"
+          />
+          <button
+            type="button"
+            onClick={handleSaveVlrLink}
+            className="hud-label border border-line px-2.5 py-1.5 text-[11px] text-hi transition-colors hover:border-accent disabled:opacity-50"
+            disabled={vlrSaved}
+          >
+            {t("playerNotesPanel.vlrLinkSave")}
+          </button>
+        </div>
+        <p className="text-[10px] text-lo">{t("playerNotesPanel.vlrLinkHint")}</p>
+      </div>
+
+      <div className="mt-3 space-y-1 border-t border-line pt-3">
+        <label className="flex items-center gap-2.5 text-sm text-hi">
+          <input
+            type="checkbox"
+            checked={followedFriend}
+            onChange={toggleFollowedFriend}
+            className="h-4 w-4 border-line bg-surface accent-accent"
+          />
+          {t("playerNotesPanel.followFriendLabel")}
+        </label>
+        <p className="text-[10px] text-lo">{t("playerNotesPanel.followFriendHint")}</p>
       </div>
     </Panel>
   );

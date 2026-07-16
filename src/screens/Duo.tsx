@@ -4,7 +4,7 @@ import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Skeleton } from "../components/Skeleton";
 
-import { useAccount, useDuoStats, useRivalryStats, useSquadStats } from "../hooks/usePlayer";
+import { useAccount, useDuoStats, useFullRosterStats, useRivalryStats, useSquadStats } from "../hooks/usePlayer";
 import Panel from "../components/Panel";
 import ErrorState from "../components/ErrorState";
 import EmptyState from "../components/EmptyState";
@@ -26,6 +26,7 @@ export default function Duo() {
   const [sinceDays, setSinceDays] = useState<number | null>(null);
   const duo = useDuoStats(puuid, 2, sinceDays);
   const squad = useSquadStats(puuid, 2, sinceDays);
+  const fullRoster = useFullRosterStats(puuid, 2, sinceDays);
   const rivalry = useRivalryStats(puuid, 2, sinceDays);
 
   // TODO stats & analyse joueur : filtre par tag structuré (voir PlayerNotesPanel.tsx) sur
@@ -56,6 +57,10 @@ export default function Duo() {
   const filteredRivalry = useMemo(
     () => (rivalry.data ?? []).filter((r) => hasTag(r.opponent_puuid)),
     [rivalry.data, tagFilter, tagsByPuuid],
+  );
+  const filteredFullRoster = useMemo(
+    () => (fullRoster.data ?? []).filter((r) => r.members.some((m) => hasTag(m.puuid))),
+    [fullRoster.data, tagFilter, tagsByPuuid],
   );
 
   // TODO Social/multi-comptes : recherche manuelle d'un rival, rétro-peuplée depuis les
@@ -193,6 +198,46 @@ export default function Duo() {
             <p className="mt-1 text-xs text-lo">{t("duo.squad.description")}</p>
           </div>
           <EmptyState icon="team" title={t("duo.squad.emptyMessage")} />
+        </div>
+      )}
+
+      {fullRoster.data && filteredFullRoster.length > 0 && (
+        <div className="space-y-2">
+          <div>
+            <h2 className="hud-label text-sm">{t("duo.fullRoster.title")}</h2>
+            <p className="mt-1 text-xs text-lo">{t("duo.fullRoster.description")}</p>
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {filteredFullRoster.map((roster) => {
+              const winPercent = Math.round((roster.matches_won / roster.matches_played) * 100);
+              const key = roster.members.map((m) => m.puuid).join("-");
+              return (
+                <Panel key={key} className="p-4">
+                  <p className="text-sm font-semibold text-hi">
+                    {roster.members.map((m, i) => (
+                      <span key={m.puuid}>
+                        {i > 0 && <span className="text-lo"> · </span>}
+                        {m.name}
+                        <span className="text-lo">#{m.tag}</span>
+                      </span>
+                    ))}
+                  </p>
+                  <div className="mt-2 flex items-center gap-3">
+                    <span
+                      className={`font-display text-lg font-bold tracking-hud ${
+                        winPercent >= 50 ? "text-accent" : "text-crit"
+                      }`}
+                    >
+                      {formatPercent(winPercent)}
+                    </span>
+                    <span className="text-xs text-lo">
+                      {t("duo.statsLine", { wins: roster.matches_won, played: roster.matches_played })}
+                    </span>
+                  </div>
+                </Panel>
+              );
+            })}
+          </div>
         </div>
       )}
 

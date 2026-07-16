@@ -90,11 +90,27 @@ pub async fn fetch_mmr(
                     tier_patched,
                     current.ranking_in_tier,
                 )?;
+                let alert_settings = crate::settings::load_settings(&conn)?;
+                let rank_change_alert_enabled = alert_settings.rank_change_alert_enabled;
+                let webhook = alert_settings
+                    .discord_webhook_enabled
+                    .then_some(alert_settings.discord_webhook_url)
+                    .flatten();
                 drop(conn);
 
                 if let Some(previous) = previous {
                     if previous.tier != tier {
-                        notify_rank_change(&app, &previous.tier_patched, tier_patched, tier > previous.tier);
+                        let promoted = tier > previous.tier;
+                        if rank_change_alert_enabled {
+                            notify_rank_change(&app, &previous.tier_patched, tier_patched, promoted);
+                        }
+                        if let Some(webhook_url) = webhook {
+                            let from = previous.tier_patched.clone();
+                            let to = tier_patched.to_string();
+                            tauri::async_runtime::spawn(async move {
+                                crate::discord_webhook::send_rank_change(&webhook_url, &from, &to, promoted).await;
+                            });
+                        }
                     }
                 }
             }
@@ -156,6 +172,16 @@ pub async fn fetch_matches(
                     &tag,
                     &result.data,
                     settings.loss_streak_alert_count,
+                );
+            }
+            if settings.win_streak_alert_enabled {
+                crate::win_streak::maybe_notify(
+                    &app,
+                    &conn,
+                    &name,
+                    &tag,
+                    &result.data,
+                    settings.win_streak_alert_count,
                 );
             }
         }

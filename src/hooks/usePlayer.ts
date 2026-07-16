@@ -80,6 +80,15 @@ export function useSquadStats(puuid: string | undefined, minMatches = 2, sinceDa
   });
 }
 
+/** TODO Fonctionnalités#1 : historique de composition d'équipe — rosters complets à 5. */
+export function useFullRosterStats(puuid: string | undefined, minMatches = 2, sinceDays: number | null = null) {
+  return useQuery({
+    queryKey: ["full_roster_stats", puuid, minMatches, sinceDays],
+    queryFn: () => tauriApi.listFullRosterStats(puuid!, minMatches, sinceDaysToTs(sinceDays)),
+    enabled: Boolean(puuid),
+  });
+}
+
 /** Backlog #58 : rivalité suivie en continu, pendant "adversaire" de useDuoStats —
  * alimentée par commands::record_party_from_match à chaque consultation d'un match où le
  * joueur suivi affrontait un adversaire déjà croisé, aucun appel réseau ici non plus. */

@@ -1,4 +1,17 @@
 {
+  "today": {
+    "title": "Hoje",
+    "emptyTitle": "Ainda nenhuma partida hoje",
+    "emptyDetail": "Volte aqui após sua primeira partida do dia para ver seu resumo condensado.",
+    "recentTitle": "Partidas de hoje",
+    "stats": {
+      "matches": "Partidas",
+      "winLossHint": "{{wins}}V - {{losses}}D",
+      "winrate": "Winrate",
+      "kd": "K/D",
+      "hs": "HS%"
+    }
+  },
   "statusBar": {
     "operator": "Operador · {{region}}",
     "summary": "Balanço · últimos {{n}}",

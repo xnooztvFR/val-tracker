@@ -24,6 +24,21 @@ Index :
 | notes | TEXT | oui |  |  |
 | installed_at | INTEGER | oui |  |  |
 
+## `match_notes`
+
+| Colonne | Type | NOT NULL | Défaut | PK |
+| --- | --- | --- | --- | --- |
+| id | INTEGER |  |  | oui |
+| match_id | TEXT | oui |  |  |
+| puuid | TEXT | oui |  |  |
+| note | TEXT | oui |  |  |
+| created_at | INTEGER | oui |  |  |
+
+Index :
+
+- `idx_match_notes_match_puuid` — `CREATE INDEX idx_match_notes_match_puuid
+            ON match_notes (match_id, puuid)`
+
 ## `party_matches`
 
 | Colonne | Type | NOT NULL | Défaut | PK |
@@ -109,6 +124,11 @@ Index :
 | last_loss_streak_notified_match_id | TEXT |  |  |  |
 | sort_order | INTEGER | oui | 0 |  |
 | loss_streak_alert_count | INTEGER |  |  |  |
+| last_win_streak_notified_match_id | TEXT |  |  |  |
+| vlr_player_id | INTEGER |  |  |  |
+| vlr_player_name | TEXT |  |  |  |
+| is_followed_friend | INTEGER | oui | 0 |  |
+| last_followed_match_id | TEXT |  |  |  |
 | notes_updated_at | INTEGER |  |  |  |
 | tags | TEXT | oui | '' |  |
 

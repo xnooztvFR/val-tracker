@@ -17,9 +17,10 @@ pub const RIOT_LOCAL_POLLER: &str = "riot_local_poller";
 pub const STATUS_WATCHER: &str = "status_watcher";
 pub const INACTIVITY_REMINDER: &str = "inactivity_reminder";
 pub const DISCORD_RPC: &str = "discord_rpc";
+pub const FRIEND_WATCHER: &str = "friend_watcher";
 
-const KNOWN_TASKS: [&str; 4] =
-    [RIOT_LOCAL_POLLER, STATUS_WATCHER, INACTIVITY_REMINDER, DISCORD_RPC];
+const KNOWN_TASKS: [&str; 5] =
+    [RIOT_LOCAL_POLLER, STATUS_WATCHER, INACTIVITY_REMINDER, DISCORD_RPC, FRIEND_WATCHER];
 
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct TaskDiagnostic {

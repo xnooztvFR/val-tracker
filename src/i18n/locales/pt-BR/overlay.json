@@ -15,5 +15,10 @@
   "shortcutInteractive": " — modo interativo: mova a janela e alterne novamente.",
   "shortcutStatic": " — mover o overlay",
   "identifying": "Identificando…",
-  "unknownPlayer": "Jogador desconhecido"
+  "unknownPlayer": "Jogador desconhecido",
+  "smurfBadge": "SMURF?",
+  "smurfHint": "Conta não classificada + winrate alto nas últimas partidas — um indício, não uma certeza.",
+  "proBadge": "PRO",
+  "proHint": "Vinculado a um perfil VLR conhecido: {{name}}",
+  "proLabel": "Jogador pro"
 }

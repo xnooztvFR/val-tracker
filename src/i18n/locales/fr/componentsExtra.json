@@ -65,7 +65,14 @@
       "toxic": "Toxique",
       "carry": "Carry",
       "regular_duo": "Duo régulier"
-    }
+    },
+    "vlrLinkTitle": "Lien vers un profil pro VLR (optionnel)",
+    "vlrLinkIdPlaceholder": "ID VLR",
+    "vlrLinkNamePlaceholder": "Nom affiché",
+    "vlrLinkSave": "Enregistrer",
+    "vlrLinkHint": "Si tu sais que ce compte correspond à un joueur pro connu sur VLR.gg, renseigne son ID de profil ici (visible dans l'URL vlr.gg/player/<id>/...) — croisé automatiquement dans l'overlay si ce joueur est détecté en partie.",
+    "followFriendLabel": "Suivre ce joueur (mode spectateur)",
+    "followFriendHint": "Te notifie quand ce joueur termine une partie compétitive (nouveau match détecté dans son historique) — pas une présence en direct, l'API Henrik ne l'expose pas."
   },
   "onboardingWizard": {
     "step1": {
@@ -104,6 +111,7 @@
   "periodRecapModal": {
     "weekTitle": "RÉCAP SEMAINE",
     "monthTitle": "RÉCAP MOIS",
+    "sessionTitle": "RÉCAP SESSION",
     "winrate": "{{percent}} de victoires",
     "kd": "K/D",
     "headshotPercent": "HS%",
@@ -114,6 +122,11 @@
   "recapCardModal": {
     "victory": "VICTOIRE",
     "defeat": "DÉFAITE",
+    "template": {
+      "hud": "HUD",
+      "minimal": "Minimal",
+      "poster": "Affiche"
+    },
     "copyImage": "Copier l'image",
     "download": "Télécharger",
     "close": "Fermer",
@@ -136,7 +149,10 @@
     "limitedHistoryTitle": "Historique limité",
     "limitedHistoryBody": "Reviens consulter ce profil après quelques parties pour voir la courbe de progression du rank se dessiner.",
     "unknownTier": "Inconnu",
-    "tooltipLabel": "Rank"
+    "tooltipLabel": "Rank",
+    "thisMonth": "Ce mois-ci :",
+    "lastMonth": "Mois dernier :",
+    "noData": "pas de données"
   },
   "performanceHeatmap": {
     "days": {
@@ -169,14 +185,33 @@
     "addGoal": "Ajouter un objectif",
     "matchesLabel": "Nombre de matchs",
     "winrateLabel": "Winrate cible (%)",
+    "kdLabel": "K/D cible",
+    "hsLabel": "HS% cible",
     "typeMatches": "Matchs joués",
     "typeWinrate": "Winrate",
+    "typeKd": "K/D",
+    "typeHs": "HS%",
     "save": "Enregistrer",
     "cancel": "Annuler",
     "reached": "Atteint",
     "remove": "Retirer",
     "matchesProgress": "{{current}} / {{target}} matchs cette semaine",
-    "winrateProgress": "{{current}}% / {{target}}% winrate cette semaine ({{matches}} matchs)"
+    "winrateProgress": "{{current}}% / {{target}}% winrate cette semaine ({{matches}} matchs)",
+    "kdProgress": "K/D {{current}} / {{target}} cette semaine ({{matches}} matchs)",
+    "hsProgress": "{{current}}% / {{target}}% HS cette semaine ({{matches}} matchs)"
+  },
+  "recommendationsPanel": {
+    "title": "Points forts",
+    "bestMap": "Meilleure carte",
+    "bestAgent": "Meilleur agent",
+    "statsLine": "({{wins}}/{{played}})"
+  },
+  "matchNotesPanel": {
+    "title": "Notes sur ce match",
+    "placeholder": "Ajouter une note horodatée...",
+    "add": "Ajouter",
+    "empty": "Aucune note sur ce match pour l'instant.",
+    "remove": "Retirer"
   },
   "matchRow": {
     "victory": "Victoire",

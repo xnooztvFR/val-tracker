@@ -59,20 +59,9 @@ function drawClippedPanel(ctx: CanvasRenderingContext2D, x: number, y: number, w
   ctx.fill();
 }
 
-async function draw(canvas: HTMLCanvasElement, data: MatchRecapData) {
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
+export type RecapCardTemplate = "hud" | "minimal" | "poster";
 
-  // Les fonts self-hébergées (@fontsource) sont quasi certainement déjà chargées (le
-  // reste de l'UI les utilise déjà), mais on attend explicitement pour éviter un rendu
-  // canvas avec la police système par défaut si la modale s'ouvre très tôt.
-  await document.fonts.ready.catch(() => {});
-
-  const COLORS = resolvePalette();
-
-  ctx.clearRect(0, 0, WIDTH, HEIGHT);
-  drawClippedPanel(ctx, 0, 0, WIDTH, HEIGHT, COLORS.base);
-
+function drawHudTemplate(ctx: CanvasRenderingContext2D, data: MatchRecapData, COLORS: ReturnType<typeof resolvePalette>) {
   const resultColor = data.won ? COLORS.accent : COLORS.crit;
 
   // Liseré latéral signalant le résultat, comme les bandeaux ErrorState/StatusBanner.
@@ -146,6 +135,116 @@ async function draw(canvas: HTMLCanvasElement, data: MatchRecapData) {
   });
 }
 
+/** Variante épurée : tout centré, pas de liseré ni d'en-tête, focus sur le score. */
+function drawMinimalTemplate(ctx: CanvasRenderingContext2D, data: MatchRecapData, COLORS: ReturnType<typeof resolvePalette>) {
+  const resultColor = data.won ? COLORS.accent : COLORS.crit;
+  const centerX = WIDTH / 2;
+
+  ctx.textAlign = "center";
+
+  ctx.font = '700 22px "Chakra Petch", sans-serif';
+  ctx.fillStyle = resultColor;
+  const resultLabel = data.won
+    ? i18n.t("componentsExtra:recapCardModal.victory")
+    : i18n.t("componentsExtra:recapCardModal.defeat");
+  ctx.fillText(resultLabel.toUpperCase(), centerX, 90);
+
+  ctx.font = '700 110px "Chakra Petch", sans-serif';
+  ctx.fillStyle = COLORS.hi;
+  ctx.fillText(`${data.scoreFor} – ${data.scoreAgainst}`, centerX, 230);
+
+  ctx.font = '500 20px Inter, sans-serif';
+  ctx.fillStyle = COLORS.lo;
+  ctx.fillText(`${data.map} · ${data.mode}`, centerX, 270);
+
+  ctx.font = '600 22px "Chakra Petch", sans-serif';
+  ctx.fillStyle = COLORS.hi;
+  const playerLine = data.rankLabel
+    ? `${data.playerName}#${data.playerTag} · ${data.rankLabel.toUpperCase()}`
+    : `${data.playerName}#${data.playerTag}`;
+  ctx.fillText(playerLine, centerX, 340);
+
+  const kdaLine = `${data.kills} K · ${data.deaths} D · ${data.assists} A`;
+  ctx.font = '700 34px "JetBrains Mono", monospace';
+  ctx.fillStyle = COLORS.accent;
+  ctx.fillText(kdaLine, centerX, 420);
+
+  ctx.textAlign = "left";
+}
+
+/** Variante "affiche" : grand badge de rang centré, informations empilées verticalement. */
+function drawPosterTemplate(ctx: CanvasRenderingContext2D, data: MatchRecapData, COLORS: ReturnType<typeof resolvePalette>) {
+  const resultColor = data.won ? COLORS.accent : COLORS.crit;
+  const centerX = WIDTH / 2;
+
+  drawClippedPanel(ctx, 40, 40, WIDTH - 80, HEIGHT - 80, COLORS.surface);
+
+  ctx.textAlign = "center";
+
+  ctx.font = '600 16px "JetBrains Mono", monospace';
+  ctx.fillStyle = COLORS.accent;
+  ctx.fillText("VAL // TRACKER", centerX, 90);
+
+  if (data.rankLabel) {
+    ctx.font = '700 46px "Chakra Petch", sans-serif';
+    ctx.fillStyle = data.rankColorHex ?? COLORS.hi;
+    ctx.fillText(data.rankLabel.toUpperCase(), centerX, 150);
+  }
+
+  ctx.font = '700 20px "Chakra Petch", sans-serif';
+  ctx.fillStyle = resultColor;
+  const resultLabel = data.won
+    ? i18n.t("componentsExtra:recapCardModal.victory")
+    : i18n.t("componentsExtra:recapCardModal.defeat");
+  ctx.fillText(`${resultLabel.toUpperCase()} · ${data.scoreFor}–${data.scoreAgainst}`, centerX, 210);
+
+  ctx.font = '500 18px Inter, sans-serif';
+  ctx.fillStyle = COLORS.lo;
+  ctx.fillText(`${data.map} · ${data.mode}`, centerX, 240);
+
+  ctx.font = '600 24px "Chakra Petch", sans-serif';
+  ctx.fillStyle = COLORS.hi;
+  ctx.fillText(`${data.playerName}#${data.playerTag}`, centerX, 320);
+
+  const stats: [string, string][] = [
+    ["KILLS", String(data.kills)],
+    ["DEATHS", String(data.deaths)],
+    ["ASSISTS", String(data.assists)],
+  ];
+  const blockWidth = (WIDTH - 160) / stats.length;
+  stats.forEach(([label, value], i) => {
+    const x = 80 + blockWidth * i + blockWidth / 2;
+    ctx.font = '700 44px "JetBrains Mono", monospace';
+    ctx.fillStyle = COLORS.hi;
+    ctx.fillText(value, x, 410);
+    ctx.font = '600 13px "Chakra Petch", sans-serif';
+    ctx.fillStyle = COLORS.lo;
+    ctx.fillText(label, x, 432);
+  });
+
+  ctx.textAlign = "left";
+}
+
+async function draw(canvas: HTMLCanvasElement, data: MatchRecapData, template: RecapCardTemplate) {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  // Les fonts self-hébergées (@fontsource) sont quasi certainement déjà chargées (le
+  // reste de l'UI les utilise déjà), mais on attend explicitement pour éviter un rendu
+  // canvas avec la police système par défaut si la modale s'ouvre très tôt.
+  await document.fonts.ready.catch(() => {});
+
+  const COLORS = resolvePalette();
+
+  ctx.clearRect(0, 0, WIDTH, HEIGHT);
+  drawClippedPanel(ctx, 0, 0, WIDTH, HEIGHT, COLORS.base);
+  ctx.textBaseline = "alphabetic";
+
+  if (template === "minimal") drawMinimalTemplate(ctx, data, COLORS);
+  else if (template === "poster") drawPosterTemplate(ctx, data, COLORS);
+  else drawHudTemplate(ctx, data, COLORS);
+}
+
 interface RecapCardModalProps {
   data: MatchRecapData;
   onClose: () => void;
@@ -155,16 +254,19 @@ interface RecapCardModalProps {
  * image externe chargée, donc aucun risque de canvas "taint" par CORS) et propose de la
  * copier dans le presse-papiers (pour coller directement dans Discord) ou de la
  * télécharger en PNG. */
+const TEMPLATES: RecapCardTemplate[] = ["hud", "minimal", "poster"];
+
 export default function RecapCardModal({ data, onClose }: RecapCardModalProps) {
   const { t } = useTranslation("componentsExtra");
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "unsupported" | "error">("idle");
+  const [template, setTemplate] = useState<RecapCardTemplate>("hud");
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    draw(canvas, data);
-  }, [data]);
+    draw(canvas, data, template);
+  }, [data, template]);
 
   async function handleCopy() {
     const canvas = canvasRef.current;
@@ -210,6 +312,22 @@ export default function RecapCardModal({ data, onClose }: RecapCardModalProps) {
           className="max-w-full border border-line"
           style={{ width: `min(${WIDTH}px, 90vw)`, height: "auto" }}
         />
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {TEMPLATES.map((tpl) => (
+            <button
+              key={tpl}
+              type="button"
+              onClick={() => setTemplate(tpl)}
+              className={`hud-label border px-2.5 py-1 text-[11px] transition-colors ${
+                template === tpl
+                  ? "border-accent text-accent"
+                  : "border-line text-lo hover:border-accent hover:text-hi"
+              }`}
+            >
+              {t(`recapCardModal.template.${tpl}`)}
+            </button>
+          ))}
+        </div>
         <div className="flex flex-wrap items-center justify-center gap-2">
           <button
             type="button"

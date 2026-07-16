@@ -15,6 +15,7 @@ use tauri::{AppHandle, Manager};
 
 mod changelog;
 mod goals;
+mod match_notes;
 mod metrics;
 mod party;
 mod players;
@@ -23,6 +24,7 @@ mod timeline;
 
 pub use changelog::*;
 pub use goals::*;
+pub use match_notes::*;
 pub use metrics::*;
 pub use party::*;
 pub use players::*;
@@ -170,6 +172,28 @@ pub(crate) fn run_migrations(conn: &Connection) -> rusqlite::Result<()> {
     // global (voir `loss_streak.rs::maybe_notify`).
     add_column_if_missing(conn, "tracked_players", "loss_streak_alert_count", "INTEGER")?;
 
+    // TODO Fonctionnalités#5 : pendant positif de `last_loss_streak_notified_match_id` — même
+    // logique de dédup pour la notification "N victoires d'affilée" (voir `win_streak.rs`).
+    add_column_if_missing(
+        conn,
+        "tracked_players",
+        "last_win_streak_notified_match_id",
+        "TEXT",
+    )?;
+    // TODO Fonctionnalités#10 : lien manuel vers un profil pro VLR connu de l'utilisateur
+    // (voir db/players.rs::set_vlr_player_link), croisé dans l'overlay.
+    add_column_if_missing(conn, "tracked_players", "vlr_player_id", "INTEGER")?;
+    add_column_if_missing(conn, "tracked_players", "vlr_player_name", "TEXT")?;
+    // TODO Fonctionnalités#19 : "mode spectateur ami" — suivi passif d'un joueur tiers, voir
+    // friend_watcher.rs. `last_followed_match_id` dédup la notification de nouvelle partie.
+    add_column_if_missing(
+        conn,
+        "tracked_players",
+        "is_followed_friend",
+        "INTEGER NOT NULL DEFAULT 0",
+    )?;
+    add_column_if_missing(conn, "tracked_players", "last_followed_match_id", "TEXT")?;
+
     goals::migrate_progression_goals_multi(conn)?;
 
     // Backlog #58 : réutilise `party_matches` pour aussi capturer les adversaires
@@ -221,6 +245,20 @@ pub(crate) fn run_migrations(conn: &Connection) -> rusqlite::Result<()> {
             notes TEXT NOT NULL,
             installed_at INTEGER NOT NULL
         );
+
+        -- TODO Fonctionnalités#15 : notes horodatées liées à un match précis (voir
+        -- db/match_notes.rs), distinctes de la note libre unique par joueur
+        -- (tracked_players.notes).
+        CREATE TABLE IF NOT EXISTS match_notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            match_id TEXT NOT NULL,
+            puuid TEXT NOT NULL,
+            note TEXT NOT NULL,
+            created_at INTEGER NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_match_notes_match_puuid
+            ON match_notes (match_id, puuid);
         "#,
     )?;
 
@@ -308,7 +346,7 @@ pub fn reset_local_stats(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
         "DELETE FROM api_cache; DELETE FROM rank_snapshots; DELETE FROM tracked_players;
          DELETE FROM party_matches; DELETE FROM usage_metrics_events;
-         DELETE FROM progression_goals;",
+         DELETE FROM progression_goals; DELETE FROM match_notes;",
     )
 }
 

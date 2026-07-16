@@ -229,7 +229,7 @@ export function splitRiotId(input: string): { name: string; tag: string } | null
   return { name: trimmed.slice(0, idx), tag: trimmed.slice(idx + 1) };
 }
 
-const SESSION_GAP_MS = 30 * 60 * 1000;
+export const SESSION_GAP_MS = 30 * 60 * 1000;
 
 export interface MatchSession {
   matches: MatchEntry[];

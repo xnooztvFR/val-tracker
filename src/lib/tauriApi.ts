@@ -323,6 +323,27 @@ export interface QueueStat {
   party: QueueTally;
 }
 
+/** TODO Fonctionnalités#14 : recommandation de carte/agent basée sur l'historique perso
+ * (winrate), agrégée côté Rust sur les détails de match déjà en cache. */
+export interface MapRecommendation {
+  map: string;
+  matches_played: number;
+  matches_won: number;
+  win_percent: number;
+}
+
+export interface AgentRecommendation {
+  agent: string;
+  matches_played: number;
+  matches_won: number;
+  win_percent: number;
+}
+
+export interface RecommendationStats {
+  best_maps: MapRecommendation[];
+  best_agents: AgentRecommendation[];
+}
+
 export interface LeaderboardPlayer {
   puuid: string | null;
   name: string;
@@ -776,6 +797,9 @@ export interface AppSettings {
   riot_local_disabled: boolean;
   discord_rpc_enabled: boolean;
   discord_rpc_client_id: string | null;
+  /** TODO Fonctionnalités#12 : webhook Discord optionnel (rank up), désactivé par défaut. */
+  discord_webhook_enabled: boolean;
+  discord_webhook_url: string | null;
   status_watcher_enabled: boolean;
   usage_metrics_enabled: boolean;
   ui_theme: string;
@@ -795,6 +819,12 @@ export interface AppSettings {
   /** Backlog #24 : alerte "N défaites d'affilée" (comptes "à soi" uniquement). */
   loss_streak_alert_enabled: boolean;
   loss_streak_alert_count: number;
+  /** TODO Fonctionnalités#5 : pendant positif de l'alerte "N défaites d'affilée". */
+  win_streak_alert_enabled: boolean;
+  win_streak_alert_count: number;
+  /** Backlog TODO#8 : toggle séparé de la notification de rank up/down, activé par défaut
+   * (comportement historique préservé sans opt-in). */
+  rank_change_alert_enabled: boolean;
   /** Alerte sonore discrète (opt-in) en overlay quand un adversaire détecté a un rang au
    * moins `rank_gap_alert_threshold` tiers au-dessus du joueur local. */
   rank_gap_alert_enabled: boolean;
@@ -874,6 +904,16 @@ export interface TrackedPlayer {
   /** TODO Social/multi-comptes : surcharge par compte du seuil global de notification
    * "N défaites d'affilée", `null` = pas de surcharge (retombe sur le réglage global). */
   loss_streak_alert_count: number | null;
+  /** TODO Fonctionnalités#10 : lien manuel vers un profil pro VLR connu (voir
+   * PlayerNotesPanel.tsx), croisé dans l'overlay contre les joueurs détectés en partie. */
+  vlr_player_id: number | null;
+  vlr_player_name: string | null;
+  /** TODO Fonctionnalités#19 : "mode spectateur ami" — suivi passif, sans vraie présence en
+   * direct (l'API Henrik n'expose aucun endpoint de présence par joueur). Le signal observé
+   * est l'apparition d'un nouveau match dans l'historique de cet ami — voir
+   * `friend_watcher.rs`. */
+  is_followed_friend: boolean;
+  last_followed_match_id: string | null;
 }
 
 /** Miroir de `db::players::ALLOWED_TAGS` côté Rust. */
@@ -883,8 +923,11 @@ export type PlayerTag = (typeof PLAYER_TAGS)[number];
 /** Backlog #13 : objectif de progression ("atteindre Diamant 2") pour un joueur suivi.
  * Backlog #55 : étendu aux objectifs hebdo custom via `goal_type` — `target_tier`/
  * `target_tier_patched`/`target_rr` ne sont renseignés que pour `"rank"`, `target_value`
- * que pour `"weekly_matches"`/`"weekly_winrate"`. */
-export type WeeklyGoalType = "weekly_matches" | "weekly_winrate";
+ * que pour les types hebdo.
+ * TODO Fonctionnalités#7 : `weekly_kd` (target_value = K/D cible × 100, ex. 130 = 1.30) et
+ * `weekly_hs` (target_value = HS% cible 0-100) — même mécanique/stockage que
+ * `weekly_matches`/`weekly_winrate`, aucun changement de schéma nécessaire. */
+export type WeeklyGoalType = "weekly_matches" | "weekly_winrate" | "weekly_kd" | "weekly_hs";
 
 export interface ProgressionGoal {
   goal_type: "rank" | WeeklyGoalType;
@@ -955,6 +998,31 @@ export interface SquadStat {
   matches_won: number;
 }
 
+/** TODO Fonctionnalités#1 : un membre d'un roster complet à 5 (voir FullRosterStat). */
+export interface RosterMember {
+  puuid: string;
+  name: string;
+  tag: string;
+}
+
+/** TODO Fonctionnalités#1 : historique de composition d'équipe — roster complet (4
+ * coéquipiers + le compte suivi) rencontré plusieurs fois, avec son bilan. */
+export interface FullRosterStat {
+  members: RosterMember[];
+  matches_played: number;
+  matches_won: number;
+}
+
+/** TODO Fonctionnalités#15 : note horodatée liée à un match précis, distincte de la note
+ * libre unique par joueur (`TrackedPlayer.notes`). */
+export interface MatchNote {
+  id: number;
+  match_id: string;
+  puuid: string;
+  note: string;
+  created_at: number;
+}
+
 export type CommandError =
   | { kind: "missing_api_key" }
   | { kind: "not_found" }
@@ -983,6 +1051,9 @@ export const tauriApi = {
     invoke<void>("save_discord_rpc_enabled", { enabled }),
   saveDiscordRpcClientId: (clientId: string) =>
     invoke<void>("save_discord_rpc_client_id", { clientId }),
+  saveDiscordWebhookEnabled: (enabled: boolean) =>
+    invoke<void>("save_discord_webhook_enabled", { enabled }),
+  saveDiscordWebhookUrl: (url: string) => invoke<void>("save_discord_webhook_url", { url }),
   saveStatusWatcherEnabled: (enabled: boolean) =>
     invoke<void>("save_status_watcher_enabled", { enabled }),
   saveUsageMetricsEnabled: (enabled: boolean) =>
@@ -1004,8 +1075,14 @@ export const tauriApi = {
     invoke<void>("save_overlay_layout", { layout }),
   saveLossStreakAlertEnabled: (enabled: boolean) =>
     invoke<void>("save_loss_streak_alert_enabled", { enabled }),
+  saveRankChangeAlertEnabled: (enabled: boolean) =>
+    invoke<void>("save_rank_change_alert_enabled", { enabled }),
   saveLossStreakAlertCount: (count: number) =>
     invoke<void>("save_loss_streak_alert_count", { count }),
+  saveWinStreakAlertEnabled: (enabled: boolean) =>
+    invoke<void>("save_win_streak_alert_enabled", { enabled }),
+  saveWinStreakAlertCount: (count: number) =>
+    invoke<void>("save_win_streak_alert_count", { count }),
   saveRankGapAlertEnabled: (enabled: boolean) =>
     invoke<void>("save_rank_gap_alert_enabled", { enabled }),
   saveRankGapAlertThreshold: (threshold: number) =>
@@ -1133,6 +1210,11 @@ export const tauriApi = {
   savePlayerNotes: (puuid: string, notes: string) =>
     invoke<void>("save_player_notes", { puuid, notes }),
   savePlayerTags: (puuid: string, tags: PlayerTag[]) => invoke<void>("save_player_tags", { puuid, tags }),
+  saveVlrPlayerLink: (puuid: string, vlrPlayerId: number | null, vlrPlayerName: string | null) =>
+    invoke<void>("save_vlr_player_link", { puuid, vlrPlayerId, vlrPlayerName }),
+  saveFollowedFriend: (puuid: string, followed: boolean) =>
+    invoke<void>("save_followed_friend", { puuid, followed }),
+  listFollowedFriends: () => invoke<TrackedPlayer[]>("list_followed_friends"),
   getProgressionGoal: (puuid: string) =>
     invoke<ProgressionGoal | null>("get_progression_goal", { puuid }),
   saveProgressionGoal: (
@@ -1159,6 +1241,8 @@ export const tauriApi = {
   getMapAverageStats: (puuid: string, map: string) =>
     invoke<MapAverageStat | null>("get_map_average_stats", { puuid, map }),
   getQueueStats: (puuid: string) => invoke<QueueStat>("get_queue_stats", { puuid }),
+  getRecommendations: (puuid: string, minMatches = 3) =>
+    invoke<RecommendationStats>("get_recommendations", { puuid, minMatches }),
 
   recordPartyFromMatch: (matchId: string, trackedPuuid: string) =>
     invoke<void>("record_party_from_match", { matchId, trackedPuuid }),
@@ -1166,6 +1250,13 @@ export const tauriApi = {
     invoke<DuoStat[]>("list_duo_stats", { puuid, minMatches, sinceTs }),
   listSquadStats: (puuid: string, minMatches = 2, sinceTs: number | null = null) =>
     invoke<SquadStat[]>("list_squad_stats", { puuid, minMatches, sinceTs }),
+  listFullRosterStats: (puuid: string, minMatches = 2, sinceTs: number | null = null) =>
+    invoke<FullRosterStat[]>("list_full_roster_stats", { puuid, minMatches, sinceTs }),
+  listMatchNotes: (matchId: string, puuid: string) =>
+    invoke<MatchNote[]>("list_match_notes", { matchId, puuid }),
+  addMatchNote: (matchId: string, puuid: string, note: string) =>
+    invoke<MatchNote>("add_match_note", { matchId, puuid, note }),
+  deleteMatchNote: (id: number) => invoke<void>("delete_match_note", { id }),
   listRivalryStats: (puuid: string, minMatches = 2, sinceTs: number | null = null) =>
     invoke<RivalryStat[]>("list_rivalry_stats", { puuid, minMatches, sinceTs }),
   retroPopulateRivalry: (puuid: string, opponentName: string, opponentTag: string) =>

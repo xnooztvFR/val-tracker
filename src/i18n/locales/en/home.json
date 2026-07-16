@@ -1,4 +1,17 @@
 {
+  "today": {
+    "title": "Today",
+    "emptyTitle": "No games yet today",
+    "emptyDetail": "Come back after your first game of the day to see your condensed summary.",
+    "recentTitle": "Today's games",
+    "stats": {
+      "matches": "Matches",
+      "winLossHint": "{{wins}}W - {{losses}}L",
+      "winrate": "Winrate",
+      "kd": "K/D",
+      "hs": "HS%"
+    }
+  },
   "statusBar": {
     "operator": "Operator · {{region}}",
     "summary": "Summary · last {{n}}",

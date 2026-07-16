@@ -146,6 +146,24 @@ pub async fn save_discord_rpc_client_id(
     Ok(())
 }
 
+/// TODO Fonctionnalités#12 : webhook Discord optionnel (rank up).
+#[tauri::command]
+pub async fn save_discord_webhook_enabled(
+    state: State<'_, AppState>,
+    enabled: bool,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::set_discord_webhook_enabled(&conn, enabled)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn save_discord_webhook_url(state: State<'_, AppState>, url: String) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::set_discord_webhook_url(&conn, &url)?;
+    Ok(())
+}
+
 /// V3 : active/désactive le watcher de statut serveur/file d'attente en arrière-plan
 /// (voir `status_watcher.rs`) — seul réglage qui déclenche un appel réseau périodique
 /// même quand l'utilisateur ne regarde pas l'app, donc opt-in.
@@ -253,6 +271,18 @@ pub async fn save_loss_streak_alert_enabled(
     Ok(())
 }
 
+/// Backlog TODO#8 : toggle séparé de la notification de rank up/down (déjà envoyée par
+/// défaut depuis `notify_rank_change`, voir `henrik_fetch.rs`).
+#[tauri::command]
+pub async fn save_rank_change_alert_enabled(
+    state: State<'_, AppState>,
+    enabled: bool,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::set_rank_change_alert_enabled(&conn, enabled)?;
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn save_loss_streak_alert_count(
     state: State<'_, AppState>,
@@ -260,6 +290,27 @@ pub async fn save_loss_streak_alert_count(
 ) -> Result<(), CommandError> {
     let conn = state.db.lock().await;
     crate::settings::set_loss_streak_alert_count(&conn, count)?;
+    Ok(())
+}
+
+/// TODO Fonctionnalités#5 : toggle + seuil de l'alerte "N victoires d'affilée".
+#[tauri::command]
+pub async fn save_win_streak_alert_enabled(
+    state: State<'_, AppState>,
+    enabled: bool,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::set_win_streak_alert_enabled(&conn, enabled)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn save_win_streak_alert_count(
+    state: State<'_, AppState>,
+    count: i64,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::set_win_streak_alert_count(&conn, count)?;
     Ok(())
 }
 

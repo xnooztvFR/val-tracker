@@ -26,6 +26,7 @@ import { useSelfAccountCycling } from "./hooks/useSelfAccountCycling";
 const Settings = lazy(() => import("./screens/Settings"));
 const PlayerShell = lazy(() => import("./screens/PlayerShell"));
 const Home = lazy(() => import("./screens/Home"));
+const Today = lazy(() => import("./screens/Today"));
 const Trends = lazy(() => import("./screens/Trends"));
 const Agents = lazy(() => import("./screens/Agents"));
 const MatchHistory = lazy(() => import("./screens/MatchHistory"));
@@ -184,6 +185,7 @@ export default function App() {
                   <Route path="/premier/equipe/:teamId" element={<PageScroll><PremierTeamDetail /></PageScroll>} />
                   <Route path="/joueur/:region/:name/:tag" element={<PlayerShell />}>
                     <Route index element={<Home />} />
+                    <Route path="aujourdhui" element={<Today />} />
                     <Route path="tendances" element={<Trends />} />
                     <Route path="agents" element={<Agents />} />
                     <Route path="matchs" element={<MatchHistory />} />

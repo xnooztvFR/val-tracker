@@ -1,5 +1,6 @@
 //! `progression_goals` : objectif de rang (backlog #13) + objectifs hebdomadaires custom
-//! (backlog #55), distingués par `goal_type`.
+//! (backlog #55, étendu TODO Fonctionnalités#7 à `weekly_kd`/`weekly_hs`), distingués par
+//! `goal_type` (chaîne libre, aucune validation côté Rust — voir `commands::save_weekly_goal`).
 
 use rusqlite::{Connection, OptionalExtension};
 use serde::Serialize;

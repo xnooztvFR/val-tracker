@@ -98,6 +98,64 @@ export default function Overlay() {
     [players, mmrQueries],
   );
 
+  // TODO Fonctionnalités#4 : détection heuristique de smurf sur les adversaires — signal
+  // "peu de games" tiré gratuitement du MMR déjà chargé (currenttier `null` = compte non
+  // classé, moins de 5 games de placement jouées cet acte, sans appel réseau de plus) croisé
+  // avec un winrate élevé sur un tout petit échantillon de matchs récents (size=5, cache
+  // long) — seul signal réellement disponible sans scraper un historique complet par
+  // adversaire, qui exploserait le quota Henrik partagé (~24 req/min) pour un lobby à 5v5.
+  // Best-effort et absolument pas une preuve : juste un repère pour contextualiser une game
+  // difficile, jamais montré comme une certitude (voir libellé "?" côté UI).
+  const SMURF_SAMPLE_SIZE = 5;
+  const SMURF_MIN_MATCHES = 3;
+  const SMURF_WINRATE_THRESHOLD = 80;
+  const smurfMatchQueries = useQueries({
+    queries: enemies.map(({ player, query }) => {
+      const name = query?.data?.data?.name;
+      const tag = query?.data?.data?.tag;
+      const unrated = query?.data?.data?.current_data?.currenttier == null;
+      return {
+        queryKey: ["overlay-smurf-matches", player.puuid, region],
+        queryFn: () => tauriApi.fetchMatches(region, name!, tag!, SMURF_SAMPLE_SIZE),
+        enabled: isFullLayout && unrated && Boolean(name) && Boolean(tag),
+        staleTime: 15 * 60_000,
+        retry: false,
+      };
+    }),
+  });
+  // TODO Fonctionnalités#10 : croisement des joueurs détectés en partie avec les profils
+  // pro VLR liés manuellement par l'utilisateur (voir PlayerNotesPanel.tsx) — pas de
+  // recherche automatique par nom, l'API Henrik n'expose aucun endpoint VLR par nom (voir
+  // db::players::set_vlr_player_link).
+  const trackedPlayers = useQuery({
+    queryKey: ["overlay-tracked-players"],
+    queryFn: () => tauriApi.listTrackedPlayers(1000),
+    staleTime: 5 * 60_000,
+  });
+  const proLinks = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of trackedPlayers.data ?? []) {
+      if (p.vlr_player_id != null) map.set(p.puuid, p.vlr_player_name || t("proLabel"));
+    }
+    return map;
+  }, [trackedPlayers.data, t]);
+
+  const smurfFlags = useMemo(() => {
+    const flags = new Map<string, boolean>();
+    enemies.forEach(({ player }, index) => {
+      const data = smurfMatchQueries[index]?.data?.data;
+      if (!data || data.length < SMURF_MIN_MATCHES) return;
+      const wins = data.filter((m) => {
+        const p = m.players.find((pl) => pl.puuid === player.puuid);
+        const team = m.teams.find((t) => t.team_id === p?.team_id);
+        return team?.won === true;
+      }).length;
+      const winPercent = (wins / data.length) * 100;
+      flags.set(player.puuid, winPercent >= SMURF_WINRATE_THRESHOLD);
+    });
+    return flags;
+  }, [enemies, smurfMatchQueries]);
+
   // Backlog #22 : recommandation d'agent perso pendant la sélection — "quels sont mes
   // agents les plus performants". `fetchMatches` passe par le même cache/rate-limiter que
   // le reste : entrer plusieurs fois en pregame dans la fenêtre de TTL ne redéclenche pas
@@ -222,9 +280,16 @@ export default function Overlay() {
                 </p>
               ) : (
                 <div className="space-y-2">
-                  <PlayerGroup label={t("team")} entries={allies} density={density} />
+                  <PlayerGroup label={t("team")} entries={allies} density={density} proLinks={proLinks} />
                   {enemies.length > 0 && (
-                    <PlayerGroup label={t("opponents")} entries={enemies} density={density} accentClass="text-crit" />
+                    <PlayerGroup
+                      label={t("opponents")}
+                      entries={enemies}
+                      density={density}
+                      accentClass="text-crit"
+                      smurfFlags={smurfFlags}
+                      proLinks={proLinks}
+                    />
                   )}
                 </div>
               )}
@@ -367,11 +432,15 @@ const PlayerGroup = memo(function PlayerGroup({
   entries,
   density,
   accentClass = "",
+  smurfFlags,
+  proLinks,
 }: {
   label: string;
   entries: PlayerGroupEntry[];
   density: string;
   accentClass?: string;
+  smurfFlags?: Map<string, boolean>;
+  proLinks?: Map<string, string>;
 }) {
   const { t } = useTranslation("overlay");
   return (
@@ -381,6 +450,8 @@ const PlayerGroup = memo(function PlayerGroup({
         {entries.map(({ player, query }) => {
           const data = query?.data?.data;
           const info = rankInfo(data?.current_data?.currenttier);
+          const isSuspectedSmurf = smurfFlags?.get(player.puuid) === true;
+          const proName = proLinks?.get(player.puuid);
           return (
             <li key={player.puuid} className="flex items-center gap-2 border border-line/60 bg-base/60 px-2 py-1.5">
               <img src={info.iconUrl} alt="" className="h-5 w-5 object-contain" />
@@ -396,6 +467,22 @@ const PlayerGroup = memo(function PlayerGroup({
                   <span className="text-lo">{t("unknownPlayer")}</span>
                 )}
               </span>
+              {proName && (
+                <span
+                  className="hud-label shrink-0 border border-accent/60 px-1 text-[8px] text-accent"
+                  title={t("proHint", { name: proName })}
+                >
+                  {t("proBadge")}
+                </span>
+              )}
+              {isSuspectedSmurf && (
+                <span
+                  className="hud-label shrink-0 border border-crit/60 px-1 text-[8px] text-crit"
+                  title={t("smurfHint")}
+                >
+                  {t("smurfBadge")}
+                </span>
+              )}
               {density === "detailed" && (
                 <span className={`font-display text-[10px] font-semibold uppercase tracking-hud ${info.colorClass}`}>
                   {info.name}
@@ -416,8 +503,22 @@ const PlayerGroup = memo(function PlayerGroup({
 arePlayerGroupPropsEqual);
 
 function arePlayerGroupPropsEqual(
-  prev: { label: string; entries: PlayerGroupEntry[]; density: string; accentClass?: string },
-  next: { label: string; entries: PlayerGroupEntry[]; density: string; accentClass?: string },
+  prev: {
+    label: string;
+    entries: PlayerGroupEntry[];
+    density: string;
+    accentClass?: string;
+    smurfFlags?: Map<string, boolean>;
+    proLinks?: Map<string, string>;
+  },
+  next: {
+    label: string;
+    entries: PlayerGroupEntry[];
+    density: string;
+    accentClass?: string;
+    smurfFlags?: Map<string, boolean>;
+    proLinks?: Map<string, string>;
+  },
 ): boolean {
   if (prev.label !== next.label || prev.density !== next.density || prev.accentClass !== next.accentClass) {
     return false;
@@ -431,7 +532,9 @@ function arePlayerGroupPropsEqual(
       entry.player.puuid === other.player.puuid &&
       entry.player.team === other.player.team &&
       entry.query?.isLoading === other.query?.isLoading &&
-      entry.query?.data === other.query?.data
+      entry.query?.data === other.query?.data &&
+      prev.smurfFlags?.get(entry.player.puuid) === next.smurfFlags?.get(other.player.puuid) &&
+      prev.proLinks?.get(entry.player.puuid) === next.proLinks?.get(other.player.puuid)
     );
   });
 }

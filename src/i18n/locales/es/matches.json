@@ -17,6 +17,8 @@
       "resultWin": "Victorias",
       "resultLoss": "Derrotas",
       "reset": "Restablecer",
+      "dateFrom": "Desde",
+      "dateTo": "Hasta",
       "noMatch": {
         "title": "Ninguna partida coincide",
         "detail": "Intenta ampliar tus filtros."
@@ -26,6 +28,7 @@
       "header": {
         "date": "fecha",
         "map": "mapa",
+        "mode": "modo",
         "agent": "agente",
         "result": "resultado",
         "kills": "kills",

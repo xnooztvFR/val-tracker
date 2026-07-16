@@ -106,7 +106,13 @@
     "save": "Guardar",
     "saved": "Client ID guardado.",
     "clientIdHint": "Crea una aplicación (gratuita) en el <portal>Discord Developer Portal</portal> y pega aquí su «Application ID» — sin secretos ni tokens, solo un identificador público.",
-    "bestEffort": "Best-effort, como la detección de partida: si Discord no está abierto o el client_id no es válido, la Rich Presence simplemente permanece inactiva, sin error bloqueante."
+    "bestEffort": "Best-effort, como la detección de partida: si Discord no está abierto o el client_id no es válido, la Rich Presence simplemente permanece inactiva, sin error bloqueante.",
+    "webhookTitle": "Alertas de Discord (webhook)",
+    "webhookDescription": "Envía un mensaje a un canal de Discord de tu elección cuando cambie tu rango — más allá de la Rich Presence anterior (que permanece local), esto es una llamada de red saliente real a la URL de webhook proporcionada.",
+    "webhookEnableLabel": "Activar alertas webhook",
+    "webhookUrlLabel": "URL del webhook de Discord",
+    "webhookUrlPlaceholder": "https://discord.com/api/webhooks/...",
+    "webhookUrlHint": "Creado en la configuración de un canal de Discord (Integraciones → Webhooks). Esta URL otorga permiso de escritura en ese canal — mantenla privada, nunca la compartas."
   },
   "notifications": {
     "title": "Notificaciones",
@@ -119,6 +125,10 @@
     "lossStreakLabel": "Notificarme tras varias derrotas seguidas",
     "lossStreakUnit": "derrotas seguidas",
     "lossStreakHint": "Se comprueba en tus cuentas marcadas como «propias» (ver TopNav) cada vez que consultas el historial de partidas — sin llamada de red dedicada.",
+    "winStreakTitle": "Racha de victorias",
+    "winStreakLabel": "Notificarme tras varias victorias seguidas",
+    "winStreakUnit": "victorias seguidas",
+    "winStreakHint": "Se comprueba en tus cuentas marcadas como «propias» (ver TopNav) cada vez que consultas el historial de partidas — sin llamada de red dedicada.",
     "inactivityTitle": "Recordatorio de inactividad",
     "inactivityLabel": "Recordarme si no he consultado mis estadísticas en un tiempo",
     "inactivityAfter": "Tras",

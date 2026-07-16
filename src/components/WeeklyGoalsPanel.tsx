@@ -33,7 +33,10 @@ export default function WeeklyGoalsPanel({ puuid, matches }: WeeklyGoalsPanelPro
   }
 
   async function handleSave() {
-    await tauriApi.saveWeeklyGoal(puuid, newType, newValue);
+    // `weekly_kd` : l'utilisateur saisit un K/D décimal (ex. 1.3), stocké ×100 en base
+    // (target_value est un entier) — voir `WeeklyGoalType` dans tauriApi.ts.
+    const targetValue = newType === "weekly_kd" ? Math.round(newValue * 100) : Math.round(newValue);
+    await tauriApi.saveWeeklyGoal(puuid, newType, targetValue);
     await invalidate();
     setAdding(false);
   }
@@ -46,6 +49,24 @@ export default function WeeklyGoalsPanel({ puuid, matches }: WeeklyGoalsPanelPro
   const activeGoals = goals.data ?? [];
   const canAddMatches = !activeGoals.some((g) => g.goal_type === "weekly_matches");
   const canAddWinrate = !activeGoals.some((g) => g.goal_type === "weekly_winrate");
+  const canAddKd = !activeGoals.some((g) => g.goal_type === "weekly_kd");
+  const canAddHs = !activeGoals.some((g) => g.goal_type === "weekly_hs");
+
+  /** TODO Fonctionnalités#7 : valeur courante + cible affichée pour un goal_type donné.
+   * `weekly_kd` stocke la cible × 100 (target_value entier), `weekly_hs` directement en %. */
+  function currentAndTarget(goal: (typeof activeGoals)[number]): { current: number; target: number } {
+    const target = goal.target_value ?? 0;
+    switch (goal.goal_type) {
+      case "weekly_matches":
+        return { current: weekly.matches, target };
+      case "weekly_kd":
+        return { current: Math.round(weekly.kd * 100), target };
+      case "weekly_hs":
+        return { current: Math.round(weekly.hsPercent), target };
+      default:
+        return { current: Math.round(weekly.winPercent), target };
+    }
+  }
 
   // Backlog #57 : marque les objectifs atteints sur la frise "vie du compte" — idempotent
   // côté Rust (dédupliqué par semaine ISO), donc sans risque à rappeler à chaque rendu tant
@@ -53,24 +74,25 @@ export default function WeeklyGoalsPanel({ puuid, matches }: WeeklyGoalsPanelPro
   useEffect(() => {
     const periodKey = isoWeekKey(new Date());
     for (const goal of activeGoals) {
-      const isMatches = goal.goal_type === "weekly_matches";
-      const target = goal.target_value ?? 0;
-      const current = isMatches ? weekly.matches : Math.round(weekly.winPercent);
+      const { current, target } = currentAndTarget(goal);
       if (current >= target && target > 0) {
         void tauriApi.recordGoalAchieved(puuid, goal.goal_type, periodKey);
       }
     }
-  }, [puuid, activeGoals, weekly.matches, weekly.winPercent]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [puuid, activeGoals, weekly.matches, weekly.winPercent, weekly.kd, weekly.hsPercent]);
 
   return (
     <Panel className="p-4">
       <div className="mb-3 flex items-center justify-between">
         <p className="hud-label">{t("weeklyGoalsPanel.title")}</p>
-        {!adding && (canAddMatches || canAddWinrate) && (
+        {!adding && (canAddMatches || canAddWinrate || canAddKd || canAddHs) && (
           <button
             type="button"
             onClick={() => {
-              setNewType(canAddMatches ? "weekly_matches" : "weekly_winrate");
+              setNewType(
+                canAddMatches ? "weekly_matches" : canAddWinrate ? "weekly_winrate" : canAddKd ? "weekly_kd" : "weekly_hs",
+              );
               setAdding(true);
             }}
             className="text-[11px] text-lo transition-colors hover:text-hi"
@@ -94,20 +116,30 @@ export default function WeeklyGoalsPanel({ puuid, matches }: WeeklyGoalsPanelPro
         <div className="space-y-2.5">
           <select
             value={newType}
-            onChange={(e) => setNewType(e.target.value as WeeklyGoalType)}
+            onChange={(e) => {
+              const type = e.target.value as WeeklyGoalType;
+              setNewType(type);
+              setNewValue(type === "weekly_kd" ? 1.3 : type === "weekly_hs" ? 25 : type === "weekly_winrate" ? 50 : 10);
+            }}
             className="w-full border border-line bg-base px-2.5 py-1.5 text-sm text-hi focus:border-accent focus:outline-none"
           >
             {canAddMatches && <option value="weekly_matches">{t("weeklyGoalsPanel.typeMatches")}</option>}
             {canAddWinrate && <option value="weekly_winrate">{t("weeklyGoalsPanel.typeWinrate")}</option>}
+            {canAddKd && <option value="weekly_kd">{t("weeklyGoalsPanel.typeKd")}</option>}
+            {canAddHs && <option value="weekly_hs">{t("weeklyGoalsPanel.typeHs")}</option>}
           </select>
           <div className="flex items-center gap-2">
             <label className="hud-label text-[10px] text-lo">
-              {newType === "weekly_matches" ? t("weeklyGoalsPanel.matchesLabel") : t("weeklyGoalsPanel.winrateLabel")}
+              {newType === "weekly_matches" && t("weeklyGoalsPanel.matchesLabel")}
+              {newType === "weekly_winrate" && t("weeklyGoalsPanel.winrateLabel")}
+              {newType === "weekly_kd" && t("weeklyGoalsPanel.kdLabel")}
+              {newType === "weekly_hs" && t("weeklyGoalsPanel.hsLabel")}
             </label>
             <input
               type="number"
-              min={1}
-              max={newType === "weekly_winrate" ? 100 : 999}
+              min={newType === "weekly_kd" ? 0.1 : 1}
+              step={newType === "weekly_kd" ? 0.1 : 1}
+              max={newType === "weekly_winrate" || newType === "weekly_hs" ? 100 : newType === "weekly_kd" ? 5 : 999}
               value={newValue}
               onChange={(e) => setNewValue(Number(e.target.value))}
               className="w-20 border border-line bg-base px-2 py-1 text-sm text-hi focus:border-accent focus:outline-none"
@@ -135,9 +167,7 @@ export default function WeeklyGoalsPanel({ puuid, matches }: WeeklyGoalsPanelPro
       {activeGoals.length > 0 && (
         <div className="space-y-3">
           {activeGoals.map((goal) => {
-            const isMatches = goal.goal_type === "weekly_matches";
-            const target = goal.target_value ?? 0;
-            const current = isMatches ? weekly.matches : Math.round(weekly.winPercent);
+            const { current, target } = currentAndTarget(goal);
             const percent = target > 0 ? Math.min(100, (current / target) * 100) : 0;
             const reached = current >= target;
 
@@ -145,13 +175,26 @@ export default function WeeklyGoalsPanel({ puuid, matches }: WeeklyGoalsPanelPro
               <div key={goal.goal_type} className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-hi">
-                    {isMatches
-                      ? t("weeklyGoalsPanel.matchesProgress", { current: weekly.matches, target })
-                      : t("weeklyGoalsPanel.winrateProgress", {
-                          current: Math.round(weekly.winPercent),
-                          target,
-                          matches: weekly.matches,
-                        })}
+                    {goal.goal_type === "weekly_matches" &&
+                      t("weeklyGoalsPanel.matchesProgress", { current: weekly.matches, target })}
+                    {goal.goal_type === "weekly_winrate" &&
+                      t("weeklyGoalsPanel.winrateProgress", {
+                        current: Math.round(weekly.winPercent),
+                        target,
+                        matches: weekly.matches,
+                      })}
+                    {goal.goal_type === "weekly_kd" &&
+                      t("weeklyGoalsPanel.kdProgress", {
+                        current: weekly.kd.toFixed(2),
+                        target: (target / 100).toFixed(2),
+                        matches: weekly.matches,
+                      })}
+                    {goal.goal_type === "weekly_hs" &&
+                      t("weeklyGoalsPanel.hsProgress", {
+                        current: Math.round(weekly.hsPercent),
+                        target,
+                        matches: weekly.matches,
+                      })}
                   </span>
                   {reached && <span className="text-accent">{t("weeklyGoalsPanel.reached")}</span>}
                 </div>

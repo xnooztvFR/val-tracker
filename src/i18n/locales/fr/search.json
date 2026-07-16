@@ -17,6 +17,10 @@
     "title": "Recherches récentes",
     "toggleFavorite": "Basculer favori"
   },
+  "followedFriends": {
+    "title": "Amis suivis (mode spectateur)",
+    "lastMatch": "Dernière partie {{time}}"
+  },
   "hoverPreview": {
     "loading": "Chargement…"
   }

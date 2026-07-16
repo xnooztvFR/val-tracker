@@ -78,6 +78,39 @@ function mergeHistory(snapshots: RankSnapshot[], serverHistory: MmrHistoryEntry[
   return merged.sort((a, b) => a.timestampMs - b.timestampMs);
 }
 
+/** TODO Fonctionnalités#16 : début du mois calendaire, `monthsAgo` mois avant `now`. */
+function startOfMonth(now: Date, monthsAgo: number): Date {
+  const d = new Date(now.getFullYear(), now.getMonth() - monthsAgo, 1);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+interface MonthDelta {
+  scoreChange: number;
+  endLabel: string;
+  endRR: number | null;
+}
+
+/** TODO Fonctionnalités#16 : comparaison de progression entre deux périodes — delta de
+ * score continu (tier*100 + RR) entre le début et la fin du mois `monthsAgo` mois avant
+ * aujourd'hui (0 = mois en cours). `null` si aucun point n'existe dans cette fenêtre. Le
+ * point de départ est le dernier point *avant* la fenêtre (état hérité du mois précédent),
+ * pas le premier point de la fenêtre elle-même, pour ne pas sous-compter le début de mois. */
+function computeMonthDelta(points: Point[], now: Date, monthsAgo: number): MonthDelta | null {
+  const start = startOfMonth(now, monthsAgo).getTime();
+  const end = monthsAgo === 0 ? now.getTime() : startOfMonth(now, monthsAgo - 1).getTime();
+  const inRange = points.filter((p) => p.timestampMs >= start && p.timestampMs < end);
+  if (inRange.length === 0) return null;
+
+  const before = points.filter((p) => p.timestampMs < start);
+  const startPoint = before.length > 0 ? before[before.length - 1] : inRange[0];
+  const endPoint = inRange[inRange.length - 1];
+  const startScore = startPoint.tier * 100 + (startPoint.rr ?? 0);
+  const endScore = endPoint.tier * 100 + (endPoint.rr ?? 0);
+
+  return { scoreChange: endScore - startScore, endLabel: endPoint.label, endRR: endPoint.rr };
+}
+
 export default function RankHistoryChart({ snapshots, serverHistory = [] }: RankHistoryChartProps) {
   const { t } = useTranslation("componentsExtra");
   const reducedMotion = usePrefersReducedMotion();
@@ -85,6 +118,13 @@ export default function RankHistoryChart({ snapshots, serverHistory = [] }: Rank
     () => mergeHistory(snapshots, serverHistory, t("rankHistoryChart.unknownTier")),
     [snapshots, serverHistory, t],
   );
+
+  const monthComparison = useMemo(() => {
+    const now = new Date();
+    const thisMonth = computeMonthDelta(points, now, 0);
+    const lastMonth = computeMonthDelta(points, now, 1);
+    return thisMonth || lastMonth ? { thisMonth, lastMonth } : null;
+  }, [points]);
 
   if (points.length < MIN_POINTS_FOR_CHART) {
     return (
@@ -109,7 +149,36 @@ export default function RankHistoryChart({ snapshots, serverHistory = [] }: Rank
   }));
 
   return (
-    <Panel className="h-48 p-3">
+    <div className="space-y-2">
+      {monthComparison && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-lo">
+          <span>
+            {t("rankHistoryChart.thisMonth")}{" "}
+            {monthComparison.thisMonth ? (
+              <span className={monthComparison.thisMonth.scoreChange >= 0 ? "text-accent" : "text-crit"}>
+                {monthComparison.thisMonth.scoreChange >= 0 ? "+" : ""}
+                {monthComparison.thisMonth.scoreChange} ({monthComparison.thisMonth.endLabel}
+                {monthComparison.thisMonth.endRR != null ? ` ${monthComparison.thisMonth.endRR} RR` : ""})
+              </span>
+            ) : (
+              t("rankHistoryChart.noData")
+            )}
+          </span>
+          <span>
+            {t("rankHistoryChart.lastMonth")}{" "}
+            {monthComparison.lastMonth ? (
+              <span className={monthComparison.lastMonth.scoreChange >= 0 ? "text-accent" : "text-crit"}>
+                {monthComparison.lastMonth.scoreChange >= 0 ? "+" : ""}
+                {monthComparison.lastMonth.scoreChange} ({monthComparison.lastMonth.endLabel}
+                {monthComparison.lastMonth.endRR != null ? ` ${monthComparison.lastMonth.endRR} RR` : ""})
+              </span>
+            ) : (
+              t("rankHistoryChart.noData")
+            )}
+          </span>
+        </div>
+      )}
+      <Panel className="h-48 p-3">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
           <CartesianGrid stroke="rgb(var(--lo-rgb) / 0.15)" vertical={false} />
@@ -152,6 +221,7 @@ export default function RankHistoryChart({ snapshots, serverHistory = [] }: Rank
           />
         </LineChart>
       </ResponsiveContainer>
-    </Panel>
+      </Panel>
+    </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Skeleton, SkeletonScreen } from "../components/Skeleton";
 import { useParams } from "react-router-dom";
@@ -8,6 +8,7 @@ import SampleSizeSwitch from "../components/SampleSizeSwitch";
 import ProfileCardModal from "../components/ProfileCardModal";
 import PeriodRecapModal from "../components/PeriodRecapModal";
 import QueueStatusStrip from "../components/QueueStatusStrip";
+import RecommendationsPanel from "../components/RecommendationsPanel";
 import ErrorState from "../components/ErrorState";
 import StaleDataBanner from "../components/StaleDataBanner";
 import HomeStatusBar from "../components/HomeStatusBar";
@@ -41,11 +42,24 @@ export default function Home() {
     rankPulse,
     handleRefresh,
     buildPeriodRecap,
+    autoSessionRecap,
+    dismissAutoSessionRecap,
   } = useHomeData(region, name, tag);
 
   function openPeriodRecap(period: "week" | "month") {
     setPeriodRecap(buildPeriodRecap(period));
   }
+
+  // TODO Fonctionnalités#9 : affiche automatiquement le récap de session dès qu'une session
+  // vient de se terminer (voir useHomeData::autoSessionRecap) — seulement si aucune autre
+  // modale de récap n'est déjà ouverte, pour ne pas se substituer à un récap semaine/mois
+  // ouvert manuellement par l'utilisateur.
+  useEffect(() => {
+    if (autoSessionRecap && !periodRecap) {
+      setPeriodRecap(autoSessionRecap);
+      dismissAutoSessionRecap();
+    }
+  }, [autoSessionRecap, periodRecap, dismissAutoSessionRecap]);
 
   if (account.isLoading) {
     return <SkeletonScreen className="p-6" />;
@@ -141,6 +155,8 @@ export default function Home() {
       )}
 
       <QueueStatusStrip region={region} />
+
+      <RecommendationsPanel puuid={puuid} />
 
       <HomeTimelineSection
         snapshots={snapshots.data ?? []}

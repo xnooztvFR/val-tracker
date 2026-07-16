@@ -166,6 +166,10 @@
       "description": "Partidas em que você e dois companheiros específicos estavam na mesma party simultaneamente.",
       "emptyMessage": "Ainda nenhum squad detectado — abra partidas em que você estava em party de 3 para ver essas estatísticas aparecerem aqui."
     },
+    "fullRoster": {
+      "title": "Roster completo (5 jogadores)",
+      "description": "Composições de equipe completas (você + 4 companheiros) já encontradas várias vezes."
+    },
     "rivalry": {
       "title": "Rivalidade",
       "description": "Confronto direto contra adversários encontrados repetidamente, acumulado à medida que você consulta partidas no Histórico.",

@@ -10,12 +10,16 @@ mod discord_rpc;
 mod dpapi;
 mod image_proxy;
 mod inactivity_reminder;
+mod discord_webhook;
+mod friend_watcher;
 mod loss_streak;
+mod win_streak;
 mod overlay;
 mod riot_local;
 mod economy_stats;
 mod map_averages;
 mod queue_stats;
+mod recommendations;
 mod settings;
 mod side_stats;
 mod status_watcher;
@@ -111,6 +115,11 @@ fn main() {
             // inactivity_reminder_enabled), voir inactivity_reminder.rs.
             inactivity_reminder::start(handle.clone());
 
+            // TODO Fonctionnalités#19 — "mode spectateur ami" : silencieux tant qu'aucun ami
+            // n'est suivi (voir friend_watcher.rs), pas de toggle de réglage séparé — suivre
+            // un ami *est* l'opt-in.
+            friend_watcher::start(handle.clone());
+
             register_shortcuts(&handle, &startup_settings);
 
             // La fenêtre overlay (V2) est créée à la demande puis seulement masquée, jamais
@@ -173,6 +182,14 @@ fn main() {
             commands::list_overlay_monitors,
             commands::save_overlay_monitor,
             commands::save_loss_streak_alert_enabled,
+            commands::save_win_streak_alert_enabled,
+            commands::save_win_streak_alert_count,
+            commands::save_rank_change_alert_enabled,
+            commands::save_discord_webhook_enabled,
+            commands::save_discord_webhook_url,
+            commands::save_vlr_player_link,
+            commands::save_followed_friend,
+            commands::list_followed_friends,
             commands::save_loss_streak_alert_count,
             commands::save_rank_gap_alert_enabled,
             commands::save_rank_gap_alert_threshold,
@@ -210,6 +227,11 @@ fn main() {
             commands::get_queue_stats,
             commands::list_duo_stats,
             commands::list_squad_stats,
+            commands::list_full_roster_stats,
+            commands::get_recommendations,
+            commands::list_match_notes,
+            commands::add_match_note,
+            commands::delete_match_note,
             commands::list_rivalry_stats,
             commands::retro_populate_rivalry,
             commands::record_goal_achieved,

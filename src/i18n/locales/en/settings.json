@@ -106,7 +106,13 @@
     "save": "Save",
     "saved": "Client ID saved.",
     "clientIdHint": "Create a (free) application on the <portal>Discord Developer Portal</portal> and paste its \"Application ID\" here — no secret or token, just a public identifier.",
-    "bestEffort": "Best-effort, like match detection: if Discord isn't running or the client_id is invalid, Rich Presence simply stays inactive, with no blocking error."
+    "bestEffort": "Best-effort, like match detection: if Discord isn't running or the client_id is invalid, Rich Presence simply stays inactive, with no blocking error.",
+    "webhookTitle": "Discord alerts (webhook)",
+    "webhookDescription": "Sends a message to a Discord channel of your choice when your rank changes — beyond the Rich Presence above (which stays local), this is a real outgoing network call to the webhook URL provided.",
+    "webhookEnableLabel": "Enable webhook alerts",
+    "webhookUrlLabel": "Discord webhook URL",
+    "webhookUrlPlaceholder": "https://discord.com/api/webhooks/...",
+    "webhookUrlHint": "Created in a Discord channel's settings (Integrations → Webhooks). This URL grants write access to that channel — keep it private, never share it."
   },
   "notifications": {
     "title": "Notifications",
@@ -119,6 +125,10 @@
     "lossStreakLabel": "Notify me after several losses in a row",
     "lossStreakUnit": "losses in a row",
     "lossStreakHint": "Checked on your accounts marked \"self\" (see TopNav) each time you view match history — no dedicated network call.",
+    "winStreakTitle": "Win streak",
+    "winStreakLabel": "Notify me after several wins in a row",
+    "winStreakUnit": "wins in a row",
+    "winStreakHint": "Checked on your accounts marked \"self\" (see TopNav) each time you view match history — no dedicated network call.",
     "inactivityTitle": "Inactivity reminder",
     "inactivityLabel": "Remind me if I haven't checked my stats in a while",
     "inactivityAfter": "After",

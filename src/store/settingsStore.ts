@@ -13,6 +13,8 @@ interface SettingsState {
   setRiotLocalDisabled: (disabled: boolean) => Promise<void>;
   setDiscordRpcEnabled: (enabled: boolean) => Promise<void>;
   setDiscordRpcClientId: (clientId: string) => Promise<void>;
+  setDiscordWebhookEnabled: (enabled: boolean) => Promise<void>;
+  setDiscordWebhookUrl: (url: string) => Promise<void>;
   setStatusWatcherEnabled: (enabled: boolean) => Promise<void>;
   setUsageMetricsEnabled: (enabled: boolean) => Promise<void>;
   setUiTheme: (theme: string) => Promise<void>;
@@ -24,6 +26,9 @@ interface SettingsState {
   setOverlayMonitor: (monitorId: string) => Promise<void>;
   setLossStreakAlertEnabled: (enabled: boolean) => Promise<void>;
   setLossStreakAlertCount: (count: number) => Promise<void>;
+  setWinStreakAlertEnabled: (enabled: boolean) => Promise<void>;
+  setWinStreakAlertCount: (count: number) => Promise<void>;
+  setRankChangeAlertEnabled: (enabled: boolean) => Promise<void>;
   setRankGapAlertEnabled: (enabled: boolean) => Promise<void>;
   setRankGapAlertThreshold: (threshold: number) => Promise<void>;
   setInactivityReminderEnabled: (enabled: boolean) => Promise<void>;
@@ -76,6 +81,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   setDiscordRpcClientId: async (clientId: string) => {
     await tauriApi.saveDiscordRpcClientId(clientId);
+    await get().refresh();
+  },
+
+  setDiscordWebhookEnabled: async (enabled: boolean) => {
+    await tauriApi.saveDiscordWebhookEnabled(enabled);
+    await get().refresh();
+  },
+
+  setDiscordWebhookUrl: async (url: string) => {
+    await tauriApi.saveDiscordWebhookUrl(url);
     await get().refresh();
   },
 
@@ -139,8 +154,23 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     await get().refresh();
   },
 
+  setRankChangeAlertEnabled: async (enabled: boolean) => {
+    await tauriApi.saveRankChangeAlertEnabled(enabled);
+    await get().refresh();
+  },
+
   setLossStreakAlertCount: async (count: number) => {
     await tauriApi.saveLossStreakAlertCount(count);
+    await get().refresh();
+  },
+
+  setWinStreakAlertEnabled: async (enabled: boolean) => {
+    await tauriApi.saveWinStreakAlertEnabled(enabled);
+    await get().refresh();
+  },
+
+  setWinStreakAlertCount: async (count: number) => {
+    await tauriApi.saveWinStreakAlertCount(count);
     await get().refresh();
   },
 

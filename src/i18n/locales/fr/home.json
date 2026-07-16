@@ -1,4 +1,17 @@
 {
+  "today": {
+    "title": "Aujourd'hui",
+    "emptyTitle": "Pas encore de partie aujourd'hui",
+    "emptyDetail": "Reviens ici après ta première game du jour pour voir ton bilan condensé.",
+    "recentTitle": "Games d'aujourd'hui",
+    "stats": {
+      "matches": "Matchs",
+      "winLossHint": "{{wins}}V - {{losses}}D",
+      "winrate": "Winrate",
+      "kd": "K/D",
+      "hs": "HS%"
+    }
+  },
   "statusBar": {
     "operator": "Opérateur · {{region}}",
     "summary": "Bilan · {{n}} derniers",

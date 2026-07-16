@@ -195,6 +195,112 @@ pub fn list_squad_stats(
     rows.collect()
 }
 
+/// TODO Fonctionnalités#1 : un membre d'un roster complet à 5 (voir `list_full_roster_stats`).
+#[derive(Debug, Clone, Serialize)]
+pub struct RosterMember {
+    pub puuid: String,
+    pub name: String,
+    pub tag: String,
+}
+
+/// TODO Fonctionnalités#1 : historique de composition d'équipe — au-delà du duo/squad (2-3
+/// coéquipiers), regroupe les matchs où `tracked_puuid` avait exactement 4 coéquipiers en
+/// party (roster complet de 5) et rappelle le bilan de chaque composition rencontrée
+/// plusieurs fois. Pas de requête SQL group-by directe possible ici (l'ensemble des 4
+/// coéquipiers varie par match) : on agrège donc en mémoire après avoir groupé les lignes de
+/// `party_matches` par `match_id`.
+#[derive(Debug, Clone, Serialize)]
+pub struct FullRosterStat {
+    pub members: Vec<RosterMember>,
+    pub matches_played: i64,
+    pub matches_won: i64,
+}
+
+pub fn list_full_roster_stats(
+    conn: &Connection,
+    tracked_puuid: &str,
+    min_matches: i64,
+    since_ts: Option<i64>,
+) -> rusqlite::Result<Vec<FullRosterStat>> {
+    let mut stmt = conn.prepare(
+        "SELECT match_id, teammate_puuid, teammate_name, teammate_tag, won, recorded_at
+         FROM party_matches
+         WHERE tracked_puuid = ?1 AND relation = 'teammate'
+         ORDER BY match_id",
+    )?;
+    let rows = stmt.query_map([tracked_puuid], |row| {
+        Ok((
+            row.get::<_, String>(0)?,
+            row.get::<_, String>(1)?,
+            row.get::<_, String>(2)?,
+            row.get::<_, String>(3)?,
+            row.get::<_, i64>(4)?,
+            row.get::<_, i64>(5)?,
+        ))
+    })?;
+
+    use std::collections::HashMap;
+    let mut by_match: HashMap<String, Vec<(String, String, String, i64, i64)>> = HashMap::new();
+    for row in rows {
+        let (match_id, puuid, name, tag, won, recorded_at) = row?;
+        if let Some(since) = since_ts {
+            if recorded_at < since {
+                continue;
+            }
+        }
+        by_match
+            .entry(match_id)
+            .or_default()
+            .push((puuid, name, tag, won, recorded_at));
+    }
+
+    // Roster complet = exactement 4 coéquipiers en plus de tracked_puuid (squad de 5).
+    let mut aggregated: HashMap<String, (Vec<RosterMember>, i64, i64)> = HashMap::new();
+    for (_match_id, mut teammates) in by_match {
+        if teammates.len() != 4 {
+            continue;
+        }
+        teammates.sort_by(|a, b| a.0.cmp(&b.0));
+        let key = teammates
+            .iter()
+            .map(|t| t.0.as_str())
+            .collect::<Vec<_>>()
+            .join(",");
+        let won = teammates[0].3 != 0;
+        let entry = aggregated.entry(key).or_insert_with(|| {
+            let members = teammates
+                .iter()
+                .map(|t| RosterMember {
+                    puuid: t.0.clone(),
+                    name: t.1.clone(),
+                    tag: t.2.clone(),
+                })
+                .collect();
+            (members, 0, 0)
+        });
+        entry.1 += 1;
+        if won {
+            entry.2 += 1;
+        }
+    }
+
+    let mut result: Vec<FullRosterStat> = aggregated
+        .into_values()
+        .filter(|(_, played, _)| *played >= min_matches)
+        .map(|(members, played, won)| FullRosterStat {
+            members,
+            matches_played: played,
+            matches_won: won,
+        })
+        .collect();
+    result.sort_by(|a, b| {
+        b.matches_played
+            .cmp(&a.matches_played)
+            .then(b.matches_won.cmp(&a.matches_won))
+    });
+    Ok(result)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -292,6 +398,43 @@ mod tests {
         // Ordre alphabétique du puuid pour ne pas dupliquer la paire (a < b).
         assert_eq!(squads[0].teammate_a_puuid, "alice");
         assert_eq!(squads[0].teammate_b_puuid, "bob");
+    }
+
+    #[test]
+    fn list_full_roster_stats_aggregates_matches_with_exactly_four_teammates() {
+        let conn = memory_conn();
+        // Match-1 : roster complet à 5 (moi + 4 coéquipiers).
+        record_party_match(&conn, "match-1", "me", "alice", "Alice", "1111", true, "teammate").unwrap();
+        record_party_match(&conn, "match-1", "me", "bob", "Bob", "2222", true, "teammate").unwrap();
+        record_party_match(&conn, "match-1", "me", "carol", "Carol", "3333", true, "teammate").unwrap();
+        record_party_match(&conn, "match-1", "me", "dave", "Dave", "4444", true, "teammate").unwrap();
+        // Match-2 : même roster complet, rejoué (ordre d'insertion différent), défaite.
+        record_party_match(&conn, "match-2", "me", "dave", "Dave", "4444", false, "teammate").unwrap();
+        record_party_match(&conn, "match-2", "me", "carol", "Carol", "3333", false, "teammate").unwrap();
+        record_party_match(&conn, "match-2", "me", "bob", "Bob", "2222", false, "teammate").unwrap();
+        record_party_match(&conn, "match-2", "me", "alice", "Alice", "1111", false, "teammate").unwrap();
+        // Match-3 : squad incomplet (seulement 2 coéquipiers), ne doit pas compter.
+        record_party_match(&conn, "match-3", "me", "alice", "Alice", "1111", true, "teammate").unwrap();
+        record_party_match(&conn, "match-3", "me", "bob", "Bob", "2222", true, "teammate").unwrap();
+
+        let rosters = list_full_roster_stats(&conn, "me", 1, None).unwrap();
+        assert_eq!(rosters.len(), 1);
+        assert_eq!(rosters[0].matches_played, 2);
+        assert_eq!(rosters[0].matches_won, 1);
+        assert_eq!(rosters[0].members.len(), 4);
+        assert_eq!(rosters[0].members[0].puuid, "alice");
+    }
+
+    #[test]
+    fn list_full_roster_stats_filters_below_min_matches() {
+        let conn = memory_conn();
+        record_party_match(&conn, "match-1", "me", "alice", "Alice", "1111", true, "teammate").unwrap();
+        record_party_match(&conn, "match-1", "me", "bob", "Bob", "2222", true, "teammate").unwrap();
+        record_party_match(&conn, "match-1", "me", "carol", "Carol", "3333", true, "teammate").unwrap();
+        record_party_match(&conn, "match-1", "me", "dave", "Dave", "4444", true, "teammate").unwrap();
+
+        assert_eq!(list_full_roster_stats(&conn, "me", 2, None).unwrap().len(), 0);
+        assert_eq!(list_full_roster_stats(&conn, "me", 1, None).unwrap().len(), 1);
     }
 
     #[test]

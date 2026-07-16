@@ -27,6 +27,7 @@ const GLOBAL_TABS = [
 
 const TABS = [
   { to: "", key: "home", end: true },
+  { to: "/aujourdhui", key: "today", end: true },
   { to: "/matchs", key: "history", end: false },
   { to: "/tendances", key: "trends", end: true },
   { to: "/agents", key: "agents", end: true },

@@ -9,6 +9,7 @@ import ErrorState from "../components/ErrorState";
 import InfoTooltip from "../components/InfoTooltip";
 import Panel from "../components/Panel";
 import StaleDataBanner from "../components/StaleDataBanner";
+import MatchNotesPanel from "../components/MatchNotesPanel";
 import { formatDurationMs, formatKda, formatKdRatio } from "../lib/format";
 import { tauriApi } from "../lib/tauriApi";
 import type { MapAverageStat, MatchDetailPlayer, MatchDetailRound } from "../lib/tauriApi";
@@ -210,6 +211,8 @@ export default function MatchDetail() {
           average={mapAverage.data}
         />
       )}
+
+      {matchId && puuid && <MatchNotesPanel matchId={matchId} puuid={puuid} />}
     </div>
   );
 }

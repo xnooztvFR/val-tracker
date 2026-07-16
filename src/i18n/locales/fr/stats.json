@@ -168,6 +168,10 @@
       "description": "Matchs où toi et deux coéquipiers précis étiez dans la même party simultanément.",
       "emptyMessage": "Pas encore de squad détectée — ouvre des matchs où tu étais en party à 3 pour voir apparaître ces stats ici."
     },
+    "fullRoster": {
+      "title": "Roster complet (5 joueurs)",
+      "description": "Compositions d'équipe complètes (toi + 4 coéquipiers) déjà rencontrées plusieurs fois."
+    },
     "rivalry": {
       "title": "Rivalité",
       "description": "Face-à-face contre des adversaires croisés à plusieurs reprises, accumulé au fil des matchs consultés dans Historique.",

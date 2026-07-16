@@ -9,9 +9,11 @@ import {
   computeRankEta,
   computeRegularity,
   computeSeasonComparison,
+  computeSessionRecap,
   computeSessions,
   computeWeeklyMatchStats,
   isoWeekKey,
+  isSessionOver,
 } from "./stats";
 import type { LeaderboardThreshold, MatchEntry, MmrHistoryEntry, RankSnapshot } from "./tauriApi";
 
@@ -126,7 +128,15 @@ describe("computeWeeklyMatchStats", () => {
 
   it("returns zero winrate when no matches were played this week", () => {
     const now = new Date("2024-03-06T12:00:00Z");
-    expect(computeWeeklyMatchStats([], "me", now)).toEqual({ matches: 0, wins: 0, winPercent: 0 });
+    expect(computeWeeklyMatchStats([], "me", now)).toEqual({
+      matches: 0,
+      wins: 0,
+      winPercent: 0,
+      kills: 0,
+      deaths: 0,
+      kd: 0,
+      hsPercent: 0,
+    });
   });
 });
 
@@ -228,6 +238,50 @@ describe("computePeriodRecap", () => {
     const recap = computePeriodRecap([], snapshots, "me", "week", now);
     expect(recap.rankChange?.tierStart).toBe(20);
     expect(recap.rankChange?.tierEnd).toBe(20);
+  });
+});
+
+describe("computeSessionRecap / isSessionOver", () => {
+  function makeSnapshot(tier: number, rr: number | null, recordedAt: number): RankSnapshot {
+    return { tier, tier_patched: `Tier ${tier}`, rr, recorded_at: recordedAt };
+  }
+
+  it("bounds the recap to the most recent session only, ignoring an older one", () => {
+    const matches = [
+      makeMatch({ matchId: "recent-2", startedAt: "2024-03-06T12:00:00Z", won: true }),
+      makeMatch({ matchId: "recent-1", startedAt: "2024-03-06T11:30:00Z", won: false }),
+      // Écart de plus de 30 min : nouvelle session, doit être ignorée.
+      makeMatch({ matchId: "older", startedAt: "2024-03-05T10:00:00Z", won: true }),
+    ];
+    const recap = computeSessionRecap(matches, [], "me");
+    expect(recap).not.toBeNull();
+    expect(recap!.overview.played).toBe(2);
+    expect(recap!.period).toBe("session");
+  });
+
+  it("returns null when no match is loaded", () => {
+    expect(computeSessionRecap([], [], "me")).toBeNull();
+  });
+
+  it("computes the rank change bounded to the session's start", () => {
+    const matches = [makeMatch({ matchId: "m1", startedAt: "2024-03-06T12:00:00Z", won: true })];
+    const snapshots = [
+      makeSnapshot(18, 40, new Date("2024-03-06T11:00:00Z").getTime() / 1000),
+      makeSnapshot(19, 10, new Date("2024-03-06T12:30:00Z").getTime() / 1000),
+    ];
+    const recap = computeSessionRecap(matches, snapshots, "me");
+    expect(recap!.rankChange?.tierStart).toBe(18);
+    expect(recap!.rankChange?.tierEnd).toBe(19);
+  });
+
+  it("reports the session as over once the last match is more than 30 minutes old", () => {
+    const matches = [makeMatch({ matchId: "m1", startedAt: "2024-03-06T12:00:00Z", won: true })];
+    expect(isSessionOver(matches, new Date("2024-03-06T12:20:00Z"))).toBe(false);
+    expect(isSessionOver(matches, new Date("2024-03-06T12:45:00Z"))).toBe(true);
+  });
+
+  it("treats an empty match list as not over (nothing to recap)", () => {
+    expect(isSessionOver([], new Date())).toBe(false);
   });
 });
 

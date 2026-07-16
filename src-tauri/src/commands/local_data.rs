@@ -94,6 +94,41 @@ pub async fn save_player_tags(
     Ok(crate::db::set_player_tags(&conn, &puuid, &tags)?)
 }
 
+/// TODO Fonctionnalités#19 : bascule le suivi passif ("spectateur ami") d'un joueur suivi.
+#[tauri::command]
+pub async fn save_followed_friend(
+    state: State<'_, AppState>,
+    puuid: String,
+    followed: bool,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    Ok(crate::db::set_followed_friend(&conn, &puuid, followed)?)
+}
+
+#[tauri::command]
+pub async fn list_followed_friends(state: State<'_, AppState>) -> Result<Vec<crate::db::TrackedPlayer>, CommandError> {
+    let conn = state.db.lock().await;
+    Ok(crate::db::list_followed_friends(&conn)?)
+}
+
+/// TODO Fonctionnalités#10 : lie (ou délie, si vide) un joueur suivi à un profil pro VLR
+/// connu de l'utilisateur.
+#[tauri::command]
+pub async fn save_vlr_player_link(
+    state: State<'_, AppState>,
+    puuid: String,
+    vlr_player_id: Option<i64>,
+    vlr_player_name: Option<String>,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    Ok(crate::db::set_vlr_player_link(
+        &conn,
+        &puuid,
+        vlr_player_id,
+        vlr_player_name.as_deref(),
+    )?)
+}
+
 /// Backlog #13 : objectif de progression ("atteindre Diamant 2") pour un joueur suivi.
 #[tauri::command]
 pub async fn get_progression_goal(
