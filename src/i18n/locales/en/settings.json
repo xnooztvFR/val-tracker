@@ -217,7 +217,16 @@
       "status_watcher": "Server status / queue watcher",
       "inactivity_reminder": "Inactivity reminder",
       "discord_rpc": "Discord Rich Presence"
-    }
+    },
+    "reportTitle": "Exportable report",
+    "reportDescription": "App version, auto-detection/overlay state, local database size, and last Henrik error — handy to paste into a support message.",
+    "copyReport": "Copy report",
+    "appVersion": "App version",
+    "overlayEnabled": "Match auto-detection / overlay",
+    "dbSize": "Local database size",
+    "lastHenrikError": "Last Henrik error",
+    "enabled": "Enabled",
+    "disabled": "Disabled"
   },
   "logs": {
     "title": "Logs",

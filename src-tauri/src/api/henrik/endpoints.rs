@@ -139,7 +139,9 @@ pub(crate) async fn fetch_with_cache_priority<T: DeserializeOwned>(
                     } else {
                         crate::applog!("[henrik] parse échoué pour {safe_path}: {e}");
                     }
-                    return Err(HenrikError::Serde(e));
+                    let err = HenrikError::Serde(e);
+                    client.record_last_error(&err).await;
+                    return Err(err);
                 }
             };
             let fetched_at = {
@@ -158,6 +160,7 @@ pub(crate) async fn fetch_with_cache_priority<T: DeserializeOwned>(
         // Un 404 est définitif ("joueur introuvable") : pas de repli sur un cache périmé.
         Err(HenrikError::NotFound) => Err(HenrikError::NotFound),
         Err(err) => {
+            client.record_last_error(&err).await;
             let duration_ms = network_started_at.elapsed().as_millis() as i64;
             let stale = {
                 let conn = db.lock().await;

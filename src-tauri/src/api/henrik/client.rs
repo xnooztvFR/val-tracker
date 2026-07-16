@@ -50,6 +50,10 @@ impl HenrikAuth {
 pub struct HenrikClient {
     http: reqwest::Client,
     rate_limiter: Arc<RateLimiter>,
+    /// Dernière erreur Henrik rencontrée (message affichable + timestamp Unix), pour le
+    /// rapport diagnostics exportable (Paramètres → Diagnostics) — pas un `NotFound` (réponse
+    /// valide de l'API, pas une panne), voir l'appelant dans `endpoints.rs`.
+    last_error: tokio::sync::Mutex<Option<(String, i64)>>,
 }
 
 impl HenrikClient {
@@ -60,7 +64,16 @@ impl HenrikClient {
             .build()
             .expect("construction du client reqwest");
 
-        Self { http, rate_limiter }
+        Self { http, rate_limiter, last_error: tokio::sync::Mutex::new(None) }
+    }
+
+    pub async fn record_last_error(&self, error: &HenrikError) {
+        let mut guard = self.last_error.lock().await;
+        *guard = Some((error.to_string(), chrono::Utc::now().timestamp()));
+    }
+
+    pub async fn last_error_snapshot(&self) -> Option<(String, i64)> {
+        self.last_error.lock().await.clone()
     }
 
     /// Effectue un GET sur `path` (ex: "/valorant/v2/account/foo/bar") et renvoie le

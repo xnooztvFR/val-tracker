@@ -832,6 +832,16 @@ export interface TaskDiagnostic {
   last_error_at: number | null;
 }
 
+/** Rapport diagnostics agrégé exportable en un clic (Paramètres → Diagnostics). */
+export interface DiagnosticsReport {
+  app_version: string;
+  overlay_enabled: boolean;
+  db_size_bytes: number | null;
+  last_henrik_error: string | null;
+  last_henrik_error_at: number | null;
+  background_tasks: TaskDiagnostic[];
+}
+
 export interface UsageMetricsSummary {
   cache_hits: number;
   network_fetches: number;
@@ -981,6 +991,8 @@ export const tauriApi = {
     invoke<UsageMetricsSummary>("get_usage_metrics_summary"),
   getBackgroundDiagnostics: () =>
     invoke<TaskDiagnostic[]>("get_background_diagnostics"),
+  getDiagnosticsReport: () =>
+    invoke<DiagnosticsReport>("get_diagnostics_report"),
   openDownloadsFolder: () => invoke<void>("open_downloads_folder"),
   saveUiTheme: (theme: string) => invoke<void>("save_ui_theme", { theme }),
   saveUiAccent: (accent: string) => invoke<void>("save_ui_accent", { accent }),

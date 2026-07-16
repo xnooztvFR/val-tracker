@@ -1,9 +1,22 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { tauriApi, type TaskDiagnostic } from "../../lib/tauriApi";
+import { tauriApi, type DiagnosticsReport, type TaskDiagnostic } from "../../lib/tauriApi";
 import { formatRelativeTime } from "../../lib/format";
 import { SectionTitle } from "./shared";
+import CopyButton from "../../components/CopyButton";
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const units = ["KB", "MB", "GB"];
+  let value = bytes / 1024;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  return `${value.toFixed(1)} ${units[unitIndex]}`;
+}
 
 /** Vue d'ensemble des tâches de fond (poller riot_local, status watcher, rappel
  * d'inactivité, thread Discord RPC) : elles tournent indépendamment, best-effort, sans
@@ -12,12 +25,18 @@ import { SectionTitle } from "./shared";
 export default function DiagnosticsSection() {
   const { t } = useTranslation("settings");
   const [tasks, setTasks] = useState<TaskDiagnostic[] | null>(null);
+  const [report, setReport] = useState<DiagnosticsReport | null>(null);
   const [loading, setLoading] = useState(true);
 
   async function load() {
     setLoading(true);
     try {
-      setTasks(await tauriApi.getBackgroundDiagnostics());
+      const [tasksResult, reportResult] = await Promise.all([
+        tauriApi.getBackgroundDiagnostics(),
+        tauriApi.getDiagnosticsReport(),
+      ]);
+      setTasks(tasksResult);
+      setReport(reportResult);
     } finally {
       setLoading(false);
     }
@@ -26,6 +45,25 @@ export default function DiagnosticsSection() {
   useEffect(() => {
     load();
   }, []);
+
+  const reportText = report
+    ? [
+        `${t("diagnostics.appVersion")}: ${report.app_version}`,
+        `${t("diagnostics.overlayEnabled")}: ${report.overlay_enabled ? t("diagnostics.enabled") : t("diagnostics.disabled")}`,
+        `${t("diagnostics.dbSize")}: ${report.db_size_bytes != null ? formatBytes(report.db_size_bytes) : "?"}`,
+        `${t("diagnostics.lastHenrikError")}: ${
+          report.last_henrik_error
+            ? `${report.last_henrik_error} (${formatRelativeTime(report.last_henrik_error_at)})`
+            : t("diagnostics.noError")
+        }`,
+        ...report.background_tasks.map(
+          (task) =>
+            `${t(`diagnostics.tasks.${task.name}`)}: ${
+              task.last_tick_at ? formatRelativeTime(task.last_tick_at) : t("diagnostics.never")
+            }${task.last_error ? ` — ${task.last_error}` : ""}`,
+        ),
+      ].join("\n")
+    : "";
 
   return (
     <div className="max-w-3xl space-y-4">
@@ -42,6 +80,39 @@ export default function DiagnosticsSection() {
           {loading ? t("diagnostics.refreshing") : t("diagnostics.refresh")}
         </button>
       </div>
+
+      {report && (
+        <div className="space-y-2 border border-line p-4">
+          <div className="flex items-center justify-between gap-4">
+            <p className="font-display text-xs font-semibold uppercase tracking-hud text-hi">
+              {t("diagnostics.reportTitle")}
+            </p>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-lo">{t("diagnostics.copyReport")}</span>
+              <CopyButton text={reportText} label={t("diagnostics.copyReport")} />
+            </div>
+          </div>
+          <p className="text-xs text-lo">{t("diagnostics.reportDescription")}</p>
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+            <dt className="text-lo">{t("diagnostics.appVersion")}</dt>
+            <dd className="text-hi">{report.app_version}</dd>
+            <dt className="text-lo">{t("diagnostics.overlayEnabled")}</dt>
+            <dd className="text-hi">
+              {report.overlay_enabled ? t("diagnostics.enabled") : t("diagnostics.disabled")}
+            </dd>
+            <dt className="text-lo">{t("diagnostics.dbSize")}</dt>
+            <dd className="text-hi">
+              {report.db_size_bytes != null ? formatBytes(report.db_size_bytes) : "?"}
+            </dd>
+            <dt className="text-lo">{t("diagnostics.lastHenrikError")}</dt>
+            <dd className={report.last_henrik_error ? "text-crit" : "text-hi"}>
+              {report.last_henrik_error
+                ? `${report.last_henrik_error} (${formatRelativeTime(report.last_henrik_error_at)})`
+                : t("diagnostics.noError")}
+            </dd>
+          </dl>
+        </div>
+      )}
 
       <div className="divide-y divide-line border border-line">
         {(tasks ?? []).map((task) => (

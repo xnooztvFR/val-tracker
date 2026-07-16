@@ -162,6 +162,7 @@ fn main() {
             commands::save_usage_metrics_enabled,
             commands::get_usage_metrics_summary,
             commands::get_background_diagnostics,
+            commands::get_diagnostics_report,
             commands::open_downloads_folder,
             commands::save_ui_theme,
             commands::save_ui_accent,

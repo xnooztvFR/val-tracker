@@ -76,6 +76,19 @@ antérieur au #98).
   `npx wrangler secret put PROXY_TOKEN`, remets-le dans `.env`, et republie une release — tous
   les anciens binaires perdent l'accès immédiatement, sans toucher à la clé Henrik elle-même.
 
+## Tests
+
+Logique pure (`resolveTokenId`, `constantTimeEqual`, `isRateLimited`) couverte par
+`worker.test.js`, avec un mock KV en mémoire — pas de test d'intégration Cloudflare runtime,
+Node suffit. Depuis ce dossier :
+
+```bash
+npm test
+```
+
+(Node 18+, déjà un prérequis du projet — voir `CLAUDE.md` § Setup. Aucune dépendance à
+installer, `node --test` est le test runner intégré à Node.)
+
 ## Limite connue
 
 Le quota Henrik (30 req/min avec la clé configurée) reste un quota global côté Henrik,

@@ -139,3 +139,7 @@ async function isRateLimited(env, tokenId) {
   await env.RATE_LIMIT.put(key, String(current + 1), { expirationTtl: 120 });
   return false;
 }
+
+// Exports nommés réservés aux tests (worker.test.js) — `export default` reste l'unique point
+// d'entrée réel pour Cloudflare Workers, ceci n'ajoute aucun comportement en production.
+export { resolveTokenId, constantTimeEqual, isRateLimited, DEFAULT_RATE_LIMIT_PER_MINUTE };

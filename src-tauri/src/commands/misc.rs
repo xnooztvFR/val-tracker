@@ -85,6 +85,54 @@ pub fn get_background_diagnostics(
     registry.snapshot()
 }
 
+#[derive(Serialize)]
+pub struct DiagnosticsReport {
+    pub app_version: String,
+    pub overlay_enabled: bool,
+    pub db_size_bytes: Option<u64>,
+    pub last_henrik_error: Option<String>,
+    pub last_henrik_error_at: Option<i64>,
+    pub background_tasks: Vec<crate::diagnostics::TaskDiagnostic>,
+}
+
+/// Rapport diagnostics agrégé exportable en un clic (Paramètres → Diagnostics) : version de
+/// l'app, état de la détection auto de partie/overlay, taille de la base SQLite locale,
+/// dernière erreur Henrik rencontrée, et l'état des tâches de fond déjà exposé par
+/// `get_background_diagnostics` — pour accélérer le support à distance sans devoir demander
+/// le fichier de log brut.
+#[tauri::command]
+pub async fn get_diagnostics_report(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    registry: State<'_, crate::diagnostics::TaskRegistry>,
+) -> Result<DiagnosticsReport, CommandError> {
+    let settings = {
+        let conn = state.db.lock().await;
+        crate::settings::load_settings(&conn)?
+    };
+
+    let db_size_bytes = crate::db::resolve_db_path(&app)
+        .ok()
+        .and_then(|path| std::fs::metadata(path).ok())
+        .map(|meta| meta.len());
+
+    let (last_henrik_error, last_henrik_error_at) = state
+        .henrik
+        .last_error_snapshot()
+        .await
+        .map(|(msg, at)| (Some(msg), Some(at)))
+        .unwrap_or((None, None));
+
+    Ok(DiagnosticsReport {
+        app_version: app.package_info().version.to_string(),
+        overlay_enabled: !settings.riot_local_disabled,
+        db_size_bytes,
+        last_henrik_error,
+        last_henrik_error_at,
+        background_tasks: registry.snapshot(),
+    })
+}
+
 // ---- Dossier Téléchargements ----
 
 /// Ouvre le dossier Téléchargements de l'utilisateur dans l'explorateur Windows — appelé

@@ -217,7 +217,16 @@
       "status_watcher": "Watcher de estado del servidor / cola",
       "inactivity_reminder": "Recordatorio de inactividad",
       "discord_rpc": "Rich Presence de Discord"
-    }
+    },
+    "reportTitle": "Informe exportable",
+    "reportDescription": "Versión de la app, estado de la detección automática/overlay, tamaño de la base de datos local y último error de Henrik — útil para pegar en un mensaje de soporte.",
+    "copyReport": "Copiar informe",
+    "appVersion": "Versión de la app",
+    "overlayEnabled": "Detección automática de partida / overlay",
+    "dbSize": "Tamaño de la base de datos local",
+    "lastHenrikError": "Último error de Henrik",
+    "enabled": "Activada",
+    "disabled": "Desactivada"
   },
   "logs": {
     "title": "Registros",

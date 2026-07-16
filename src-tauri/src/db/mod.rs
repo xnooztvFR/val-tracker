@@ -31,46 +31,20 @@ pub use timeline::*;
 
 pub const DB_FILE_NAME: &str = "val-tracker.db";
 
-/// Ancien identifiant du bundle (v0.1.0 et avant), avant renommage en `com.xnooztv.val-tracker`.
-/// Tauri dérive `app_data_dir()` de l'identifiant courant, donc ce renommage change de dossier
-/// de données — sans la migration ci-dessous, la clé API et les préférences des utilisateurs
-/// déjà installés paraîtraient "réinitialisées" à la mise à jour alors qu'elles sont juste
-/// restées dans l'ancien dossier.
-const OLD_IDENTIFIER: &str = "com.mri-bot.val-tracker";
+/// Numéro de schéma explicite, stocké dans `PRAGMA user_version`. Toutes les migrations
+/// appliquées jusqu'ici sont additives (`CREATE TABLE IF NOT EXISTS` / ajout de colonne
+/// conditionnel via `add_column_if_missing`), donc ce numéro ne sert aujourd'hui qu'à tracer
+/// l'état du schéma pour le support/debug — incrémenter cette constante et brancher sur
+/// `PRAGMA user_version` le jour où une migration doit modifier une colonne existante
+/// (renommage, changement de type...) plutôt que se contenter d'ajouter.
+pub const CURRENT_SCHEMA_VERSION: i64 = 1;
 
 /// Résout le chemin du fichier SQLite dans le dossier de données de l'app
-/// (`%APPDATA%\com.xnooztv.val-tracker` sous Windows), en créant le dossier si besoin, et migre
-/// depuis l'ancien dossier de données si nécessaire (voir `OLD_IDENTIFIER`).
+/// (`%APPDATA%\com.xnooztv.val-tracker` sous Windows), en créant le dossier si besoin.
 pub fn resolve_db_path(app_handle: &AppHandle) -> anyhow::Result<PathBuf> {
     let dir = app_handle.path().app_data_dir()?;
     std::fs::create_dir_all(&dir)?;
-    let db_path = dir.join(DB_FILE_NAME);
-    migrate_from_old_identifier(&dir, &db_path);
-    Ok(db_path)
-}
-
-/// Copie best-effort la base (+ ses fichiers WAL/SHM le cas échéant) depuis l'ancien dossier
-/// de données vers le nouveau, une seule fois (no-op si `db_path` existe déjà). Ne supprime
-/// jamais l'ancien dossier : en cas d'échec partiel, aucune donnée n'est perdue.
-fn migrate_from_old_identifier(new_dir: &Path, db_path: &Path) {
-    if db_path.exists() {
-        return;
-    }
-    let Some(data_root) = new_dir.parent() else { return };
-    let old_db_path = data_root.join(OLD_IDENTIFIER).join(DB_FILE_NAME);
-    if !old_db_path.exists() {
-        return;
-    }
-    for ext in ["", "-wal", "-shm"] {
-        let src = PathBuf::from(format!("{}{ext}", old_db_path.display()));
-        if !src.exists() {
-            continue;
-        }
-        let dest = PathBuf::from(format!("{}{ext}", db_path.display()));
-        if let Err(e) = std::fs::copy(&src, &dest) {
-            crate::applog!("Migration DB depuis l'ancien identifiant échouée ({src:?}): {e}");
-        }
-    }
+    Ok(dir.join(DB_FILE_NAME))
 }
 
 /// Ouvre la connexion SQLite, active WAL + foreign_keys, puis applique les migrations.
@@ -250,6 +224,8 @@ pub(crate) fn run_migrations(conn: &Connection) -> rusqlite::Result<()> {
         "#,
     )?;
 
+    conn.pragma_update(None, "user_version", CURRENT_SCHEMA_VERSION)?;
+
     Ok(())
 }
 
@@ -398,6 +374,100 @@ mod tests {
         // échouer sur la colonne déjà présente.
         run_migrations(&conn).unwrap();
         run_migrations(&conn).unwrap();
+    }
+
+    #[test]
+    fn run_migrations_sets_explicit_schema_version() {
+        let conn = memory_conn();
+        let version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
+        assert_eq!(version, CURRENT_SCHEMA_VERSION);
+    }
+
+    /// Génère `DATABASE_SCHEMA.md` à la racine du repo depuis le schéma réellement obtenu
+    /// après `run_migrations` (introspection SQLite, pas un parsing du code source) — reflète
+    /// donc fidèlement l'état final même pour une table reconstruite en cours de route (voir
+    /// `goals::migrate_progression_goals_multi`). `#[ignore]` : générateur de doc déclenché à
+    /// la main (`cargo test generate_schema_doc -- --ignored --nocapture`), pas un test de
+    /// comportement rejoué en CI à chaque run.
+    #[test]
+    #[ignore]
+    fn generate_schema_doc() {
+        let conn = memory_conn();
+        let mut doc = String::new();
+        doc.push_str("# Schéma SQLite\n\n");
+        doc.push_str(&format!(
+            "Généré depuis `src-tauri/src/db/*.rs` via `cargo test generate_schema_doc -- \
+             --ignored --nocapture` (introspection SQLite après migrations, pas un parsing \
+             statique) — à régénérer après toute migration ajoutée. `PRAGMA user_version` \
+             courant : {CURRENT_SCHEMA_VERSION}.\n\n"
+        ));
+
+        let mut table_stmt = conn
+            .prepare(
+                "SELECT name FROM sqlite_master \
+                 WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+            )
+            .unwrap();
+        let tables: Vec<String> = table_stmt
+            .query_map([], |r| r.get::<_, String>(0))
+            .unwrap()
+            .filter_map(Result::ok)
+            .collect();
+        drop(table_stmt);
+
+        for table in &tables {
+            doc.push_str(&format!("## `{table}`\n\n"));
+            doc.push_str("| Colonne | Type | NOT NULL | Défaut | PK |\n");
+            doc.push_str("| --- | --- | --- | --- | --- |\n");
+
+            let mut col_stmt = conn.prepare(&format!("PRAGMA table_info({table})")).unwrap();
+            let rows = col_stmt
+                .query_map([], |r| {
+                    Ok((
+                        r.get::<_, String>(1)?,               // name
+                        r.get::<_, String>(2)?,               // type
+                        r.get::<_, i64>(3)? != 0,              // notnull
+                        r.get::<_, Option<String>>(4)?,       // dflt_value
+                        r.get::<_, i64>(5)? != 0,              // pk
+                    ))
+                })
+                .unwrap();
+            for row in rows {
+                let (name, ty, notnull, default, pk) = row.unwrap();
+                doc.push_str(&format!(
+                    "| {name} | {ty} | {} | {} | {} |\n",
+                    if notnull { "oui" } else { "" },
+                    default.unwrap_or_default(),
+                    if pk { "oui" } else { "" },
+                ));
+            }
+            drop(col_stmt);
+            doc.push('\n');
+
+            let mut idx_stmt = conn
+                .prepare(
+                    "SELECT name, sql FROM sqlite_master \
+                     WHERE type = 'index' AND tbl_name = ?1 AND sql IS NOT NULL ORDER BY name",
+                )
+                .unwrap();
+            let indexes: Vec<(String, String)> = idx_stmt
+                .query_map([table], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
+                .unwrap()
+                .filter_map(Result::ok)
+                .collect();
+            drop(idx_stmt);
+            if !indexes.is_empty() {
+                doc.push_str("Index :\n\n");
+                for (name, sql) in indexes {
+                    doc.push_str(&format!("- `{name}` — `{sql}`\n"));
+                }
+                doc.push('\n');
+            }
+        }
+
+        let out_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../DATABASE_SCHEMA.md");
+        std::fs::write(&out_path, doc).unwrap();
+        println!("Schéma écrit dans {}", out_path.display());
     }
 
     #[test]
