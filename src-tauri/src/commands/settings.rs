@@ -321,7 +321,15 @@ pub async fn verify_henrik_api_key(
     }
 
     let auth = crate::api::henrik::HenrikAuth::Direct(api_key.to_string());
-    match state.henrik.get_raw("/valorant/v2/account/Henrik/DEV", &auth).await {
+    match state
+        .henrik
+        .get_raw(
+            "/valorant/v2/account/Henrik/DEV",
+            &auth,
+            crate::api::henrik::Priority::Interactive,
+        )
+        .await
+    {
         Ok(_) => Ok(true),
         Err(HenrikError::NotFound) => Ok(true),
         Err(HenrikError::Api { status: 401, .. }) | Err(HenrikError::Api { status: 403, .. }) => {

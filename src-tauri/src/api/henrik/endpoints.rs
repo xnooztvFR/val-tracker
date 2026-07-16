@@ -13,6 +13,7 @@ use serde::Serialize;
 use tokio::sync::Mutex;
 
 use super::client::{HenrikAuth, HenrikClient};
+use super::rate_limiter::Priority;
 use super::types::{
     AccountData, EsportsScheduleEntry, HenrikEnvelope, LeaderboardData, MatchDetailData,
     MatchEntry, MatchMetadata, MatchPlayer, MatchTeam, MmrData, MmrHistoryAccount,
@@ -82,6 +83,22 @@ pub(crate) async fn fetch_with_cache<T: DeserializeOwned>(
     ttl: TtlSeconds,
     force: bool,
 ) -> Result<Fetched<T>, HenrikError> {
+    fetch_with_cache_priority(db, client, api_key, path, ttl, force, Priority::Interactive).await
+}
+
+/// Variante de `fetch_with_cache` avec priorité explicite — voir `rate_limiter::Priority`.
+/// Utilisée par `get_mmr_by_puuid` (fetch de fond pour l'overlay), les autres endpoints
+/// restent `Interactive` via le wrapper `fetch_with_cache` ci-dessus.
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn fetch_with_cache_priority<T: DeserializeOwned>(
+    db: &Mutex<Connection>,
+    client: &HenrikClient,
+    api_key: &HenrikAuth,
+    path: &str,
+    ttl: TtlSeconds,
+    force: bool,
+    priority: Priority,
+) -> Result<Fetched<T>, HenrikError> {
     if !force {
         let cached = {
             let conn = db.lock().await;
@@ -104,7 +121,7 @@ pub(crate) async fn fetch_with_cache<T: DeserializeOwned>(
     }
 
     let network_started_at = std::time::Instant::now();
-    match client.get_raw(path, api_key).await {
+    match client.get_raw(path, api_key, priority).await {
         Ok(body) => {
             let duration_ms = network_started_at.elapsed().as_millis() as i64;
             // On parse AVANT de cacher : un payload qui ne respecte pas le schéma
@@ -234,7 +251,10 @@ pub async fn get_mmr_by_puuid(
         encode(region),
         encode(puuid)
     );
-    fetch_with_cache(db, client, api_key, &path, TTL_MMR, force).await
+    // Optimisations #2 (TODO.md) : priorité basse — appelé en rafale par l'overlay pour
+    // les joueurs détectés en partie, ne doit pas retarder un fetch Interactive au premier
+    // plan (voir `rate_limiter::Priority`).
+    fetch_with_cache_priority(db, client, api_key, &path, TTL_MMR, force, Priority::Background).await
 }
 
 pub async fn get_matches(
@@ -538,7 +558,7 @@ pub async fn get_crosshair_preview(
         }
     }
 
-    let bytes = client.get_raw_bytes(&path, api_key).await?;
+    let bytes = client.get_raw_bytes(&path, api_key, Priority::Interactive).await?;
     let encoded = base64::engine::general_purpose::STANDARD.encode(bytes);
     {
         let conn = db.lock().await;

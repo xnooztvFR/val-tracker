@@ -9,7 +9,7 @@ use std::time::Duration;
 use reqwest::StatusCode;
 use tokio::time::sleep;
 
-use super::rate_limiter::RateLimiter;
+use super::rate_limiter::{Priority, RateLimiter};
 use super::HenrikError;
 
 const BASE_URL: &str = "https://api.henrikdev.xyz";
@@ -65,11 +65,16 @@ impl HenrikClient {
 
     /// Effectue un GET sur `path` (ex: "/valorant/v2/account/foo/bar") et renvoie le
     /// corps JSON brut en cas de succès. Gère retry/backoff et respecte `Retry-After`.
-    pub async fn get_raw(&self, path: &str, auth: &HenrikAuth) -> Result<String, HenrikError> {
+    pub async fn get_raw(
+        &self,
+        path: &str,
+        auth: &HenrikAuth,
+        priority: Priority,
+    ) -> Result<String, HenrikError> {
         let url = auth.target_url(path);
 
         for attempt in 1..=MAX_ATTEMPTS {
-            self.rate_limiter.acquire().await?;
+            self.rate_limiter.acquire(priority).await?;
 
             let response = match auth.apply(self.http.get(&url)).send().await {
                 Ok(r) => r,
@@ -152,11 +157,16 @@ impl HenrikClient {
 
     /// Variante binaire de `get_raw`, pour les endpoints qui renvoient une image (ex:
     /// `/valorant/v1/crosshair/generate`) plutôt qu'un JSON `{ status, data }`.
-    pub async fn get_raw_bytes(&self, path: &str, auth: &HenrikAuth) -> Result<Vec<u8>, HenrikError> {
+    pub async fn get_raw_bytes(
+        &self,
+        path: &str,
+        auth: &HenrikAuth,
+        priority: Priority,
+    ) -> Result<Vec<u8>, HenrikError> {
         let url = auth.target_url(path);
 
         for attempt in 1..=MAX_ATTEMPTS {
-            self.rate_limiter.acquire().await?;
+            self.rate_limiter.acquire(priority).await?;
 
             let response = match auth.apply(self.http.get(&url)).send().await {
                 Ok(r) => r,

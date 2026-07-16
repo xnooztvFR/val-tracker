@@ -29,7 +29,7 @@ base64 = "0.22"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream", "gzip", "brotli"] }
 futures-util = { version = "0.3", default-features = false, features = ["std"] }
 sha2 = "0.10"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync"] }
@@ -40,6 +40,11 @@ chrono = { version = "0.4", features = ["serde"] }
 thiserror = "2"
 anyhow = "1"
 urlencoding = "2"
+
+[dev-dependencies]
+# Horloge virtuelle (tokio::test(start_paused = true)) pour tester l'espacement du rate
+# limiter sans dépendre de vrais délais de plusieurs secondes dans la suite de tests.
+tokio = { version = "1", features = ["test-util"] }
 
 [target.'cfg(windows)'.dependencies]
 # Chiffrement au repos de la clé API Henrik via DPAPI (voir settings.rs::crypto) — liée au

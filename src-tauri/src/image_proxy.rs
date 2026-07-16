@@ -16,11 +16,24 @@
 //! espace vide plutôt qu'un crash — cohérent avec le `onError` déjà en place sur ces images
 //! avant #100.
 
-use std::sync::OnceLock;
-use std::time::Duration;
+use std::collections::HashMap;
+use std::sync::{Mutex, OnceLock};
+use std::time::{Duration, Instant};
 
 use anyhow::{bail, Context};
 use base64::Engine;
+
+/// Optimisations #9 (TODO.md) : cache mémoire (process courant, pas persisté en DB — ces
+/// logos/avatars sont petits et n'ont pas besoin de survivre à un redémarrage de l'app) pour
+/// éviter de re-télécharger le même logo VLR/owcdn à chaque changement d'écran qui l'affiche
+/// (esport, Premier...). TTL généreux : un logo d'équipe/joueur esport change rarement.
+const IMAGE_CACHE_TTL: Duration = Duration::from_secs(60 * 60);
+
+static IMAGE_CACHE: OnceLock<Mutex<HashMap<String, (String, Instant)>>> = OnceLock::new();
+
+fn image_cache() -> &'static Mutex<HashMap<String, (String, Instant)>> {
+    IMAGE_CACHE.get_or_init(|| Mutex::new(HashMap::new()))
+}
 
 /// Taille max acceptée — un logo/avatar ne dépasse jamais quelques centaines de Ko ; une
 /// limite généreuse évite de laisser une réponse inattendue saturer la mémoire de l'app.
@@ -76,6 +89,10 @@ fn http_client() -> &'static reqwest::Client {
 }
 
 pub async fn fetch_as_data_uri(url: &str) -> anyhow::Result<String> {
+    if let Some(cached) = cached_data_uri(url) {
+        return Ok(cached);
+    }
+
     let parsed = reqwest::Url::parse(url).context("URL d'image invalide")?;
     if !is_allowed_url(&parsed) {
         bail!("URL refusée (https + domaine autorisé requis)");
@@ -112,7 +129,26 @@ pub async fn fetch_as_data_uri(url: &str) -> anyhow::Result<String> {
     }
 
     let encoded = base64::engine::general_purpose::STANDARD.encode(&bytes);
-    Ok(format!("data:{content_type};base64,{encoded}"))
+    let data_uri = format!("data:{content_type};base64,{encoded}");
+
+    if let Ok(mut cache) = image_cache().lock() {
+        cache.insert(url.to_string(), (data_uri.clone(), Instant::now()));
+    }
+
+    Ok(data_uri)
+}
+
+/// Relit le cache mémoire si une entrée fraîche existe pour `url` — best-effort, un
+/// `Mutex` empoisonné (panic pendant qu'il était tenu) fait juste retomber sur un
+/// re-téléchargement plutôt que de propager une erreur pour un simple souci de cache.
+fn cached_data_uri(url: &str) -> Option<String> {
+    let cache = image_cache().lock().ok()?;
+    let (data_uri, cached_at) = cache.get(url)?;
+    if cached_at.elapsed() < IMAGE_CACHE_TTL {
+        Some(data_uri.clone())
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]

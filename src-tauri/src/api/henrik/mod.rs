@@ -13,7 +13,7 @@ pub mod types_esports;
 pub mod types_premier;
 
 pub use client::{HenrikAuth, HenrikClient};
-pub use rate_limiter::RateLimiter;
+pub use rate_limiter::{Priority, RateLimiter};
 
 /// Durée de vie d'une entrée de cache, en secondes.
 #[derive(Debug, Clone, Copy)]
