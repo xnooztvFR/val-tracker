@@ -11,6 +11,18 @@ l'app. **À mettre à jour manuellement à chaque release** (relecture humaine o
 > dépôt GitHub héberge...). Les tags Git (`v0.3.5` à `v0.3.24`) existent toujours mais leurs
 > notes de release, elles, sont perdues.
 
+## [0.3.30] - 2026-07-16
+
+### Fiabilité & outillage interne
+
+- Rapport de diagnostics exportable en un clic (Paramètres → Diagnostics) : version de
+  l'app, état de la détection auto de partie / overlay, taille de la base locale et
+  dernière erreur Henrik rencontrée, avec un bouton pour copier le tout.
+- Schéma de la base SQLite locale désormais versionné explicitement, pour sécuriser les
+  futures mises à jour de la base.
+- Renforcement des tests automatisés couvrant le relais Cloudflare (protection de la clé
+  API Henrik).
+
 ## [0.3.29] - 2026-07-16
 
 ### Optimisations internes
