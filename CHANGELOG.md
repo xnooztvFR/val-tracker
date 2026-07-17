@@ -11,6 +11,33 @@ l'app. **À mettre à jour manuellement à chaque release** (relecture humaine o
 > dépôt GitHub héberge...). Les tags Git (`v0.3.5` à `v0.3.24`) existent toujours mais leurs
 > notes de release, elles, sont perdues.
 
+## [0.3.33] - 2026-07-17
+
+### Nouvelles fonctionnalités
+
+- Couleur d'accent « Auto » : dérivée de l'agent que tu joues le plus, plutôt qu'une teinte
+  fixe (Duelist → rouge, Sentinel → cyan, Controller → violet, Initiator → ambre).
+- Style d'icônes vectoriel maison (agents en initiales colorées, armes par catégorie) en
+  alternative aux icônes officielles, sans dépendre d'un CDN externe (Paramètres → Apparence).
+- Variante de contraste élevé bleu/orange, choisie selon les référentiels connus de
+  daltonisme (protanopie/deutéranopie) — basée sur les normes, pas testée avec de vrais
+  utilisateurs daltoniens.
+- Disposition d'overlay « Épuré » : n'affiche plus que ton propre rang en petit texte, pour
+  un encombrement minimal en jeu.
+- Fond d'écran dynamique optionnel, teinté selon la couleur de ton rang actuel.
+- Indicateur de fraîcheur des données permanent dans la barre de navigation (petit point
+  signal), au-delà du seul bandeau d'erreur ponctuel.
+- Mode présentation/stream : police agrandie et animations ralenties pour un partage d'écran
+  public.
+- Police d'accent commutable entre Chakra Petch (défaut) et JetBrains Mono.
+- Volume réglable pour les micro-sons d'alerte HUD (écart de rang adverse en overlay).
+- Curseur viseur simplifié optionnel, applicable à toute l'app et à l'overlay en jeu.
+
+### Autres
+
+- Finalisation de la scission de la section Discord des Paramètres en deux sous-sections
+  (Rich Presence / alertes webhook).
+
 ## [0.3.32] - 2026-07-17
 
 ### Sécurité
