@@ -1,82 +1,48 @@
-import { Fragment } from "react";
+import ReactMarkdown from "react-markdown";
 
 interface MarkdownLiteProps {
   text: string;
   className?: string;
 }
 
-/** Rendu markdown minimal, sans dépendance externe, pour les notes de changelog
- * (`scripts/release.ps1` les rédige au format Keep a Changelog : `## Titre`, listes `-`,
- * `**gras**` — voir `scripts/generate-changelog-draft.ps1`). Volontairement limité aux
- * quelques constructions réellement utilisées dans ces notes plutôt qu'un parseur markdown
- * complet ; à étendre seulement si un nouveau format de note l'exige. */
-function renderInline(line: string, keyPrefix: string) {
-  const parts = line.split(/(\*\*[^*]+\*\*)/g).filter((part) => part.length > 0);
-  return parts.map((part, i) => {
-    if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
-      return (
-        <strong key={`${keyPrefix}-${i}`} className="font-semibold text-hi">
-          {part.slice(2, -2)}
-        </strong>
-      );
-    }
-    return <Fragment key={`${keyPrefix}-${i}`}>{part}</Fragment>;
-  });
-}
-
+/** Rendu markdown des notes de changelog (`scripts/release.ps1` les rédige au format
+ * Keep a Changelog : `## Titre`, listes `-`, `**gras**`, texte enveloppé sur plusieurs
+ * lignes — voir `scripts/generate-changelog-draft.ps1`). Délègue à `react-markdown` (pas
+ * de `dangerouslySetInnerHTML`, rendu en éléments React) plutôt qu'un parseur ligne à
+ * ligne maison : un parseur ligne à ligne casse dès qu'un item de liste s'étale sur
+ * plusieurs lignes source (cas courant ici, les .md de notes sont enveloppés à ~78
+ * caractères), le texte de continuation ressortant comme un paragraphe orphelin hors de
+ * la liste. */
 export default function MarkdownLite({ text, className = "" }: MarkdownLiteProps) {
-  const lines = text.split("\n");
-  const blocks: React.ReactNode[] = [];
-  let listItems: string[] = [];
-
-  const flushList = (key: string) => {
-    if (listItems.length === 0) return;
-    blocks.push(
-      <ul key={key} className="ml-4 list-disc space-y-0.5">
-        {listItems.map((item, i) => (
-          <li key={i}>{renderInline(item, `${key}-li-${i}`)}</li>
-        ))}
-      </ul>,
-    );
-    listItems = [];
-  };
-
-  lines.forEach((rawLine, idx) => {
-    const line = rawLine.trimEnd();
-    const heading = line.match(/^(#{1,6})\s+(.*)$/);
-    const bullet = line.match(/^[-*]\s+(.*)$/);
-
-    if (heading) {
-      flushList(`list-${idx}`);
-      const level = heading[1].length;
-      blocks.push(
-        <p
-          key={idx}
-          className={level <= 2 ? "mt-3 font-display text-xs font-bold uppercase tracking-hud text-accent first:mt-0" : "mt-2 text-sm font-semibold text-hi first:mt-0"}
-        >
-          {renderInline(heading[2], `h-${idx}`)}
-        </p>,
-      );
-      return;
-    }
-
-    if (bullet) {
-      listItems.push(bullet[1]);
-      return;
-    }
-
-    flushList(`list-${idx}`);
-
-    if (line.trim().length === 0) return;
-
-    blocks.push(
-      <p key={idx} className="mt-1 first:mt-0">
-        {renderInline(line, `p-${idx}`)}
-      </p>,
-    );
-  });
-
-  flushList("list-end");
-
-  return <div className={className}>{blocks}</div>;
+  return (
+    <div className={className}>
+      <ReactMarkdown
+        components={{
+          h1: ({ children }) => (
+            <p className="mt-3 font-display text-xs font-bold uppercase tracking-hud text-accent first:mt-0">
+              {children}
+            </p>
+          ),
+          h2: ({ children }) => (
+            <p className="mt-3 font-display text-xs font-bold uppercase tracking-hud text-accent first:mt-0">
+              {children}
+            </p>
+          ),
+          h3: ({ children }) => <p className="mt-2 text-sm font-semibold text-hi first:mt-0">{children}</p>,
+          p: ({ children }) => <p className="mt-1 first:mt-0">{children}</p>,
+          ul: ({ children }) => <ul className="ml-4 mt-1 list-disc space-y-0.5">{children}</ul>,
+          ol: ({ children }) => <ol className="ml-4 mt-1 list-decimal space-y-0.5">{children}</ol>,
+          li: ({ children }) => <li>{children}</li>,
+          strong: ({ children }) => <strong className="font-semibold text-hi">{children}</strong>,
+          a: ({ children, href }) => (
+            <a href={href} className="text-accent underline" target="_blank" rel="noreferrer">
+              {children}
+            </a>
+          ),
+        }}
+      >
+        {text}
+      </ReactMarkdown>
+    </div>
+  );
 }

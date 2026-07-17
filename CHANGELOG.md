@@ -11,6 +11,18 @@ l'app. **À mettre à jour manuellement à chaque release** (relecture humaine o
 > dépôt GitHub héberge...). Les tags Git (`v0.3.5` à `v0.3.24`) existent toujours mais leurs
 > notes de release, elles, sont perdues.
 
+## [0.3.34] - 2026-07-17
+
+### Corrections
+
+- Fenêtre « Quoi de neuf » (après une mise à jour) : le contenu débordait et rendait le
+  bouton « Fermer » inaccessible quand le changelog était long — la zone de notes défile
+  maintenant indépendamment, avec le titre et le bouton toujours visibles. Ajout d'un
+  raccourci Échap pour fermer.
+- Les notes de version s'affichent désormais correctement formatées (titres, listes,
+  gras) au lieu du texte markdown brut, dans cette fenêtre comme dans l'historique des
+  nouveautés (Paramètres).
+
 ## [0.3.33] - 2026-07-17
 
 ### Nouvelles fonctionnalités
