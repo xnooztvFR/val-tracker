@@ -205,6 +205,38 @@ pub async fn fetch_game_state(
     Ok((state, client_version))
 }
 
+/// Overlay & détection en jeu (TODO#3, notification live d'un ami suivi) : `chat/v4/presences`
+/// renvoie la presence de TOUS les amis Riot du compte local, pas seulement la sienne (voir
+/// `fetch_game_state` qui ne regarde que `local_puuid`) — un second appel à ce même endpoint
+/// best-effort, le poller filtrera ensuite sur les puuids suivis (`db::list_followed_friends`)
+/// pour ne réagir qu'à ceux-là. Renvoie `(puuid, sessionLoopState)` pour chaque presence
+/// Valorant décodable ; ignore silencieusement toute entrée mal formée (best-effort, comme le
+/// reste de ce module).
+pub async fn fetch_all_valorant_presences(
+    client: &reqwest::Client,
+    lockfile: &LockfileInfo,
+) -> anyhow::Result<Vec<(String, Option<String>)>> {
+    let response: PresencesResponse =
+        get_local_json(client, lockfile, "/chat/v4/presences").await?;
+
+    let mut result = Vec::new();
+    for presence in response.presences {
+        if presence.product.as_deref() != Some("valorant") {
+            continue;
+        }
+        let Some(puuid) = presence.puuid else { continue };
+        let session_loop_state = presence
+            .private
+            .as_deref()
+            .and_then(|b64| base64::engine::general_purpose::STANDARD.decode(b64).ok())
+            .and_then(|decoded| serde_json::from_slice::<PresencePrivate>(&decoded).ok())
+            .and_then(|p| p.match_presence_data)
+            .and_then(|m| m.session_loop_state);
+        result.push((puuid, session_loop_state));
+    }
+    Ok(result)
+}
+
 // ---- Entitlements + roster de la partie (endpoints GLZ) ----
 
 #[derive(Deserialize, Clone)]

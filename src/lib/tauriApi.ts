@@ -59,6 +59,28 @@ export interface LiveSnapshot {
   state: "hors_jeu" | "menu" | "pregame" | "in_game" | "post_game" | "desactive";
   players: LivePlayer[];
   region: string | null;
+  /** Overlay & détection en jeu (TODO#3) : "ok" | "degraded" — instabilité de l'API locale
+   * Riot pendant la partie en cours (retries en coulisses, voir `poller.rs`). */
+  api_health: "ok" | "degraded";
+}
+
+/** Overlay & détection en jeu (TODO#3) : résumé de fin de partie, event
+ * `riot-local://postgame-summary` — best-effort, n'arrive pas toujours (match pas encore
+ * ingéré côté Henrik). */
+export interface PostgameSummary {
+  agent: string | null;
+  map: string | null;
+  kills: number;
+  deaths: number;
+  assists: number;
+  won: boolean | null;
+}
+
+/** Overlay & détection en jeu (TODO#3) : event `riot-local://friend-live`, un ami suivi
+ * vient d'entrer en pregame/in-game (au-delà du pull post-game de `listFollowedFriends`). */
+export interface FriendLiveEvent {
+  name: string;
+  tag: string;
 }
 
 export interface NamedRef {
@@ -860,6 +882,15 @@ export interface AppSettings {
   /** TODO Design#2 : `"official"` (défaut) | `"vector"` (icônes maison). */
   icon_style: string;
   shortcut_main_window_toggle: string;
+  /** Overlay & détection en jeu (TODO#3) : `"none"` (défaut) ou l'identifiant d'un moniteur
+   * pour le second overlay détaillé (écran 2). */
+  overlay_secondary_monitor: string;
+  /** Résumé de fin de partie affiché dans l'overlay, activé par défaut. */
+  overlay_postgame_summary_enabled: boolean;
+  /** Délai (secondes) avant fermeture auto du résumé de fin de partie — `0` = manuel. */
+  overlay_postgame_summary_autodismiss_secs: number;
+  /** Notification live qu'un ami suivi vient d'entrer en partie, activée par défaut. */
+  friend_live_notify_enabled: boolean;
 }
 
 export interface LatencyBucket {
@@ -1148,6 +1179,14 @@ export const tauriApi = {
   listOverlayMonitors: () => invoke<MonitorInfo[]>("list_overlay_monitors"),
   saveOverlayMonitor: (monitorId: string) =>
     invoke<void>("save_overlay_monitor", { monitorId }),
+  saveOverlaySecondaryMonitor: (monitorId: string) =>
+    invoke<void>("save_overlay_secondary_monitor", { monitorId }),
+  saveOverlayPostgameSummaryEnabled: (enabled: boolean) =>
+    invoke<void>("save_overlay_postgame_summary_enabled", { enabled }),
+  saveOverlayPostgameSummaryAutodismissSecs: (secs: number) =>
+    invoke<void>("save_overlay_postgame_summary_autodismiss_secs", { secs }),
+  saveFriendLiveNotifyEnabled: (enabled: boolean) =>
+    invoke<void>("save_friend_live_notify_enabled", { enabled }),
   saveShortcutOverlayToggle: (shortcut: string) =>
     invoke<void>("save_shortcut_overlay_toggle", { shortcut }),
   saveShortcutMainWindowToggle: (shortcut: string) =>

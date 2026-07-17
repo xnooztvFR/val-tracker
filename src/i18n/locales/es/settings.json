@@ -96,7 +96,8 @@
     "layout": {
       "full": "Completo (predeterminado)",
       "mini": "Mini resumen",
-      "minimal": "Minimalista (solo rango)"
+      "minimal": "Minimalista (solo rango)",
+      "coach": "Coach (solo texto)"
     },
     "layoutHint": "«Completo» (predeterminado) enumera a todos los jugadores detectados, aliados y rivales. «Mini resumen» reduce el overlay a una sola línea de insignias de rango, sin nombre ni recomendación de agente. «Minimalista» solo muestra tu propio rango como texto pequeño, para la mínima intrusión posible en partida.",
     "densityLabel": "Densidad de visualización",
@@ -111,6 +112,17 @@
       "primary": "principal"
     },
     "monitorHint": "Por defecto, el overlay reaparece en la última configuración de pantallas usada. Elegir una pantalla explícita aquí hace que siempre aparezca en ella, útil en configuraciones multimonitor (p. ej. siempre en la pantalla de juego).",
+    "secondaryMonitorLabel": "Overlay secundario (pantalla 2)",
+    "secondaryMonitor": {
+      "none": "Desactivado (predeterminado)"
+    },
+    "secondaryMonitorHint": "Muestra un segundo overlay, siempre en diseño completo y detallado, en la pantalla elegida — útil en configuraciones multimonitor para tener más detalle a la vista que el overlay compacto de la pantalla de juego.",
+    "postgameSummaryTitle": "Resumen de fin de partida",
+    "postgameSummaryLabel": "Mostrar un resumen (K/D/A, agente, resultado) en el overlay tras cada partida",
+    "postgameSummaryAutodismissUnit": "segundos antes del cierre automático (0 = manual)",
+    "postgameSummaryHint": "Obtenido de forma best-effort desde Henrik justo después de la partida — puede no aparecer si el partido aún no está registrado en Henrik en el momento de la transición.",
+    "friendLiveNotifyLabel": "Notificar cuando un amigo seguido inicia una partida",
+    "friendLiveNotifyHint": "A diferencia del seguimiento habitual (a posteriori, tras terminar la partida), esta notificación llega en cuanto el amigo entra en selección de agentes o en partida — depende de la presencia de Riot, best-effort.",
     "rankGapAlertTitle": "Alerta de diferencia de rango rival",
     "rankGapAlertLabel": "Reproducir un sonido discreto si un rival tiene un rango mucho más alto que el mío",
     "rankGapAlertUnit": "tiers de diferencia mínima",

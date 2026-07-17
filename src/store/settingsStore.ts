@@ -44,6 +44,10 @@ interface SettingsState {
   setHudSoundsVolume: (volume: number) => Promise<void>;
   setCursorEnabled: (enabled: boolean) => Promise<void>;
   setIconStyle: (style: string) => Promise<void>;
+  setOverlaySecondaryMonitor: (monitorId: string) => Promise<void>;
+  setOverlayPostgameSummaryEnabled: (enabled: boolean) => Promise<void>;
+  setOverlayPostgameSummaryAutodismissSecs: (secs: number) => Promise<void>;
+  setFriendLiveNotifyEnabled: (enabled: boolean) => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -243,6 +247,26 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   clearNotesPin: async () => {
     await tauriApi.clearNotesPin();
+    await get().refresh();
+  },
+
+  setOverlaySecondaryMonitor: async (monitorId: string) => {
+    await tauriApi.saveOverlaySecondaryMonitor(monitorId);
+    await get().refresh();
+  },
+
+  setOverlayPostgameSummaryEnabled: async (enabled: boolean) => {
+    await tauriApi.saveOverlayPostgameSummaryEnabled(enabled);
+    await get().refresh();
+  },
+
+  setOverlayPostgameSummaryAutodismissSecs: async (secs: number) => {
+    await tauriApi.saveOverlayPostgameSummaryAutodismissSecs(secs);
+    await get().refresh();
+  },
+
+  setFriendLiveNotifyEnabled: async (enabled: boolean) => {
+    await tauriApi.saveFriendLiveNotifyEnabled(enabled);
     await get().refresh();
   },
 }));

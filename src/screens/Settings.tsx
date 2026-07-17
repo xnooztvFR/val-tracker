@@ -84,6 +84,10 @@ export default function Settings() {
     setOverlayDensity,
     setOverlayLayout,
     setOverlayMonitor,
+    setOverlaySecondaryMonitor,
+    setOverlayPostgameSummaryEnabled,
+    setOverlayPostgameSummaryAutodismissSecs,
+    setFriendLiveNotifyEnabled,
     setRankGapAlertEnabled,
     setRankGapAlertThreshold,
     setLossStreakAlertEnabled,
@@ -183,6 +187,14 @@ export default function Settings() {
               onChangeRankGapAlertThreshold={setRankGapAlertThreshold}
               monitorId={settings?.overlay_monitor ?? "auto"}
               onChangeMonitor={setOverlayMonitor}
+              secondaryMonitorId={settings?.overlay_secondary_monitor ?? "none"}
+              onChangeSecondaryMonitor={setOverlaySecondaryMonitor}
+              postgameSummaryEnabled={settings?.overlay_postgame_summary_enabled ?? true}
+              onChangePostgameSummaryEnabled={setOverlayPostgameSummaryEnabled}
+              postgameSummaryAutodismissSecs={settings?.overlay_postgame_summary_autodismiss_secs ?? 8}
+              onChangePostgameSummaryAutodismissSecs={setOverlayPostgameSummaryAutodismissSecs}
+              friendLiveNotifyEnabled={settings?.friend_live_notify_enabled ?? true}
+              onChangeFriendLiveNotifyEnabled={setFriendLiveNotifyEnabled}
             />
             <SectionDivider />
             <DiscordRpcSection

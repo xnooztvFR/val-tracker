@@ -5,7 +5,7 @@ import { tauriApi, type MonitorInfo } from "../../lib/tauriApi";
 import { INPUT_CLASS, SectionTitle } from "./shared";
 
 const OVERLAY_DENSITY_IDS = ["compact", "detailed"] as const;
-const OVERLAY_LAYOUT_IDS = ["full", "mini", "minimal"] as const;
+const OVERLAY_LAYOUT_IDS = ["full", "mini", "minimal", "coach"] as const;
 
 interface OverlaySectionProps {
   disabled: boolean;
@@ -20,6 +20,14 @@ interface OverlaySectionProps {
   onChangeRankGapAlertThreshold: (threshold: number) => Promise<void>;
   monitorId: string;
   onChangeMonitor: (monitorId: string) => Promise<void>;
+  secondaryMonitorId: string;
+  onChangeSecondaryMonitor: (monitorId: string) => Promise<void>;
+  postgameSummaryEnabled: boolean;
+  onChangePostgameSummaryEnabled: (enabled: boolean) => Promise<void>;
+  postgameSummaryAutodismissSecs: number;
+  onChangePostgameSummaryAutodismissSecs: (secs: number) => Promise<void>;
+  friendLiveNotifyEnabled: boolean;
+  onChangeFriendLiveNotifyEnabled: (enabled: boolean) => Promise<void>;
 }
 
 export default function OverlaySection({
@@ -35,6 +43,14 @@ export default function OverlaySection({
   onChangeRankGapAlertThreshold,
   monitorId,
   onChangeMonitor,
+  secondaryMonitorId,
+  onChangeSecondaryMonitor,
+  postgameSummaryEnabled,
+  onChangePostgameSummaryEnabled,
+  postgameSummaryAutodismissSecs,
+  onChangePostgameSummaryAutodismissSecs,
+  friendLiveNotifyEnabled,
+  onChangeFriendLiveNotifyEnabled,
 }: OverlaySectionProps) {
   const { t } = useTranslation("settings");
   const [shortcutRegistered, setShortcutRegistered] = useState<boolean | null>(null);
@@ -129,6 +145,63 @@ export default function OverlaySection({
           ))}
         </select>
         <p className="text-xs text-lo">{t("overlay.monitorHint")}</p>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="hud-label">{t("overlay.secondaryMonitorLabel")}</h2>
+        <select
+          value={secondaryMonitorId}
+          onChange={(e) => onChangeSecondaryMonitor(e.target.value)}
+          className={INPUT_CLASS}
+        >
+          <option value="none">{t("overlay.secondaryMonitor.none")}</option>
+          {monitors.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.width}×{m.height}
+              {m.is_primary ? ` — ${t("overlay.monitor.primary")}` : ""}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-lo">{t("overlay.secondaryMonitorHint")}</p>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="hud-label">{t("overlay.postgameSummaryTitle")}</h2>
+        <label className="flex items-center gap-2.5 text-sm text-hi">
+          <input
+            type="checkbox"
+            checked={postgameSummaryEnabled}
+            onChange={(e) => onChangePostgameSummaryEnabled(e.target.checked)}
+            className="h-4 w-4 border-line bg-surface accent-accent"
+          />
+          {t("overlay.postgameSummaryLabel")}
+        </label>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min={0}
+            max={60}
+            value={postgameSummaryAutodismissSecs}
+            onChange={(e) => onChangePostgameSummaryAutodismissSecs(Number(e.target.value))}
+            disabled={!postgameSummaryEnabled}
+            className={`w-20 disabled:opacity-50 ${INPUT_CLASS}`}
+          />
+          <span className="text-sm text-lo">{t("overlay.postgameSummaryAutodismissUnit")}</span>
+        </div>
+        <p className="text-xs text-lo">{t("overlay.postgameSummaryHint")}</p>
+      </section>
+
+      <section className="space-y-2">
+        <label className="flex items-center gap-2.5 text-sm text-hi">
+          <input
+            type="checkbox"
+            checked={friendLiveNotifyEnabled}
+            onChange={(e) => onChangeFriendLiveNotifyEnabled(e.target.checked)}
+            className="h-4 w-4 border-line bg-surface accent-accent"
+          />
+          {t("overlay.friendLiveNotifyLabel")}
+        </label>
+        <p className="text-xs text-lo">{t("overlay.friendLiveNotifyHint")}</p>
       </section>
 
       <section className="space-y-2">

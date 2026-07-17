@@ -11,6 +11,25 @@ l'app. **À mettre à jour manuellement à chaque release** (relecture humaine o
 > dépôt GitHub héberge...). Les tags Git (`v0.3.5` à `v0.3.24`) existent toujours mais leurs
 > notes de release, elles, sont perdues.
 
+## [0.3.36] - 2026-07-17
+
+### Nouvelles fonctionnalités
+
+- Widget « cette session » dans l'overlay : W/L du soir affiché directement en jeu, sans
+  alt-tab vers Aujourd'hui.
+- Mini-sparkline des 24 dernières heures (victoires/défaites) dans l'overlay.
+- Widgets de l'overlay (rôle manquant, meilleurs agents, session, sparkline)
+  réorganisables par glisser-déposer en mode interactif (Ctrl+Shift+V).
+- Second overlay détaillé sur un écran secondaire, indépendant du layout de l'overlay
+  principal (réglage dans Paramètres → Overlay).
+- Notification en direct quand un ami suivi lance une partie (dès la sélection d'agents),
+  au-delà du suivi a posteriori existant.
+- Indicateur discret d'instabilité de l'API locale Riot pendant la partie.
+- Nouveau mode d'overlay « Coach » : texte seul (état + rangs), pensé pour être isolé
+  facilement dans un partage d'écran ciblé.
+- Résumé de fin de partie (K/D/A, agent, carte, résultat) affiché dans l'overlay, avec
+  fermeture automatique configurable (délai réglable, 0 = fermeture manuelle).
+
 ## [0.3.35] - 2026-07-17
 
 ### Nouvelles fonctionnalités

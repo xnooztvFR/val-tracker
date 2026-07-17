@@ -1,6 +1,6 @@
 //! Commandes overlay (V2) : état live, statut du raccourci global, liste des moniteurs.
 
-use tauri::State;
+use tauri::{Manager, State};
 
 use super::CommandError;
 use crate::AppState;
@@ -105,5 +105,34 @@ pub async fn save_overlay_monitor(
 ) -> Result<(), CommandError> {
     let conn = state.db.lock().await;
     crate::settings::set_overlay_monitor(&conn, &monitor_id)?;
+    Ok(())
+}
+
+/// Overlay & détection en jeu (TODO#3) : `"none"` (défaut, désactivé) ou l'identifiant d'un
+/// moniteur pour le second overlay détaillé (voir `overlay::window::show_secondary_overlay_if_configured`).
+/// Si une partie est en cours au moment du changement, applique immédiatement (affiche/
+/// masque) plutôt que d'attendre la prochaine transition de partie.
+#[tauri::command]
+pub async fn save_overlay_secondary_monitor(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    monitor_id: String,
+) -> Result<(), CommandError> {
+    {
+        let conn = state.db.lock().await;
+        crate::settings::set_overlay_secondary_monitor(&conn, &monitor_id)?;
+    }
+    let is_active_game = {
+        let live = app.state::<crate::riot_local::LiveState>();
+        live.0
+            .lock()
+            .map(|g| g.state == "pregame" || g.state == "in_game")
+            .unwrap_or(false)
+    };
+    if is_active_game {
+        crate::overlay::window::show_secondary_overlay_if_configured(&app).await;
+    } else {
+        crate::overlay::window::hide_secondary_overlay(&app);
+    }
     Ok(())
 }

@@ -96,7 +96,8 @@
     "layout": {
       "full": "Completo (padrão)",
       "mini": "Mini resumo",
-      "minimal": "Minimalista (só o rank)"
+      "minimal": "Minimalista (só o rank)",
+      "coach": "Coach (só texto)"
     },
     "layoutHint": "\"Completo\" (padrão) lista todos os jogadores detectados, aliados e adversários. \"Mini resumo\" reduz o overlay a uma única linha de emblemas de rank, sem nome ou recomendação de agente. \"Minimalista\" mostra apenas o seu próprio rank em texto pequeno, para a menor intrusão possível em partida.",
     "densityLabel": "Densidade de exibição",
@@ -111,6 +112,17 @@
       "primary": "principal"
     },
     "monitorHint": "Por padrão, o overlay reaparece na última configuração de telas usada. Escolher uma tela explícita aqui faz com que ele sempre apareça nela, útil em configurações com vários monitores (ex.: sempre na tela do jogo).",
+    "secondaryMonitorLabel": "Overlay secundário (tela 2)",
+    "secondaryMonitor": {
+      "none": "Desativado (padrão)"
+    },
+    "secondaryMonitorHint": "Exibe um segundo overlay, sempre em layout completo e detalhado, na tela escolhida — útil em configurações com vários monitores para manter mais detalhes visíveis do que o overlay compacto exibido na tela do jogo.",
+    "postgameSummaryTitle": "Resumo de fim de partida",
+    "postgameSummaryLabel": "Exibir um resumo (K/D/A, agente, resultado) no overlay após cada partida",
+    "postgameSummaryAutodismissUnit": "segundos antes do fechamento automático (0 = manual)",
+    "postgameSummaryHint": "Obtido de forma best-effort do Henrik logo após a partida — pode não aparecer se a partida ainda não estiver registrada no Henrik no momento da transição.",
+    "friendLiveNotifyLabel": "Notificar quando um amigo seguido inicia uma partida",
+    "friendLiveNotifyHint": "Diferente do acompanhamento habitual (a posteriori, após o fim da partida), essa notificação chega assim que o amigo entra na seleção de agentes ou na partida — depende da presença Riot, best-effort.",
     "rankGapAlertTitle": "Alerta de diferença de rank do adversário",
     "rankGapAlertLabel": "Tocar um som discreto se um adversário tiver um rank muito mais alto que o meu",
     "rankGapAlertUnit": "tiers de diferença mínima",

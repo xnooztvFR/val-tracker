@@ -96,9 +96,10 @@
     "layout": {
       "full": "Full (default)",
       "mini": "Mini summary",
-      "minimal": "Minimal (rank only)"
+      "minimal": "Minimal (rank only)",
+      "coach": "Coach (text only)"
     },
-    "layoutHint": "\"Full\" (default) lists every detected player, allies and opponents. \"Mini summary\" shrinks the overlay to a single row of rank badges, no name or agent recommendation. \"Minimal\" only shows your own rank as small text, for the smallest possible screen clutter in-game.",
+    "layoutHint": "\"Full\" (default) lists every detected player, allies and opponents. \"Mini summary\" shrinks the overlay to a single row of rank badges, no name or agent recommendation. \"Minimal\" only shows your own rank as small text, for the smallest possible screen clutter in-game. \"Coach\" only shows text (state + ranks, no icons), meant to be easily isolated in a targeted Discord screen share.",
     "densityLabel": "Display density",
     "density": {
       "compact": "Compact",
@@ -111,6 +112,17 @@
       "primary": "primary"
     },
     "monitorHint": "By default, the overlay reappears on the last screen setup used. Picking an explicit screen here always shows it there — useful in multi-monitor setups (e.g. always on the game screen).",
+    "secondaryMonitorLabel": "Secondary overlay (screen 2)",
+    "secondaryMonitor": {
+      "none": "Disabled (default)"
+    },
+    "secondaryMonitorHint": "Shows a second overlay, always in full/detailed layout, on the chosen screen — useful in multi-monitor setups to keep more detail in view than the compact overlay shown on the game screen.",
+    "postgameSummaryTitle": "Post-game summary",
+    "postgameSummaryLabel": "Show a summary (K/D/A, agent, result) in the overlay after each match",
+    "postgameSummaryAutodismissUnit": "seconds before auto-close (0 = manual)",
+    "postgameSummaryHint": "Fetched best-effort from Henrik right after the match — may not appear if the match isn't ingested by Henrik yet at the time of the transition.",
+    "friendLiveNotifyLabel": "Notify when a followed friend starts a match",
+    "friendLiveNotifyHint": "Unlike the usual tracking (after the fact, once the match ends), this notification arrives as soon as the friend enters agent select or the match — relies on Riot presence, best-effort.",
     "rankGapAlertTitle": "Opponent rank gap alert",
     "rankGapAlertLabel": "Play a discreet sound if an opponent's rank is much higher than mine",
     "rankGapAlertUnit": "minimum tier gap",

@@ -170,6 +170,11 @@ struct PollContext {
     /// entitlements + 2 requêtes GLZ à chaque tick tant qu'on y est encore.
     roster_state: Option<GameState>,
     roster: Vec<LivePlayer>,
+    /// Overlay & détection en jeu (TODO#3, notification live d'ami) : dernier état "actif"
+    /// connu (pregame/in-game = `true`) par puuid d'ami suivi — sert à ne notifier que sur
+    /// la transition inactif → actif, pas à chaque tick tant que l'ami reste en partie. Voir
+    /// `scan_followed_friends_presence`.
+    friend_active: std::collections::HashMap<String, bool>,
 }
 
 impl PollContext {
@@ -346,7 +351,15 @@ async fn tick(app: &AppHandle, ctx: &mut PollContext) {
     }
 
     on_state_changed(app, ctx.previous_state, state, ctx.local_puuid.as_deref()).await;
+    scan_followed_friends_presence(app, ctx, &settings).await;
+    maybe_start_postgame_summary(app, ctx.previous_state, state, ctx.local_puuid.clone(), &settings);
     ctx.previous_state = Some(state);
+
+    let api_health = if ctx.local_failures > 0 || ctx.stuck_ticks >= STUCK_RESET_THRESHOLD / 2 {
+        "degraded".to_string()
+    } else {
+        "ok".to_string()
+    };
 
     publish(
         app,
@@ -356,6 +369,7 @@ async fn tick(app: &AppHandle, ctx: &mut PollContext) {
             state: state.as_str().to_string(),
             players,
             region: Some(region),
+            api_health,
         },
     );
 }
@@ -521,13 +535,17 @@ async fn on_state_changed(
     match current {
         GameState::Pregame => {
             crate::overlay::window::show_overlay(app).await;
+            crate::overlay::window::show_secondary_overlay_if_configured(app).await;
         }
         GameState::InGame if previous != Some(GameState::InGame) => {
             crate::overlay::window::show_overlay(app).await;
+            crate::overlay::window::show_secondary_overlay_if_configured(app).await;
             let app = app.clone();
             tauri::async_runtime::spawn(async move {
                 tokio::time::sleep(IN_GAME_OVERLAY_DURATION).await;
                 crate::overlay::window::hide_overlay(&app);
+                // Le second overlay (écran dédié, pas de gêne pour la visée) reste affiché
+                // toute la manche — pas de minuteur d'auto-masquage comme l'overlay principal.
             });
         }
         GameState::InGame => {
@@ -535,6 +553,7 @@ async fn on_state_changed(
         }
         _ => {
             crate::overlay::window::hide_overlay(app);
+            crate::overlay::window::hide_secondary_overlay(app);
         }
     }
 
@@ -564,6 +583,151 @@ async fn on_state_changed(
             .title("Partie terminée")
             .body("Tes stats seront à jour dans le tracker d'ici quelques minutes. Clique pour voir ton historique.")
             .show();
+    }
+}
+
+/// Overlay & détection en jeu (TODO#3) : scanne `chat/v4/presences` (déjà appelé pour
+/// l'état local, voir `client::fetch_game_state`) à la recherche des amis suivis
+/// (`db::list_followed_friends`) qui viennent d'entrer en pregame/in-game — notification OS
+/// + event `riot-local://friend-live` pour l'overlay, uniquement sur la transition inactif →
+/// actif (voir `PollContext::friend_active`) pour ne pas renotifier à chaque tick tant que
+/// l'ami reste en partie. Best-effort complet : aucune requête réseau si la fonctionnalité
+/// est désactivée ou qu'aucun ami n'est suivi.
+async fn scan_followed_friends_presence(
+    app: &AppHandle,
+    ctx: &mut PollContext,
+    settings: &crate::settings::AppSettings,
+) {
+    if !settings.friend_live_notify_enabled {
+        return;
+    }
+    let (Some(http), Some(lockfile)) = (ctx.http.clone(), ctx.lockfile.clone()) else {
+        return;
+    };
+    let Some(state) = app.try_state::<AppState>() else {
+        return;
+    };
+    let friends = {
+        let conn = state.db.lock().await;
+        crate::db::list_followed_friends(&conn).unwrap_or_default()
+    };
+    if friends.is_empty() {
+        return;
+    }
+
+    let Ok(presences) = client::fetch_all_valorant_presences(&http, &lockfile).await else {
+        return;
+    };
+
+    for friend in friends {
+        let is_active = presences
+            .iter()
+            .find(|(puuid, _)| *puuid == friend.puuid)
+            .map(|(_, loop_state)| matches!(loop_state.as_deref(), Some("PREGAME") | Some("INGAME")))
+            .unwrap_or(false);
+        let was_active = ctx.friend_active.get(&friend.puuid).copied().unwrap_or(false);
+        ctx.friend_active.insert(friend.puuid.clone(), is_active);
+        if is_active && !was_active {
+            let _ = app
+                .notification()
+                .builder()
+                .title("Un ami suivi lance une partie")
+                .body(format!("{}#{} vient d'entrer en partie", friend.name, friend.tag))
+                .show();
+            let _ = app.emit(
+                super::FRIEND_LIVE_EVENT,
+                super::FriendLiveEvent {
+                    name: friend.name,
+                    tag: friend.tag,
+                },
+            );
+        }
+    }
+}
+
+/// Overlay & détection en jeu (TODO#3) : déclenche la récupération best-effort du résumé de
+/// fin de partie sur la transition in-game → menu — même condition que la notification de
+/// fin de partie existante (voir plus bas dans `on_state_changed`), respecte le toggle
+/// `overlay_postgame_summary_enabled`.
+fn maybe_start_postgame_summary(
+    app: &AppHandle,
+    previous: Option<GameState>,
+    current: GameState,
+    local_puuid: Option<String>,
+    settings: &crate::settings::AppSettings,
+) {
+    if !settings.overlay_postgame_summary_enabled {
+        return;
+    }
+    if !(previous == Some(GameState::InGame) && current == GameState::Menu) {
+        return;
+    }
+    let Some(local_puuid) = local_puuid else { return };
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        fetch_and_emit_postgame_summary(app, local_puuid).await;
+    });
+}
+
+/// Tentatives espacées de `POSTGAME_SUMMARY_RETRY_DELAY` — le match qui vient de se
+/// terminer n'est pas forcément déjà ingéré côté Henrik au moment de la transition (voir la
+/// même limite déjà documentée pour `PostgameLink`/la notification de fin de partie).
+const POSTGAME_SUMMARY_MAX_ATTEMPTS: u32 = 5;
+const POSTGAME_SUMMARY_RETRY_DELAY: Duration = Duration::from_secs(20);
+
+async fn fetch_and_emit_postgame_summary(app: AppHandle, local_puuid: String) {
+    let Some(state) = app.try_state::<AppState>() else {
+        return;
+    };
+    let (player, api_key) = {
+        let conn = state.db.lock().await;
+        let player = crate::db::find_tracked_player(&conn, &local_puuid).ok().flatten();
+        let api_key = crate::settings::get_henrik_api_key(&conn).ok().flatten();
+        (player, api_key)
+    };
+    let (Some(player), Some(api_key)) = (player, api_key) else {
+        return;
+    };
+
+    for attempt in 0..POSTGAME_SUMMARY_MAX_ATTEMPTS {
+        if attempt > 0 {
+            tokio::time::sleep(POSTGAME_SUMMARY_RETRY_DELAY).await;
+        }
+        let result = crate::api::henrik::endpoints::get_matches(
+            &state.db,
+            &state.henrik,
+            Some(&api_key),
+            &player.region,
+            &player.name,
+            &player.tag,
+            1,
+            attempt > 0,
+        )
+        .await;
+        let Ok(fetched) = result else { continue };
+        let Some(latest) = fetched.data.first() else { continue };
+        let Some(match_player) = latest
+            .players
+            .iter()
+            .find(|p| p.puuid.as_deref() == Some(local_puuid.as_str()))
+        else {
+            continue;
+        };
+        let won = match_player
+            .team_id
+            .as_deref()
+            .and_then(|team_id| latest.teams.iter().find(|t| t.team_id.as_deref() == Some(team_id)))
+            .and_then(|t| t.won);
+        let summary = super::PostgameSummary {
+            agent: match_player.agent.as_ref().and_then(|a| a.name.clone()),
+            map: latest.metadata.map.as_ref().and_then(|m| m.name.clone()),
+            kills: match_player.stats.as_ref().and_then(|s| s.kills).unwrap_or(0),
+            deaths: match_player.stats.as_ref().and_then(|s| s.deaths).unwrap_or(0),
+            assists: match_player.stats.as_ref().and_then(|s| s.assists).unwrap_or(0),
+            won,
+        };
+        let _ = app.emit(super::POSTGAME_SUMMARY_EVENT, summary);
+        return;
     }
 }
 
@@ -677,6 +841,10 @@ async fn read_settings(app: &AppHandle) -> crate::settings::AppSettings {
         hud_sounds_volume: 15,
         cursor_enabled: false,
         icon_style: "official".to_string(),
+        overlay_secondary_monitor: "none".to_string(),
+        overlay_postgame_summary_enabled: true,
+        overlay_postgame_summary_autodismiss_secs: 8,
+        friend_live_notify_enabled: true,
     })
 }
 

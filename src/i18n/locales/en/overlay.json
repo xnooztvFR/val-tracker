@@ -20,5 +20,32 @@
   "smurfHint": "Unranked account + high winrate on recent matches — a hint, not a certainty.",
   "proBadge": "PRO",
   "proHint": "Linked to a known VLR profile: {{name}}",
-  "proLabel": "Pro player"
+  "proLabel": "Pro player",
+  "health": {
+    "degraded": "Riot local API unstable — detection may be delayed"
+  },
+  "friendLive": {
+    "banner": "{{name}}#{{tag}} just started a match"
+  },
+  "postgame": {
+    "title": "Post-game summary",
+    "close": "Close",
+    "result": {
+      "win": "Win",
+      "loss": "Loss",
+      "unknown": "Match ended"
+    }
+  },
+  "session": {
+    "title": "This session",
+    "record": "{{wins}}W {{losses}}L"
+  },
+  "sparkline": {
+    "title": "24h"
+  },
+  "coach": {
+    "selfRank": "My rank:",
+    "allies": "Allies:",
+    "enemies": "Opponents:"
+  }
 }

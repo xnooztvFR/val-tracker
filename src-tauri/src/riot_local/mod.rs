@@ -46,6 +46,16 @@ pub struct LiveSnapshot {
     pub players: Vec<LivePlayer>,
     /// Région de déploiement détectée (sinon la région par défaut des réglages).
     pub region: Option<String>,
+    /// Overlay & détection en jeu (TODO#3) : "ok" | "degraded" — reflète les échecs
+    /// consécutifs de l'API locale Riot (`poller::PollContext::local_failures`/`stuck_ticks`)
+    /// pendant la partie en cours, aujourd'hui silencieux côté overlay malgré des retries en
+    /// coulisses. `"ok"` par défaut (pas de partie en cours ou aucune instabilité observée).
+    #[serde(default = "default_api_health")]
+    pub api_health: String,
+}
+
+fn default_api_health() -> String {
+    "ok".to_string()
 }
 
 impl LiveSnapshot {
@@ -54,6 +64,7 @@ impl LiveSnapshot {
             state: "desactive".to_string(),
             players: Vec::new(),
             region: None,
+            api_health: default_api_health(),
         }
     }
 
@@ -62,6 +73,7 @@ impl LiveSnapshot {
             state: "hors_jeu".to_string(),
             players: Vec::new(),
             region: None,
+            api_health: default_api_health(),
         }
     }
 }
@@ -94,6 +106,37 @@ pub struct PostgameLink {
 /// Backlog #81 : durée de vie du lien avant qu'on le considère périmé plutôt que de
 /// rediriger l'utilisateur vers une partie déjà oubliée.
 pub const POSTGAME_LINK_TTL_SECS: i64 = 15 * 60;
+
+/// Overlay & détection en jeu (TODO#3) : résumé de fin de partie affiché dans l'overlay
+/// (voir `Overlay.tsx`), poussé par `poller::fetch_and_emit_postgame_summary` via l'event
+/// `riot-local://postgame-summary` — best-effort, le match peut ne pas encore être ingéré
+/// côté Henrik au moment de la transition in-game → menu (voir les tentatives espacées dans
+/// le poller), donc rien n'est émis si toutes les tentatives échouent plutôt que d'afficher
+/// un résumé vide ou incorrect.
+#[derive(Debug, Clone, Serialize)]
+pub struct PostgameSummary {
+    pub agent: Option<String>,
+    pub map: Option<String>,
+    pub kills: i64,
+    pub deaths: i64,
+    pub assists: i64,
+    pub won: Option<bool>,
+}
+
+pub const POSTGAME_SUMMARY_EVENT: &str = "riot-local://postgame-summary";
+
+/// Overlay & détection en jeu (TODO#3) : notification live qu'un ami suivi (voir
+/// `db::list_followed_friends`) vient d'entrer en pregame/in-game — poussée par
+/// `poller::scan_followed_friends_presence` (scan de `chat/v4/presences`, qui expose la
+/// presence de tous les amis Riot, pas seulement locale), au-delà du pull post-game a
+/// posteriori déjà fait par `friend_watcher.rs`.
+pub const FRIEND_LIVE_EVENT: &str = "riot-local://friend-live";
+
+#[derive(Debug, Clone, Serialize)]
+pub struct FriendLiveEvent {
+    pub name: String,
+    pub tag: String,
+}
 
 pub struct PostgameLinkState(pub Mutex<Option<PostgameLink>>);
 

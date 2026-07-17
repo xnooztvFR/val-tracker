@@ -306,6 +306,84 @@ pub fn hide_overlay(app_handle: &AppHandle) {
     }
 }
 
+/// Overlay & détection en jeu (TODO#3) : label de la fenêtre du second overlay détaillé,
+/// indépendante de l'overlay principal (`OVERLAY_LABEL`) — toujours en layout complet/
+/// détaillé (voir `Overlay.tsx`, qui force ce rendu pour cette fenêtre précise via
+/// `getCurrentWindow().label`), affichée sur le moniteur choisi dans Paramètres
+/// (`settings::AppSettings::overlay_secondary_monitor`, `"none"` = désactivé).
+pub const OVERLAY_SECONDARY_LABEL: &str = "overlay_secondary";
+const OVERLAY_SECONDARY_SIZE: (f64, f64) = (420.0, 620.0);
+
+fn create_secondary_overlay_window(app_handle: &AppHandle, monitor_id_pref: &str) -> tauri::Result<()> {
+    if app_handle.get_webview_window(OVERLAY_SECONDARY_LABEL).is_some() {
+        return Ok(());
+    }
+    let position = explicit_monitor_position(app_handle, monitor_id_pref).unwrap_or(DEFAULT_POSITION);
+    let (x, y) = clamp_to_available_monitors(
+        app_handle,
+        position.0,
+        position.1,
+        OVERLAY_SECONDARY_SIZE.0,
+        OVERLAY_SECONDARY_SIZE.1,
+    );
+
+    let window = WebviewWindowBuilder::new(
+        app_handle,
+        OVERLAY_SECONDARY_LABEL,
+        WebviewUrl::App("index.html".into()),
+    )
+    .title("Valorant Tracker — Overlay (écran 2)")
+    .inner_size(OVERLAY_SECONDARY_SIZE.0, OVERLAY_SECONDARY_SIZE.1)
+    .position(x, y)
+    .resizable(false)
+    .decorations(false)
+    .transparent(true)
+    .shadow(false)
+    .always_on_top(true)
+    .skip_taskbar(true)
+    .visible(false)
+    .focused(false)
+    .build()?;
+
+    // Toujours click-through : contrairement à l'overlay principal, ce second overlay n'a
+    // pas vocation à être déplacé au clavier (Ctrl+Shift+V ne le cible pas) — repositionner
+    // le moniteur cible depuis Paramètres suffit pour ce cas d'usage (écran 2 dédié).
+    window.set_ignore_cursor_events(true)?;
+    Ok(())
+}
+
+/// Affiche (en la créant si besoin) le second overlay si un moniteur est configuré dans
+/// Paramètres, sinon masque/ignore silencieusement — best-effort, appelée à chaque endroit
+/// où `show_overlay` l'est déjà (voir `riot_local::poller::on_state_changed`).
+pub async fn show_secondary_overlay_if_configured(app_handle: &AppHandle) {
+    let Some(state) = app_handle.try_state::<AppState>() else {
+        return;
+    };
+    let monitor_id = {
+        let conn = state.db.lock().await;
+        crate::settings::load_settings(&conn)
+            .map(|s| s.overlay_secondary_monitor)
+            .unwrap_or_else(|_| "none".to_string())
+    };
+    if monitor_id == "none" {
+        hide_secondary_overlay(app_handle);
+        return;
+    }
+    if let Err(err) = create_secondary_overlay_window(app_handle, &monitor_id) {
+        crate::applog!("[overlay] création du second overlay impossible: {err}");
+        return;
+    }
+    if let Some(window) = app_handle.get_webview_window(OVERLAY_SECONDARY_LABEL) {
+        let _ = window.show();
+    }
+}
+
+pub fn hide_secondary_overlay(app_handle: &AppHandle) {
+    if let Some(window) = app_handle.get_webview_window(OVERLAY_SECONDARY_LABEL) {
+        let _ = window.hide();
+    }
+}
+
 /// Active/désactive le click-through de l'overlay. En mode interactif, la fenêtre
 /// reprend le focus pour pouvoir être déplacée.
 pub fn set_click_through(app_handle: &AppHandle, ignore: bool) -> tauri::Result<()> {

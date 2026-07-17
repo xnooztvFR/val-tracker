@@ -257,7 +257,7 @@ pub async fn save_overlay_layout(
     state: State<'_, AppState>,
     layout: String,
 ) -> Result<(), CommandError> {
-    ensure_one_of(&layout, &["full", "mini", "minimal"], "layout")?;
+    ensure_one_of(&layout, &["full", "mini", "minimal", "coach"], "layout")?;
     let conn = state.db.lock().await;
     crate::settings::set_overlay_layout(&conn, &layout)?;
     Ok(())
@@ -413,6 +413,41 @@ pub async fn save_rank_gap_alert_threshold(
 ) -> Result<(), CommandError> {
     let conn = state.db.lock().await;
     crate::settings::set_rank_gap_alert_threshold(&conn, threshold)?;
+    Ok(())
+}
+
+/// Overlay & détection en jeu (TODO#3) : toggle du résumé de fin de partie affiché dans
+/// l'overlay (voir `riot_local::poller` + `Overlay.tsx`).
+#[tauri::command]
+pub async fn save_overlay_postgame_summary_enabled(
+    state: State<'_, AppState>,
+    enabled: bool,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::set_overlay_postgame_summary_enabled(&conn, enabled)?;
+    Ok(())
+}
+
+/// Délai (secondes, `0` = manuel) avant fermeture auto du résumé de fin de partie.
+#[tauri::command]
+pub async fn save_overlay_postgame_summary_autodismiss_secs(
+    state: State<'_, AppState>,
+    secs: i64,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::set_overlay_postgame_summary_autodismiss_secs(&conn, secs)?;
+    Ok(())
+}
+
+/// Notification live (au lancement de partie) qu'un ami suivi vient d'entrer en pregame/
+/// in-game — voir `riot_local::poller` (scan de `chat/v4/presences`).
+#[tauri::command]
+pub async fn save_friend_live_notify_enabled(
+    state: State<'_, AppState>,
+    enabled: bool,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::set_friend_live_notify_enabled(&conn, enabled)?;
     Ok(())
 }
 

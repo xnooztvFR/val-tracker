@@ -176,7 +176,7 @@ export default function App() {
   // exploitable côté plugin, donc c'est le focus qui sert de déclencheur). N'a de sens que
   // pour la fenêtre principale — l'overlay n'a pas de router applicatif.
   useEffect(() => {
-    if (getCurrentWindow().label === "overlay") return;
+    if (getCurrentWindow().label.startsWith("overlay")) return;
     const unlisten = listen<{ region: string; name: string; tag: string }>(
       "postgame://navigate",
       (event) => {
@@ -199,7 +199,7 @@ export default function App() {
 
   // La fenêtre overlay V2 (créée par overlay::window côté Rust) rend uniquement
   // l'écran Overlay, sans titlebar ni navigation.
-  if (getCurrentWindow().label === "overlay") {
+  if (getCurrentWindow().label.startsWith("overlay")) {
     return <Overlay />;
   }
 

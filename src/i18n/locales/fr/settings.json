@@ -96,9 +96,10 @@
     "layout": {
       "full": "Complète (défaut)",
       "mini": "Mini résumé",
-      "minimal": "Épuré (rang seul)"
+      "minimal": "Épuré (rang seul)",
+      "coach": "Coach (texte seul)"
     },
-    "layoutHint": "« Complète » (défaut) liste tous les joueurs détectés, alliés et adversaires. « Mini résumé » réduit l'overlay à une seule ligne de badges de rang, sans nom ni recommandation d'agent. « Épuré » n'affiche que ton propre rang en petit texte, pour un encombrement minimal en jeu.",
+    "layoutHint": "« Complète » (défaut) liste tous les joueurs détectés, alliés et adversaires. « Mini résumé » réduit l'overlay à une seule ligne de badges de rang, sans nom ni recommandation d'agent. « Épuré » n'affiche que ton propre rang en petit texte, pour un encombrement minimal en jeu. « Coach » n'affiche que du texte (état + rangs, sans icônes), pensé pour être isolé facilement dans un partage d'écran ciblé (Discord).",
     "densityLabel": "Densité d'affichage",
     "density": {
       "compact": "Compact",
@@ -111,6 +112,17 @@
       "primary": "principal"
     },
     "monitorHint": "Par défaut, l'overlay réapparaît sur le dernier setup d'écrans utilisé. Choisir un écran explicite ici le fait toujours apparaître dessus, utile en config multi-moniteurs (ex. toujours sur l'écran de jeu).",
+    "secondaryMonitorLabel": "Second overlay (écran 2)",
+    "secondaryMonitor": {
+      "none": "Désactivé (défaut)"
+    },
+    "secondaryMonitorHint": "Affiche un second overlay, toujours en disposition complète et détaillée, sur l'écran choisi — utile en config multi-écrans pour garder plus de détails sous les yeux que l'overlay compact affiché sur l'écran de jeu.",
+    "postgameSummaryTitle": "Résumé de fin de partie",
+    "postgameSummaryLabel": "Afficher un résumé (K/D/A, agent, résultat) dans l'overlay après chaque partie",
+    "postgameSummaryAutodismissUnit": "secondes avant fermeture auto (0 = manuel)",
+    "postgameSummaryHint": "Récupéré au mieux depuis Henrik juste après la partie — peut ne pas apparaître si le match n'est pas encore ingéré côté Henrik au moment de la transition.",
+    "friendLiveNotifyLabel": "Notifier quand un ami suivi lance une partie",
+    "friendLiveNotifyHint": "Contrairement au suivi habituel (a posteriori, une fois la partie terminée), cette notification arrive dès que l'ami entre en sélection d'agents ou en partie — repose sur la presence Riot, best-effort.",
     "rankGapAlertTitle": "Alerte d'écart de rang adverse",
     "rankGapAlertLabel": "Jouer un son discret si un adversaire a un rang bien plus élevé que le mien",
     "rankGapAlertUnit": "tiers d'écart minimum",

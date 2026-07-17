@@ -1,16 +1,29 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useQueries, useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTranslation } from "react-i18next";
 
-import { tauriApi, type Fetched, type LivePlayer, type MmrData } from "../lib/tauriApi";
+import {
+  tauriApi,
+  type Fetched,
+  type FriendLiveEvent,
+  type LivePlayer,
+  type MmrData,
+  type PostgameSummary,
+} from "../lib/tauriApi";
 import { useLiveDetectionState } from "../hooks/useLiveState";
 import { useSettingsStore } from "../store/settingsStore";
 import { rankInfo } from "../lib/format";
-import { computeAgentWinrates } from "../lib/stats";
+import { computeAgentWinrates, computeTodayStats } from "../lib/stats";
 import { agentRole, AGENT_ROLE_ORDER, agentRoleLabel } from "../lib/agentRoles";
+import { resolveOverlayOrder, useOverlayOrderStore } from "../store/overlayOrderStore";
 
 const OWN_MATCHES_SAMPLE_SIZE = 20;
+const SPARKLINE_WINDOW_MS = 24 * 60 * 60 * 1000;
+const IS_SECONDARY_OVERLAY = getCurrentWindow().label === "overlay_secondary";
+const OVERLAY_WIDGET_KEYS = ["roster", "missingRole", "topAgents", "session", "sparkline"] as const;
+type OverlayWidgetKey = (typeof OVERLAY_WIDGET_KEYS)[number];
 
 /** Fenêtre overlay V2 (always-on-top, transparente, click-through par défaut) : état de
  * la partie détectée via l'API locale Riot + rank Henrik des joueurs du lobby. Les mises
@@ -24,13 +37,17 @@ export default function Overlay() {
   // label) — App.tsx ne rafraîchit jamais le settingsStore ici puisqu'il retourne avant cet
   // effet pour la fenêtre "overlay" (voir App.tsx), donc on le fait nous-mêmes.
   const { settings, refresh: refreshSettings } = useSettingsStore();
-  const density = settings?.overlay_density ?? "detailed";
+  // Overlay & détection en jeu (TODO#3) : le second overlay (écran 2, voir
+  // `overlay::window::show_secondary_overlay_if_configured`) ignore les préférences de
+  // layout/densité de l'overlay principal — toujours complet/détaillé, c'est tout son but
+  // (garder plus d'info visible que l'overlay compact de l'écran de jeu).
+  const density = IS_SECONDARY_OVERLAY ? "detailed" : settings?.overlay_density ?? "detailed";
   // Backlog #75 : "full" (défaut, liste complète) ou "mini" (résumé coin d'écran, juste
   // les badges de rang) — voir `MiniSummary` plus bas. Backlog #82 : le mode "mini" saute
   // entièrement la recommandation d'agent (requête `ownMatches` + calcul de winrate) plutôt
   // que de la calculer pour ne pas l'afficher, l'overlay tournant en continu toute la
   // session de jeu.
-  const layout = settings?.overlay_layout ?? "full";
+  const layout = IS_SECONDARY_OVERLAY ? "full" : settings?.overlay_layout ?? "full";
 
   useEffect(() => {
     refreshSettings();
@@ -174,12 +191,41 @@ export default function Overlay() {
   const ownMatches = useQuery({
     queryKey: ["overlay-own-matches", self?.puuid],
     queryFn: () => tauriApi.fetchMatches(self!.region, self!.name, self!.tag, OWN_MATCHES_SAMPLE_SIZE),
-    enabled: isFullLayout && Boolean(self) && isPregame,
+    // Backlog #82 élargi (widget "session"/sparkline, TODO#3) : chargé dès qu'une partie est
+    // active, pas seulement en pregame — la reco d'agent ci-dessous reste, elle, affichée
+    // seulement en pregame (voir `recommendedAgents`/`isPregame` plus bas).
+    enabled: isFullLayout && Boolean(self) && isActiveGame,
     staleTime: 10 * 60_000,
   });
   const ownAgentWinrates =
     isFullLayout && self && ownMatches.data ? computeAgentWinrates(ownMatches.data.data, self.puuid, 2) : [];
   const recommendedAgents = ownAgentWinrates.slice(0, 3);
+
+  // Overlay & détection en jeu (TODO#3) : widget "session" — W/L du soir directement en
+  // overlay, sans alt-tab vers Today.tsx (même agrégation, voir `computeTodayStats`).
+  const todayStats =
+    isFullLayout && self && ownMatches.data
+      ? computeTodayStats(ownMatches.data.data, self.puuid)
+      : null;
+
+  // Overlay & détection en jeu (TODO#3) : mini-sparkline 24h — séquence W/L des matchs des
+  // dernières 24h (même échantillon `ownMatches`, pas d'appel réseau supplémentaire), plus
+  // récent à droite.
+  const sparklineResults = useMemo(() => {
+    if (!isFullLayout || !self || !ownMatches.data) return [];
+    const since = Date.now() - SPARKLINE_WINDOW_MS;
+    return ownMatches.data.data
+      .filter((m) => {
+        const startedAt = m.metadata.started_at ? new Date(m.metadata.started_at).getTime() : null;
+        return startedAt != null && !Number.isNaN(startedAt) && startedAt >= since;
+      })
+      .map((m) => {
+        const player = m.players.find((p) => p.puuid === self.puuid);
+        const team = m.teams.find((t) => t.team_id === player?.team_id);
+        return team?.won === true;
+      })
+      .reverse();
+  }, [isFullLayout, self, ownMatches.data]);
 
   // Contre-pick / rôle manquant : croise les agents déjà lockés par l'équipe alliée
   // (`player.agent`, résolu côté Rust depuis le pregame local — best-effort, voir
@@ -234,6 +280,45 @@ export default function Overlay() {
     }
   }, [rankGapAlertEnabled, rankGapAlertThreshold, selfTier, enemies, hudSoundsEnabled, hudSoundsVolume]);
 
+  // Overlay & détection en jeu (TODO#3) : indicateur de santé de l'API locale Riot pendant
+  // la partie — reflète les retries en coulisses du poller (`riot_local::poller`),
+  // aujourd'hui silencieux côté overlay malgré une détection potentiellement dégradée.
+  const apiHealth = snapshot?.api_health ?? "ok";
+
+  // Overlay & détection en jeu (TODO#3) : notification live d'un ami suivi qui vient
+  // d'entrer en partie (event `riot-local://friend-live`, voir
+  // `poller::scan_followed_friends_presence`) — bannière discrète auto-effacée.
+  const [friendLiveBanner, setFriendLiveBanner] = useState<FriendLiveEvent | null>(null);
+  useEffect(() => {
+    const unlisten = listen<FriendLiveEvent>("riot-local://friend-live", (event) => {
+      setFriendLiveBanner(event.payload);
+      window.setTimeout(() => setFriendLiveBanner(null), 8000);
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, []);
+
+  // Overlay & détection en jeu (TODO#3) : résumé de fin de partie (event
+  // `riot-local://postgame-summary`, voir `poller::fetch_and_emit_postgame_summary`) — auto-
+  // dismiss après `overlay_postgame_summary_autodismiss_secs` (0 = fermeture manuelle
+  // uniquement).
+  const [postgameSummary, setPostgameSummary] = useState<PostgameSummary | null>(null);
+  useEffect(() => {
+    const unlisten = listen<PostgameSummary>("riot-local://postgame-summary", (event) => {
+      setPostgameSummary(event.payload);
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, []);
+  const postgameAutodismissSecs = settings?.overlay_postgame_summary_autodismiss_secs ?? 8;
+  useEffect(() => {
+    if (!postgameSummary || postgameAutodismissSecs <= 0) return;
+    const timer = window.setTimeout(() => setPostgameSummary(null), postgameAutodismissSecs * 1000);
+    return () => window.clearTimeout(timer);
+  }, [postgameSummary, postgameAutodismissSecs]);
+
   const stateLabel =
     snapshot?.state === "pregame"
       ? t("state.pregame")
@@ -245,8 +330,50 @@ export default function Overlay() {
             ? t("state.disabled")
             : t("state.waiting");
 
+  // Overlay & détection en jeu (TODO#3) : ordre des blocs du layout "full", réordonnable
+  // par glisser-déposer (voir overlayOrderStore.ts) — uniquement actionnable en mode
+  // interactif, l'overlay étant click-through le reste du temps.
+  const { order: storedOrder, reorder } = useOverlayOrderStore();
+  const widgetOrder = storedOrder.length > 0 ? storedOrder : resolveOverlayOrder(OVERLAY_WIDGET_KEYS);
+  const [draggedWidget, setDraggedWidget] = useState<string | null>(null);
+
+  const activeGame = snapshot?.state === "in_game" || snapshot?.state === "pregame";
+
   return (
     <div className="flex h-screen flex-col p-2 font-sans text-hi">
+      {friendLiveBanner && (
+        <div className="panel-clip mb-2 border border-accent/60 bg-surface/95 px-3 py-2 text-[10px] text-hi">
+          {t("friendLive.banner", { name: friendLiveBanner.name, tag: friendLiveBanner.tag })}
+        </div>
+      )}
+
+      {postgameSummary && (
+        <div className="panel-clip mb-2 border border-line bg-surface/95 px-3 py-2 text-[10px] text-hi">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="hud-label text-[9px] text-lo">{t("postgame.title")}</span>
+            <button
+              type="button"
+              onClick={() => setPostgameSummary(null)}
+              className="pointer-events-auto hud-label text-[9px] text-lo hover:text-hi"
+            >
+              {t("postgame.close")}
+            </button>
+          </div>
+          <p className="pointer-events-none">
+            {postgameSummary.won == null
+              ? t("postgame.result.unknown")
+              : postgameSummary.won
+                ? t("postgame.result.win")
+                : t("postgame.result.loss")}
+            {postgameSummary.agent && ` — ${postgameSummary.agent}`}
+            {postgameSummary.map && ` (${postgameSummary.map})`}
+          </p>
+          <p className="pointer-events-none stat-value text-hi/80">
+            {postgameSummary.kills}/{postgameSummary.deaths}/{postgameSummary.assists}
+          </p>
+        </div>
+      )}
+
       <div
         data-tauri-drag-region={interactive || undefined}
         className={`panel-clip flex flex-col overflow-hidden bg-surface/90 ${
@@ -254,30 +381,31 @@ export default function Overlay() {
         }`}
       >
         {layout === "minimal" ? (
-          <MinimalSummary
-            active={snapshot?.state === "in_game" || snapshot?.state === "pregame"}
-            selfTier={selfTier}
-            interactive={interactive}
-          />
+          <MinimalSummary active={activeGame} selfTier={selfTier} interactive={interactive} />
         ) : layout === "mini" ? (
-          <MiniSummary
-            active={snapshot?.state === "in_game" || snapshot?.state === "pregame"}
+          <MiniSummary active={activeGame} allies={allies} enemies={enemies} interactive={interactive} />
+        ) : layout === "coach" ? (
+          <CoachSummary
+            active={activeGame}
+            stateLabel={stateLabel}
+            selfTier={selfTier}
             allies={allies}
             enemies={enemies}
             interactive={interactive}
+            todayStats={todayStats}
           />
         ) : (
           <>
             <div data-tauri-drag-region={interactive || undefined} className="flex items-center justify-between border-b border-line px-3 py-2">
               <span className="hud-label pointer-events-none text-[10px]">VAL // OVERLAY</span>
               <span className="pointer-events-none flex items-center gap-1.5">
-                <span
-                  className={`h-1.5 w-1.5 ${
-                    snapshot?.state === "in_game" || snapshot?.state === "pregame"
-                      ? "bg-accent"
-                      : "bg-lo/50"
-                  }`}
-                />
+                {apiHealth === "degraded" && (
+                  <span
+                    className="h-1.5 w-1.5 bg-crit"
+                    title={t("health.degraded")}
+                  />
+                )}
+                <span className={`h-1.5 w-1.5 ${activeGame ? "bg-accent" : "bg-lo/50"}`} />
                 <span className="hud-label text-[10px]">{stateLabel}</span>
               </span>
             </div>
@@ -285,9 +413,7 @@ export default function Overlay() {
             <div className="min-h-0 flex-1 overflow-y-auto px-2 py-1.5">
               {players.length === 0 ? (
                 <p className="px-1 py-2 text-xs text-lo">
-                  {snapshot?.state === "in_game" || snapshot?.state === "pregame"
-                    ? t("detectedHint")
-                    : t("waitingHint")}
+                  {activeGame ? t("detectedHint") : t("waitingHint")}
                 </p>
               ) : (
                 <div className="space-y-2">
@@ -306,37 +432,87 @@ export default function Overlay() {
               )}
             </div>
 
-            {isPregame && missingRole && (
-              <div className="border-t border-line px-2 py-1.5">
-                <p className="hud-label pointer-events-none mb-1 text-[9px] text-lo">
-                  {t("missingRole")}
-                </p>
-                <p className="pointer-events-none text-[10px] text-hi">
-                  {agentRoleLabel(missingRole)}
-                  {rolePick && (
+            {widgetOrder
+              .filter((key): key is OverlayWidgetKey => key !== "roster")
+              .map((key) => {
+                let content: ReactNode = null;
+                if (key === "missingRole" && isPregame && missingRole) {
+                  content = (
                     <>
-                      {" — "}
-                      {rolePick.name} <span className="text-accent">{Math.round(rolePick.winPercent)}%</span>
+                      <p className="hud-label pointer-events-none mb-1 text-[9px] text-lo">
+                        {t("missingRole")}
+                      </p>
+                      <p className="pointer-events-none text-[10px] text-hi">
+                        {agentRoleLabel(missingRole)}
+                        {rolePick && (
+                          <>
+                            {" — "}
+                            {rolePick.name} <span className="text-accent">{Math.round(rolePick.winPercent)}%</span>
+                          </>
+                        )}
+                      </p>
                     </>
-                  )}
-                </p>
-              </div>
-            )}
-
-            {isPregame && recommendedAgents.length > 0 && (
-              <div className="border-t border-line px-2 py-1.5">
-                <p className="hud-label pointer-events-none mb-1 text-[9px] text-lo">
-                  {t("topAgents")}
-                </p>
-                <ul className="flex gap-2">
-                  {recommendedAgents.map((agent) => (
-                    <li key={agent.name} className="pointer-events-none text-[10px] text-hi">
-                      {agent.name} <span className="text-accent">{Math.round(agent.winPercent)}%</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
+                  );
+                } else if (key === "topAgents" && isPregame && recommendedAgents.length > 0) {
+                  content = (
+                    <>
+                      <p className="hud-label pointer-events-none mb-1 text-[9px] text-lo">
+                        {t("topAgents")}
+                      </p>
+                      <ul className="flex gap-2">
+                        {recommendedAgents.map((agent) => (
+                          <li key={agent.name} className="pointer-events-none text-[10px] text-hi">
+                            {agent.name} <span className="text-accent">{Math.round(agent.winPercent)}%</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  );
+                } else if (key === "session" && todayStats && todayStats.matches > 0) {
+                  content = (
+                    <>
+                      <p className="hud-label pointer-events-none mb-1 text-[9px] text-lo">
+                        {t("session.title")}
+                      </p>
+                      <p className="pointer-events-none text-[10px] text-hi">
+                        {t("session.record", {
+                          wins: todayStats.wins,
+                          losses: todayStats.matches - todayStats.wins,
+                        })}
+                        <span className="text-accent"> {Math.round(todayStats.winPercent)}%</span>
+                      </p>
+                    </>
+                  );
+                } else if (key === "sparkline" && sparklineResults.length > 0) {
+                  content = (
+                    <>
+                      <p className="hud-label pointer-events-none mb-1 text-[9px] text-lo">
+                        {t("sparkline.title")}
+                      </p>
+                      <Sparkline results={sparklineResults} />
+                    </>
+                  );
+                }
+                if (!content) return null;
+                return (
+                  <div
+                    key={key}
+                    draggable={interactive}
+                    onDragStart={() => setDraggedWidget(key)}
+                    onDragOver={(e) => interactive && e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (draggedWidget) reorder(OVERLAY_WIDGET_KEYS, draggedWidget, key);
+                      setDraggedWidget(null);
+                    }}
+                    className={`border-t border-line px-2 py-1.5 ${
+                      interactive ? "cursor-grab active:cursor-grabbing" : ""
+                    }`}
+                  >
+                    {content}
+                  </div>
+                );
+              })}
 
             <div className="border-t border-line px-3 py-1.5">
               <p className="pointer-events-none text-[10px] text-lo">
@@ -347,6 +523,79 @@ export default function Overlay() {
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Overlay & détection en jeu (TODO#3) : mini-sparkline W/L des dernières 24h — une barre
+ * par match (vert = victoire, rouge = défaite), la plus récente à droite. SVG minimal, pas
+ * de dépendance de chart supplémentaire pour un composant aussi petit. */
+function Sparkline({ results }: { results: boolean[] }) {
+  const barWidth = 4;
+  const gap = 2;
+  const height = 16;
+  const width = results.length * (barWidth + gap) - gap;
+  return (
+    <svg width={width} height={height} className="pointer-events-none">
+      {results.map((won, i) => (
+        <rect
+          key={i}
+          x={i * (barWidth + gap)}
+          y={won ? 0 : height / 2}
+          width={barWidth}
+          height={height / 2}
+          className={won ? "fill-accent" : "fill-crit"}
+        />
+      ))}
+    </svg>
+  );
+}
+
+/** Overlay & détection en jeu (TODO#3) : mode "coach" — overlay texte seul (état, rang
+ * perso, rangs alliés/adverses en texte, W/L du soir), sans icône ni image, pensé pour être
+ * isolé facilement dans un partage d'écran ciblé (Discord) sans exposer le reste de
+ * l'interface. */
+function CoachSummary({
+  active,
+  stateLabel,
+  selfTier,
+  allies,
+  enemies,
+  interactive,
+  todayStats,
+}: {
+  active: boolean;
+  stateLabel: string;
+  selfTier: number | null | undefined;
+  allies: PlayerGroupEntry[];
+  enemies: PlayerGroupEntry[];
+  interactive: boolean;
+  todayStats: { matches: number; wins: number; winPercent: number } | null;
+}) {
+  const { t } = useTranslation("overlay");
+  const info = rankInfo(selfTier);
+  const rankLine = (entries: PlayerGroupEntry[]) =>
+    entries
+      .map(({ query }) => rankInfo(query?.data?.data?.current_data?.currenttier).name)
+      .join(", ");
+
+  return (
+    <div data-tauri-drag-region={interactive || undefined} className="space-y-1 px-3 py-2 text-[11px] text-hi">
+      <p className="hud-label pointer-events-none text-[9px] text-lo">
+        <span className={`mr-1.5 inline-block h-1.5 w-1.5 ${active ? "bg-accent" : "bg-lo/50"}`} />
+        {stateLabel}
+      </p>
+      <p className="pointer-events-none">
+        {t("coach.selfRank")} <span className={info.colorClass}>{info.name}</span>
+      </p>
+      {allies.length > 0 && <p className="pointer-events-none text-lo">{t("coach.allies")} {rankLine(allies)}</p>}
+      {enemies.length > 0 && <p className="pointer-events-none text-lo">{t("coach.enemies")} {rankLine(enemies)}</p>}
+      {todayStats && todayStats.matches > 0 && (
+        <p className="pointer-events-none">
+          {t("session.record", { wins: todayStats.wins, losses: todayStats.matches - todayStats.wins })}
+        </p>
+      )}
+      {interactive && <p className="hud-label pointer-events-none text-[9px] text-hi/80">Ctrl+Shift+V</p>}
     </div>
   );
 }

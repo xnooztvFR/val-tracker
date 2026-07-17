@@ -121,10 +121,28 @@ const KEY_CURSOR_ENABLED: &str = "cursor_enabled";
 /// maison abstraites — voir `AgentGlyph.tsx`/`WeaponGlyph.tsx`, pas des reproductions exactes
 /// des assets Riot, juste un style géométrique évitant toute dépendance réseau externe).
 const KEY_ICON_STYLE: &str = "icon_style";
+/// Overlay & détection en jeu (TODO#3) : moniteur du second overlay détaillé, indépendant
+/// de `KEY_OVERLAY_MONITOR` (l'overlay principal) — `"none"` (défaut, désactivé) ou
+/// l'identifiant d'un moniteur (voir `overlay::window::monitor_id`). Ce second overlay est
+/// toujours en layout complet/détaillé, quel que soit `overlay_layout`/`overlay_density`.
+const KEY_OVERLAY_SECONDARY_MONITOR: &str = "overlay_secondary_monitor";
+/// Résumé de fin de partie affiché dans l'overlay (K/D/A, agent, résultat) — récupéré au
+/// mieux depuis Henrik après la transition in-game → menu (voir `riot_local::poller`).
+/// Activé par défaut.
+const KEY_POSTGAME_SUMMARY_ENABLED: &str = "overlay_postgame_summary_enabled";
+/// Délai (secondes) avant fermeture automatique du résumé de fin de partie — `0` = pas de
+/// fermeture auto, l'utilisateur ferme manuellement.
+const KEY_POSTGAME_SUMMARY_AUTODISMISS_SECS: &str = "overlay_postgame_summary_autodismiss_secs";
+/// Notification live (au lancement de partie, pas a posteriori) qu'un ami suivi est entré
+/// en pregame/in-game — repose sur `chat/v4/presences`, déjà interrogé pour l'état local
+/// (voir `riot_local::client::fetch_all_valorant_presences`). Activé par défaut, comme les
+/// autres notifications existantes.
+const KEY_FRIEND_LIVE_NOTIFY_ENABLED: &str = "friend_live_notify_enabled";
 
 const DEFAULT_UI_FONT: &str = "display";
 const DEFAULT_HUD_SOUNDS_VOLUME: i64 = 15;
 const DEFAULT_ICON_STYLE: &str = "official";
+const DEFAULT_POSTGAME_SUMMARY_AUTODISMISS_SECS: i64 = 8;
 
 const DEFAULT_UI_THEME: &str = "dark";
 const DEFAULT_UI_ACCENT: &str = "red";
@@ -279,6 +297,15 @@ pub struct AppSettings {
     /// TODO Design#2 : `"official"` (défaut) | `"vector"` (icônes maison, voir
     /// `AgentGlyph.tsx`/`WeaponGlyph.tsx`).
     pub icon_style: String,
+    /// Overlay & détection en jeu (TODO#3) : `"none"` (défaut) ou l'identifiant d'un
+    /// moniteur pour un second overlay détaillé (voir `KEY_OVERLAY_SECONDARY_MONITOR`).
+    pub overlay_secondary_monitor: String,
+    /// Résumé de fin de partie affiché dans l'overlay, activé par défaut.
+    pub overlay_postgame_summary_enabled: bool,
+    /// Délai (secondes) avant fermeture auto du résumé de fin de partie — `0` = manuel.
+    pub overlay_postgame_summary_autodismiss_secs: i64,
+    /// Notification live qu'un ami suivi vient d'entrer en partie, activée par défaut.
+    pub friend_live_notify_enabled: bool,
 }
 
 impl fmt::Debug for AppSettings {
@@ -339,6 +366,16 @@ impl fmt::Debug for AppSettings {
             .field("hud_sounds_volume", &self.hud_sounds_volume)
             .field("cursor_enabled", &self.cursor_enabled)
             .field("icon_style", &self.icon_style)
+            .field("overlay_secondary_monitor", &self.overlay_secondary_monitor)
+            .field(
+                "overlay_postgame_summary_enabled",
+                &self.overlay_postgame_summary_enabled,
+            )
+            .field(
+                "overlay_postgame_summary_autodismiss_secs",
+                &self.overlay_postgame_summary_autodismiss_secs,
+            )
+            .field("friend_live_notify_enabled", &self.friend_live_notify_enabled)
             .finish()
     }
 }
@@ -527,6 +564,18 @@ pub fn load_settings(conn: &Connection) -> rusqlite::Result<AppSettings> {
         .map(|v| v == "true")
         .unwrap_or(false);
     let icon_style = get_raw(conn, KEY_ICON_STYLE)?.unwrap_or_else(|| DEFAULT_ICON_STYLE.to_string());
+    let overlay_secondary_monitor =
+        get_raw(conn, KEY_OVERLAY_SECONDARY_MONITOR)?.unwrap_or_else(|| "none".to_string());
+    let overlay_postgame_summary_enabled = get_raw(conn, KEY_POSTGAME_SUMMARY_ENABLED)?
+        .map(|v| v == "true")
+        .unwrap_or(true);
+    let overlay_postgame_summary_autodismiss_secs =
+        get_raw(conn, KEY_POSTGAME_SUMMARY_AUTODISMISS_SECS)?
+            .and_then(|v| v.parse::<i64>().ok())
+            .unwrap_or(DEFAULT_POSTGAME_SUMMARY_AUTODISMISS_SECS);
+    let friend_live_notify_enabled = get_raw(conn, KEY_FRIEND_LIVE_NOTIFY_ENABLED)?
+        .map(|v| v == "true")
+        .unwrap_or(true);
 
     Ok(AppSettings {
         henrik_api_key_set,
@@ -569,6 +618,10 @@ pub fn load_settings(conn: &Connection) -> rusqlite::Result<AppSettings> {
         hud_sounds_volume,
         cursor_enabled,
         icon_style,
+        overlay_secondary_monitor,
+        overlay_postgame_summary_enabled,
+        overlay_postgame_summary_autodismiss_secs,
+        friend_live_notify_enabled,
     })
 }
 
@@ -766,6 +819,38 @@ pub fn set_cursor_enabled(conn: &Connection, enabled: bool) -> rusqlite::Result<
 /// TODO Design#2 : `"official"` (défaut) | `"vector"`.
 pub fn set_icon_style(conn: &Connection, style: &str) -> rusqlite::Result<()> {
     set_raw(conn, KEY_ICON_STYLE, style)
+}
+
+/// Overlay & détection en jeu (TODO#3) : `"none"` (défaut) ou l'identifiant d'un moniteur.
+pub fn set_overlay_secondary_monitor(conn: &Connection, monitor_id: &str) -> rusqlite::Result<()> {
+    set_raw(conn, KEY_OVERLAY_SECONDARY_MONITOR, monitor_id)
+}
+
+pub fn set_overlay_postgame_summary_enabled(conn: &Connection, enabled: bool) -> rusqlite::Result<()> {
+    set_raw(
+        conn,
+        KEY_POSTGAME_SUMMARY_ENABLED,
+        if enabled { "true" } else { "false" },
+    )
+}
+
+pub fn set_overlay_postgame_summary_autodismiss_secs(
+    conn: &Connection,
+    secs: i64,
+) -> rusqlite::Result<()> {
+    set_raw(
+        conn,
+        KEY_POSTGAME_SUMMARY_AUTODISMISS_SECS,
+        &secs.max(0).to_string(),
+    )
+}
+
+pub fn set_friend_live_notify_enabled(conn: &Connection, enabled: bool) -> rusqlite::Result<()> {
+    set_raw(
+        conn,
+        KEY_FRIEND_LIVE_NOTIFY_ENABLED,
+        if enabled { "true" } else { "false" },
+    )
 }
 
 /// Backlog #24 : toggle + seuil de l'alerte "N défaites d'affilée".
