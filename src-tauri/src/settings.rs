@@ -778,7 +778,8 @@ pub fn set_overlay_density(conn: &Connection, density: &str) -> rusqlite::Result
 }
 
 /// Backlog #75 : `"full"` | `"mini"` | `"minimal"` (TODO Design#2 : juste le rank du joueur
-/// local en petit texte, sans roster).
+/// local en petit texte, sans roster) | `"grid"` (TODO Fonctionnalités#7 : grille 5v5 dédiée,
+/// voir `Overlay.tsx::GridSummary`).
 pub fn set_overlay_layout(conn: &Connection, layout: &str) -> rusqlite::Result<()> {
     set_raw(conn, KEY_OVERLAY_LAYOUT, layout)
 }

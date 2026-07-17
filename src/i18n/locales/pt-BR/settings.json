@@ -96,10 +96,11 @@
     "layout": {
       "full": "Completo (padrão)",
       "mini": "Mini resumo",
+      "grid": "Grade de equipe",
       "minimal": "Minimalista (só o rank)",
       "coach": "Coach (só texto)"
     },
-    "layoutHint": "\"Completo\" (padrão) lista todos os jogadores detectados, aliados e adversários. \"Mini resumo\" reduz o overlay a uma única linha de emblemas de rank, sem nome ou recomendação de agente. \"Minimalista\" mostra apenas o seu próprio rank em texto pequeno, para a menor intrusão possível em partida.",
+    "layoutHint": "\"Completo\" (padrão) lista todos os jogadores detectados, aliados e adversários. \"Mini resumo\" reduz o overlay a uma única linha de emblemas de rank, sem nome ou recomendação de agente. \"Grade de equipe\" alinha aliados e adversários em duas linhas de mini emblemas de rank, estilo tabela, para comparar as duas equipes rapidamente antes da partida. \"Minimalista\" mostra apenas o seu próprio rank em texto pequeno, para a menor intrusão possível em partida.",
     "densityLabel": "Densidade de exibição",
     "density": {
       "compact": "Compacta",

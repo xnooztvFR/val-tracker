@@ -47,6 +47,7 @@ const VlrMatchDetail = lazy(() => import("./screens/VlrMatchDetail"));
 const VlrTeamDetail = lazy(() => import("./screens/VlrTeamDetail"));
 const VlrPlayerDetail = lazy(() => import("./screens/VlrPlayerDetail"));
 const Compare = lazy(() => import("./screens/Compare"));
+const SharedImport = lazy(() => import("./screens/SharedImport"));
 
 export default function App() {
   const navigate = useNavigate();
@@ -236,6 +237,7 @@ export default function App() {
                   <Route path="/esport/joueur/:playerId" element={<PageScroll><VlrPlayerDetail /></PageScroll>} />
                   <Route path="/premier" element={<PageScroll><Premier /></PageScroll>} />
                   <Route path="/vs" element={<PageScroll><Compare /></PageScroll>} />
+                  <Route path="/partage" element={<PageScroll><SharedImport /></PageScroll>} />
                   <Route path="/premier/equipe/:teamId" element={<PageScroll><PremierTeamDetail /></PageScroll>} />
                   <Route path="/joueur/:region/:name/:tag" element={<PlayerShell />}>
                     <Route index element={<Home />} />

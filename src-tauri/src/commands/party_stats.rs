@@ -137,6 +137,112 @@ pub async fn get_queue_stats(
     Ok(crate::queue_stats::compute_queue_stats(&matches, &puuid))
 }
 
+/// TODO Fonctionnalités#1 : "Tracker Score" composite /1000 (voir `tracker_score.rs`).
+/// Contrairement à `get_side_winrate`/`get_economy_stats`/etc. (qui ne regardent que les
+/// détails de match déjà en cache par navigation manuelle), cette commande **backfill
+/// automatiquement** le cache de détail pour les `size` derniers matchs compétitifs de ce
+/// joueur avant de calculer le score — le Tracker Score doit refléter tout l'historique
+/// récent, pas seulement les quelques matchs que l'utilisateur a ouverts en détail. Chaque
+/// appel `get_match_detail` reste cache-first (aucune requête réseau pour un match déjà
+/// backfillé une fois) et passe par le même rate limiter/circuit breaker que le reste de
+/// l'app, donc pas de rafale non maîtrisée même sur un profil jamais consulté. Le rang
+/// courant (`current_tier`, déjà fetché via `fetch_mmr` côté frontend) choisit le bracket de
+/// benchmarks — `None` retombe sur le bracket le plus indulgent (Iron/Bronze).
+#[allow(clippy::too_many_arguments)]
+#[tauri::command]
+pub async fn get_tracker_score(
+    state: State<'_, AppState>,
+    puuid: String,
+    region: String,
+    name: String,
+    tag: String,
+    current_tier: Option<i64>,
+    size: u32,
+) -> Result<crate::tracker_score::TrackerScoreResult, CommandError> {
+    let api_key = {
+        let conn = state.db.lock().await;
+        crate::settings::get_henrik_api_key(&conn)?
+    };
+
+    let match_list = crate::api::henrik::endpoints::get_matches(
+        &state.db,
+        &state.henrik,
+        api_key.as_ref(),
+        &region,
+        &name,
+        &tag,
+        size,
+        false,
+    )
+    .await?;
+
+    for entry in &match_list.data {
+        let Some(match_id) = &entry.metadata.match_id else { continue };
+        // Best-effort : un match individuellement indisponible (panne ponctuelle, match_id
+        // orphelin) ne doit jamais empêcher le calcul du score sur le reste de l'historique.
+        let _ = crate::api::henrik::endpoints::get_match_detail(
+            &state.db,
+            &state.henrik,
+            api_key.as_ref(),
+            match_id,
+            false,
+        )
+        .await;
+    }
+
+    let matches = {
+        let conn = state.db.lock().await;
+        crate::api::henrik::endpoints::get_cached_match_details_for_puuid(&conn, &puuid)?
+    };
+
+    Ok(crate::tracker_score::compute_tracker_score(&matches, &puuid, current_tier))
+}
+
+/// TODO Fonctionnalités#4/#33 : moments forts (clutch 1vX, multikills) d'un match précis,
+/// dérivés des `kill_events` déjà en cache (voir `highlights.rs`) — aucun appel réseau.
+#[tauri::command]
+pub async fn get_match_highlights(
+    state: State<'_, AppState>,
+    match_id: String,
+    puuid: String,
+) -> Result<Vec<crate::highlights::MatchHighlight>, CommandError> {
+    let detail = {
+        let conn = state.db.lock().await;
+        crate::api::henrik::endpoints::get_cached_match_detail(&conn, &match_id)?
+    };
+    let Some(detail) = detail else {
+        return Ok(vec![]);
+    };
+    Ok(crate::highlights::detect_match_highlights(&detail, &puuid))
+}
+
+/// TODO Fonctionnalités#4/#33 : moments forts agrégés sur tous les détails de match déjà en
+/// cache pour ce puuid (aucun appel réseau) — utilisé pour le badge "moment fort" dans
+/// l'historique de match sans devoir rouvrir chaque match un par un.
+#[tauri::command]
+pub async fn get_all_match_highlights(
+    state: State<'_, AppState>,
+    puuid: String,
+) -> Result<Vec<crate::highlights::MatchHighlight>, CommandError> {
+    let matches = {
+        let conn = state.db.lock().await;
+        crate::api::henrik::endpoints::get_cached_match_details_for_puuid(&conn, &puuid)?
+    };
+    Ok(crate::highlights::detect_highlights(&matches, &puuid))
+}
+
+/// TODO Social/multi-comptes#6/#40 : records personnels connus (kills/score) d'un ami suivi
+/// (voir `friend_personal_bests.rs`/`friend_watcher.rs`) — utilisé côté UI en complément de
+/// la notification OS de dépassement de record.
+#[tauri::command]
+pub async fn list_friend_personal_bests(
+    state: State<'_, AppState>,
+    puuid: String,
+) -> Result<Vec<crate::db::FriendPersonalBest>, CommandError> {
+    let conn = state.db.lock().await;
+    Ok(crate::db::list_personal_bests(&conn, &puuid)?)
+}
+
 /// TODO Fonctionnalités#14 : recommandation de carte/agent basée sur l'historique perso
 /// (winrate), agrégée sur tous les détails de match déjà en cache pour ce puuid (aucun appel
 /// réseau — voir `recommendations::compute_recommendations`).

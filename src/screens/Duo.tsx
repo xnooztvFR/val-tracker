@@ -10,6 +10,7 @@ import ErrorState from "../components/ErrorState";
 import EmptyState from "../components/EmptyState";
 import { formatPercent, splitRiotId } from "../lib/format";
 import { PLAYER_TAGS, tauriApi, type PlayerTag } from "../lib/tauriApi";
+import { computeTrustLevel, type TrustLevel } from "../lib/trustedTeammate";
 
 /** Winrate en duo/squad (V3), calculé à partir des `party_id` accumulés localement à
  * chaque consultation de match (voir hooks/usePlayer::useDuoStats) — grandit au fil de la
@@ -130,11 +131,15 @@ export default function Duo() {
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {filteredDuo.map((teammate) => {
             const winPercent = Math.round((teammate.matches_won / teammate.matches_played) * 100);
+            const trustLevel = computeTrustLevel(teammate);
             return (
               <Panel key={teammate.teammate_puuid} className="p-4">
-                <p className="text-sm font-semibold text-hi">
-                  {teammate.teammate_name}
-                  <span className="text-lo">#{teammate.teammate_tag}</span>
+                <p className="flex items-center gap-2 text-sm font-semibold text-hi">
+                  <span>
+                    {teammate.teammate_name}
+                    <span className="text-lo">#{teammate.teammate_tag}</span>
+                  </span>
+                  <TrustedTeammateBadge level={trustLevel} />
                 </p>
                 <div className="mt-2 flex items-center gap-3">
                   <span
@@ -323,5 +328,22 @@ export default function Duo() {
         </div>
       )}
     </div>
+  );
+}
+
+/** TODO Fonctionnalités#3/#36 : badge "coéquipier de confiance", calculé depuis `DuoStat`
+ * déjà exposé (voir `lib/trustedTeammate.ts`) — n'affiche rien en dessous du seuil minimal. */
+function TrustedTeammateBadge({ level }: { level: TrustLevel }) {
+  const { t } = useTranslation("stats");
+  if (!level) return null;
+  return (
+    <span
+      className={`hud-label border px-1.5 py-[1px] text-[9px] ${
+        level === "gold" ? "border-accent/60 text-accent" : "border-hi/40 text-hi"
+      }`}
+      title={t("duo.trustedTeammate.tooltip")}
+    >
+      {t(`duo.trustedTeammate.${level}`)}
+    </span>
   );
 }

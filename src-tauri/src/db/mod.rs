@@ -14,6 +14,7 @@ use rusqlite::Connection;
 use tauri::{AppHandle, Manager};
 
 mod changelog;
+mod friend_personal_bests;
 mod goals;
 mod match_notes;
 mod metrics;
@@ -23,6 +24,7 @@ mod snapshots;
 mod timeline;
 
 pub use changelog::*;
+pub use friend_personal_bests::*;
 pub use goals::*;
 pub use match_notes::*;
 pub use metrics::*;
@@ -259,6 +261,19 @@ pub(crate) fn run_migrations(conn: &Connection) -> rusqlite::Result<()> {
 
         CREATE INDEX IF NOT EXISTS idx_match_notes_match_puuid
             ON match_notes (match_id, puuid);
+
+        -- TODO Social/multi-comptes#6/#40 : meilleure valeur connue par métrique (kills,
+        -- score) pour un ami suivi (voir friend_personal_bests.rs) — compare le nouveau
+        -- match détecté par friend_watcher.rs au record précédent plutôt qu'à la simple
+        -- victoire/défaite déjà notifiée.
+        CREATE TABLE IF NOT EXISTS friend_personal_bests (
+            puuid TEXT NOT NULL,
+            metric TEXT NOT NULL,
+            value INTEGER NOT NULL,
+            match_id TEXT NOT NULL,
+            achieved_at INTEGER NOT NULL,
+            PRIMARY KEY (puuid, metric)
+        );
         "#,
     )?;
 
@@ -346,7 +361,8 @@ pub fn reset_local_stats(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
         "DELETE FROM api_cache; DELETE FROM rank_snapshots; DELETE FROM tracked_players;
          DELETE FROM party_matches; DELETE FROM usage_metrics_events;
-         DELETE FROM progression_goals; DELETE FROM match_notes;",
+         DELETE FROM progression_goals; DELETE FROM match_notes;
+         DELETE FROM friend_personal_bests;",
     )
 }
 

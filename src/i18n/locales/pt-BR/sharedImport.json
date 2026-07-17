@@ -1,0 +1,38 @@
+{
+  "title": "Compartilhamento",
+  "description": "Exporte a carta de uma conta seguida (ou um caderno de sessão em grupo) como um arquivo autônomo para enviar a um amigo — ele pode abri-lo aqui sem precisar da própria chave de API.",
+  "export": {
+    "title": "Exportar",
+    "noSelfAccount": "Nenhuma conta marcada como \"sua\" — marque um perfil como seu no seletor de contas para poder exportá-lo.",
+    "includeNotes": "Incluir minhas notas de partida na exportação (desativado por padrão)",
+    "cardButton": "Exportar carta",
+    "groupSessionButton": "Exportar caderno de sessão ({{count}} conta(s) selecionada(s))"
+  },
+  "import": {
+    "title": "Importar uma carta recebida",
+    "dropHint": "Arraste e solte um arquivo .json aqui",
+    "browseButton": "Escolher um arquivo",
+    "error": "Arquivo inválido ou ilegível."
+  },
+  "card": {
+    "exportedAt": "Exportado em {{date}}",
+    "trackerScore": "Tracker Score",
+    "stats": {
+      "winrate": "Winrate",
+      "kd": "K/D",
+      "hsPercent": "HS%",
+      "acs": "ACS"
+    },
+    "highlights": "Momentos marcantes",
+    "playedTogether": {
+      "title": "Vocês já jogaram juntos",
+      "asTeammates": "{{count}} partidas em equipe ({{wins}} vitórias)",
+      "asOpponents": "{{count}} partidas como adversários"
+    }
+  },
+  "groupSession": {
+    "title": "Caderno de sessão — {{date}}",
+    "statsLine": "{{wins}}V / {{played}} partidas hoje ({{winPercent}})",
+    "empty": "Este caderno não contém nenhuma conta."
+  }
+}

@@ -156,6 +156,11 @@
       }
     },
     "statsLine": "{{wins}} victorias / {{played}} partidas juntos",
+    "trustedTeammate": {
+      "gold": "Confianza Oro",
+      "silver": "Confianza Plata",
+      "tooltip": "Compañero de confianza: volumen de partidas jugadas juntos + winrate por encima de un umbral."
+    },
     "recencyFilter": {
       "all": "Todo el periodo",
       "30d": "Últimos 30 días",

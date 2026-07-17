@@ -96,10 +96,11 @@
     "layout": {
       "full": "Complète (défaut)",
       "mini": "Mini résumé",
+      "grid": "Grille d'équipe",
       "minimal": "Épuré (rang seul)",
       "coach": "Coach (texte seul)"
     },
-    "layoutHint": "« Complète » (défaut) liste tous les joueurs détectés, alliés et adversaires. « Mini résumé » réduit l'overlay à une seule ligne de badges de rang, sans nom ni recommandation d'agent. « Épuré » n'affiche que ton propre rang en petit texte, pour un encombrement minimal en jeu. « Coach » n'affiche que du texte (état + rangs, sans icônes), pensé pour être isolé facilement dans un partage d'écran ciblé (Discord).",
+    "layoutHint": "« Complète » (défaut) liste tous les joueurs détectés, alliés et adversaires. « Mini résumé » réduit l'overlay à une seule ligne de badges de rang, sans nom ni recommandation d'agent. « Grille d'équipe » aligne alliés et adversaires en deux rangées de mini rank-badges façon tableau, pour comparer les deux équipes d'un coup d'œil avant la partie. « Épuré » n'affiche que ton propre rang en petit texte, pour un encombrement minimal en jeu. « Coach » n'affiche que du texte (état + rangs, sans icônes), pensé pour être isolé facilement dans un partage d'écran ciblé (Discord).",
     "densityLabel": "Densité d'affichage",
     "density": {
       "compact": "Compact",

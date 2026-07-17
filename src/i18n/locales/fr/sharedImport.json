@@ -1,0 +1,38 @@
+{
+  "title": "Partage",
+  "description": "Exporte la carte d'un compte suivi (ou un carnet de session de groupe) dans un fichier autonome, à envoyer à un ami — il peut l'ouvrir ici sans avoir besoin de sa propre clé API.",
+  "export": {
+    "title": "Exporter",
+    "noSelfAccount": "Aucun compte marqué comme \"à soi\" — marque un profil comme le tien depuis le sélecteur de compte pour pouvoir l'exporter.",
+    "includeNotes": "Inclure mes notes de match dans l'export (désactivé par défaut)",
+    "cardButton": "Exporter la carte",
+    "groupSessionButton": "Exporter le carnet de session ({{count}} compte(s) sélectionné(s))"
+  },
+  "import": {
+    "title": "Importer une carte reçue",
+    "dropHint": "Glisse-dépose un fichier .json ici",
+    "browseButton": "Choisir un fichier",
+    "error": "Fichier invalide ou illisible."
+  },
+  "card": {
+    "exportedAt": "Exporté le {{date}}",
+    "trackerScore": "Tracker Score",
+    "stats": {
+      "winrate": "Winrate",
+      "kd": "K/D",
+      "hsPercent": "HS%",
+      "acs": "ACS"
+    },
+    "highlights": "Moments forts",
+    "playedTogether": {
+      "title": "Vous avez déjà joué ensemble",
+      "asTeammates": "{{count}} matchs en équipe ({{wins}} victoires)",
+      "asOpponents": "{{count}} matchs en tant qu'adversaires"
+    }
+  },
+  "groupSession": {
+    "title": "Carnet de session — {{date}}",
+    "statsLine": "{{wins}}V / {{played}} matchs aujourd'hui ({{winPercent}})",
+    "empty": "Ce carnet ne contient aucun compte."
+  }
+}

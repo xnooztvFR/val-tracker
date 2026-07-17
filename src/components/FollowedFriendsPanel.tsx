@@ -30,6 +30,15 @@ export default function FollowedFriendsPanel({ onOpenPlayer }: FollowedFriendsPa
       enabled: Boolean(friend.name && friend.tag),
     })),
   });
+  // TODO Social/multi-comptes#6/#40 : record personnel (kills) affiché en complément de la
+  // notification OS de dépassement de record, voir friend_watcher.rs.
+  const personalBestQueries = useQueries({
+    queries: list.map((friend) => ({
+      queryKey: ["followed-friend-personal-bests", friend.puuid],
+      queryFn: () => tauriApi.listFriendPersonalBests(friend.puuid),
+      staleTime: 5 * 60_000,
+    })),
+  });
 
   if (list.length === 0) return null;
 
@@ -44,6 +53,7 @@ export default function FollowedFriendsPanel({ onOpenPlayer }: FollowedFriendsPa
           const team = lastMatch?.teams.find((t) => t.team_id === player?.team_id);
           const won = team?.won;
           const startedAt = lastMatch?.metadata.started_at;
+          const bestKills = personalBestQueries[index]?.data?.find((b) => b.metric === "kills");
 
           return (
             <button
@@ -57,6 +67,11 @@ export default function FollowedFriendsPanel({ onOpenPlayer }: FollowedFriendsPa
               {startedAt && (
                 <span className={won === true ? "text-accent" : won === false ? "text-crit" : "text-lo"}>
                   {t("followedFriends.lastMatch", { time: formatRelativeTime(startedAt) })}
+                </span>
+              )}
+              {bestKills && (
+                <span className="hud-label text-[10px] text-lo" title={t("followedFriends.personalBestTooltip")}>
+                  {t("followedFriends.personalBestKills", { value: bestKills.value })}
                 </span>
               )}
             </button>

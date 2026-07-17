@@ -19,7 +19,9 @@
   },
   "followedFriends": {
     "title": "Followed friends (spectator mode)",
-    "lastMatch": "Last match {{time}}"
+    "lastMatch": "Last match {{time}}",
+    "personalBestKills": "Best: {{value}} kills",
+    "personalBestTooltip": "Known personal best kill count in a single match, since this friend has been followed."
   },
   "hoverPreview": {
     "loading": "Loading…"

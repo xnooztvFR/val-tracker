@@ -28,6 +28,7 @@ const GLOBAL_TABS = [
   { to: "/premier", key: "premier" },
   { to: "/esport", key: "esports" },
   { to: "/vs", key: "vs" },
+  { to: "/partage", key: "sharedImport" },
 ] as const;
 
 const TABS = [

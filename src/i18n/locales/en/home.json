@@ -1,6 +1,7 @@
 {
   "today": {
     "title": "Today",
+    "shareSessionLink": "Share session log →",
     "emptyTitle": "No games yet today",
     "emptyDetail": "Come back after your first game of the day to see your condensed summary.",
     "recentTitle": "Today's games",

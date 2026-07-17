@@ -96,10 +96,11 @@
     "layout": {
       "full": "Full (default)",
       "mini": "Mini summary",
+      "grid": "Team grid",
       "minimal": "Minimal (rank only)",
       "coach": "Coach (text only)"
     },
-    "layoutHint": "\"Full\" (default) lists every detected player, allies and opponents. \"Mini summary\" shrinks the overlay to a single row of rank badges, no name or agent recommendation. \"Minimal\" only shows your own rank as small text, for the smallest possible screen clutter in-game. \"Coach\" only shows text (state + ranks, no icons), meant to be easily isolated in a targeted Discord screen share.",
+    "layoutHint": "\"Full\" (default) lists every detected player, allies and opponents. \"Mini summary\" shrinks the overlay to a single row of rank badges, no name or agent recommendation. \"Team grid\" lines up allies and opponents in two rows of mini rank badges, table-style, to compare both teams at a glance before the round. \"Minimal\" only shows your own rank as small text, for the smallest possible screen clutter in-game. \"Coach\" only shows text (state + ranks, no icons), meant to be easily isolated in a targeted Discord screen share.",
     "densityLabel": "Display density",
     "density": {
       "compact": "Compact",

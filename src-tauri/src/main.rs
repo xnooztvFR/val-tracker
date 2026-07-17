@@ -17,6 +17,7 @@ mod win_streak;
 mod overlay;
 mod riot_local;
 mod economy_stats;
+mod highlights;
 mod map_averages;
 mod queue_stats;
 mod recommendations;
@@ -24,6 +25,7 @@ mod security_config;
 mod settings;
 mod side_stats;
 mod status_watcher;
+mod tracker_score;
 mod updater;
 
 use std::sync::Arc;
@@ -237,6 +239,10 @@ fn main() {
             commands::get_economy_stats,
             commands::get_map_average_stats,
             commands::get_queue_stats,
+            commands::get_tracker_score,
+            commands::get_match_highlights,
+            commands::get_all_match_highlights,
+            commands::list_friend_personal_bests,
             commands::list_duo_stats,
             commands::list_squad_stats,
             commands::list_full_roster_stats,

@@ -384,6 +384,8 @@ export default function Overlay() {
           <MinimalSummary active={activeGame} selfTier={selfTier} interactive={interactive} />
         ) : layout === "mini" ? (
           <MiniSummary active={activeGame} allies={allies} enemies={enemies} interactive={interactive} />
+        ) : layout === "grid" ? (
+          <GridSummary active={activeGame} allies={allies} enemies={enemies} interactive={interactive} />
         ) : layout === "coach" ? (
           <CoachSummary
             active={activeGame}
@@ -636,6 +638,69 @@ function MiniSummary({
         <span className="hud-label truncate text-[9px] text-lo">{t("waitingHint")}</span>
       )}
       {interactive && <span className="hud-label shrink-0 text-[9px] text-hi/80">Ctrl+Shift+V</span>}
+    </div>
+  );
+}
+
+/** TODO Fonctionnalités#7 : "vue grille d'équipe pré-partie" — alliés/adversaires alignés en
+ * deux rangées de mini rank-badges (façon tableau), plutôt que la liste empilée du layout
+ * "full" ou la simple rangée horizontale du layout "mini" (qui ne sépare pas visuellement les
+ * deux équipes en colonnes alignées). Reste minimal/click-through comme les autres layouts
+ * compacts — pas de nom de joueur pour ne pas alourdir la grille, juste le rang. */
+function GridSummary({
+  active,
+  allies,
+  enemies,
+  interactive,
+}: {
+  active: boolean;
+  allies: PlayerGroupEntry[];
+  enemies: PlayerGroupEntry[];
+  interactive: boolean;
+}) {
+  const { t } = useTranslation("overlay");
+  const hasPlayers = allies.length > 0 || enemies.length > 0;
+
+  return (
+    <div data-tauri-drag-region={interactive || undefined} className="space-y-1.5 px-2.5 py-2">
+      <div className="flex items-center gap-2">
+        <span className={`h-1.5 w-1.5 shrink-0 ${active ? "bg-accent" : "bg-lo/50"}`} />
+        {interactive && <span className="hud-label shrink-0 text-[9px] text-hi/80">Ctrl+Shift+V</span>}
+      </div>
+      {hasPlayers ? (
+        <>
+          <GridRow entries={allies} accentClass="text-accent" />
+          {enemies.length > 0 && <GridRow entries={enemies} accentClass="text-crit" />}
+        </>
+      ) : (
+        <span className="hud-label truncate text-[9px] text-lo">{t("waitingHint")}</span>
+      )}
+    </div>
+  );
+}
+
+function GridRow({ entries, accentClass }: { entries: PlayerGroupEntry[]; accentClass: string }) {
+  return (
+    <div className="grid grid-cols-5 gap-1">
+      {entries.map(({ player, query }) => {
+        const data = query?.data?.data;
+        const info = rankInfo(data?.current_data?.currenttier);
+        return (
+          <div
+            key={player.puuid}
+            className={`flex flex-col items-center gap-0.5 border border-line/60 bg-base/60 py-1 ${accentClass}`}
+          >
+            <img src={info.iconUrl} alt="" className="h-5 w-5 object-contain" />
+            <span className="hud-label truncate text-[8px]">{info.name}</span>
+          </div>
+        );
+      })}
+      {/* Cellules vides pour compléter la grille à 5 colonnes si l'équipe n'est pas au
+       * complet (partie qui vient de démarrer, joueur déconnecté...) — garde l'alignement
+       * visuel entre alliés/adversaires plutôt qu'une grille qui se redimensionne. */}
+      {Array.from({ length: Math.max(0, 5 - entries.length) }, (_, i) => (
+        <div key={`empty-${i}`} className="border border-line/20" />
+      ))}
     </div>
   );
 }

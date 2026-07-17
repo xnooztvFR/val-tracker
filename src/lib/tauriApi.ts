@@ -345,6 +345,27 @@ export interface QueueStat {
   party: QueueTally;
 }
 
+// ---- Tracker Score ----
+
+/** TODO Fonctionnalités#1 : "Tracker Score" composite /1000, agrégé côté Rust sur les
+ * détails de match déjà en cache — voir `tracker_score.rs` pour la méthodologie (benchmarks
+ * communautaires approximatifs par bracket de rang, pas une calibration statistique). */
+export type ScoreTier = "S" | "A" | "B" | "C" | "D";
+
+export interface MetricScore {
+  name: string;
+  value: number;
+  points: number;
+  tier: ScoreTier;
+}
+
+export interface TrackerScoreResult {
+  total_score: number;
+  tier: ScoreTier;
+  metrics: MetricScore[];
+  matches_considered: number;
+}
+
 /** TODO Fonctionnalités#14 : recommandation de carte/agent basée sur l'historique perso
  * (winrate), agrégée côté Rust sur les détails de match déjà en cache. */
 export interface MapRecommendation {
@@ -1067,6 +1088,29 @@ export interface MatchNote {
   created_at: number;
 }
 
+// ---- highlights (clutch/multikill) ----
+
+/** TODO Fonctionnalités#4/#33 : "moment fort" détecté dans un round (clutch 1vX, multikill),
+ * dérivé côté Rust des `kill_events` déjà en cache — voir `highlights.rs`. */
+export type HighlightKind = "clutch" | "multikill";
+
+/** TODO Social/multi-comptes#6/#40 : record personnel connu d'un ami suivi (kills/score) —
+ * voir `friend_personal_bests.rs`. */
+export interface FriendPersonalBest {
+  metric: string;
+  value: number;
+  match_id: string;
+  achieved_at: number;
+}
+
+export interface MatchHighlight {
+  match_id: string;
+  round_number: number;
+  kind: HighlightKind;
+  label: string;
+  kill_time_in_round: number | null;
+}
+
 export type CommandError =
   | { kind: "missing_api_key" }
   | { kind: "not_found" }
@@ -1279,6 +1323,8 @@ export const tauriApi = {
   saveFollowedFriend: (puuid: string, followed: boolean) =>
     invoke<void>("save_followed_friend", { puuid, followed }),
   listFollowedFriends: () => invoke<TrackedPlayer[]>("list_followed_friends"),
+  listFriendPersonalBests: (puuid: string) =>
+    invoke<FriendPersonalBest[]>("list_friend_personal_bests", { puuid }),
   getProgressionGoal: (puuid: string) =>
     invoke<ProgressionGoal | null>("get_progression_goal", { puuid }),
   saveProgressionGoal: (
@@ -1305,6 +1351,14 @@ export const tauriApi = {
   getMapAverageStats: (puuid: string, map: string) =>
     invoke<MapAverageStat | null>("get_map_average_stats", { puuid, map }),
   getQueueStats: (puuid: string) => invoke<QueueStat>("get_queue_stats", { puuid }),
+  getTrackerScore: (
+    puuid: string,
+    region: string,
+    name: string,
+    tag: string,
+    currentTier: number | null = null,
+    size = 100,
+  ) => invoke<TrackerScoreResult>("get_tracker_score", { puuid, region, name, tag, currentTier, size }),
   getRecommendations: (puuid: string, minMatches = 3) =>
     invoke<RecommendationStats>("get_recommendations", { puuid, minMatches }),
 
@@ -1321,6 +1375,9 @@ export const tauriApi = {
   addMatchNote: (matchId: string, puuid: string, note: string) =>
     invoke<MatchNote>("add_match_note", { matchId, puuid, note }),
   deleteMatchNote: (id: number) => invoke<void>("delete_match_note", { id }),
+  getMatchHighlights: (matchId: string, puuid: string) =>
+    invoke<MatchHighlight[]>("get_match_highlights", { matchId, puuid }),
+  getAllMatchHighlights: (puuid: string) => invoke<MatchHighlight[]>("get_all_match_highlights", { puuid }),
   listRivalryStats: (puuid: string, minMatches = 2, sinceTs: number | null = null) =>
     invoke<RivalryStat[]>("list_rivalry_stats", { puuid, minMatches, sinceTs }),
   retroPopulateRivalry: (puuid: string, opponentName: string, opponentTag: string) =>

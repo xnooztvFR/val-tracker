@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Skeleton } from "../components/Skeleton";
 
@@ -79,7 +79,15 @@ export default function Today() {
         <PeriodRecapModal recap={sessionRecap} playerLabel={`${name}#${tag}`} onClose={() => setSessionRecap(null)} />
       )}
 
-      <h1 className="hud-label text-sm">{t("today.title")}</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="hud-label text-sm">{t("today.title")}</h1>
+        {/* TODO Social/multi-comptes#38 : point d'entrée vers le carnet de session de groupe
+         * exportable (écran /partage, voir SharedImport.tsx) — la construction du carnet
+         * couvre déjà tous les comptes "à soi", pas seulement celui affiché ici. */}
+        <Link to="/partage" className="hud-label text-[11px] text-lo underline decoration-dotted hover:text-accent">
+          {t("today.shareSessionLink")}
+        </Link>
+      </div>
 
       {today && today.matches === 0 && (
         <EmptyState icon="match" title={t("today.emptyTitle")} detail={t("today.emptyDetail")} />

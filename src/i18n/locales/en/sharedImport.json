@@ -1,0 +1,38 @@
+{
+  "title": "Sharing",
+  "description": "Export a tracked account's card (or a group session log) as a standalone file to send to a friend — they can open it here without needing their own API key.",
+  "export": {
+    "title": "Export",
+    "noSelfAccount": "No account marked as \"yours\" — mark a profile as your own from the account switcher to export it.",
+    "includeNotes": "Include my match notes in the export (off by default)",
+    "cardButton": "Export card",
+    "groupSessionButton": "Export group session ({{count}} account(s) selected)"
+  },
+  "import": {
+    "title": "Import a received card",
+    "dropHint": "Drag and drop a .json file here",
+    "browseButton": "Choose a file",
+    "error": "Invalid or unreadable file."
+  },
+  "card": {
+    "exportedAt": "Exported on {{date}}",
+    "trackerScore": "Tracker Score",
+    "stats": {
+      "winrate": "Winrate",
+      "kd": "K/D",
+      "hsPercent": "HS%",
+      "acs": "ACS"
+    },
+    "highlights": "Highlights",
+    "playedTogether": {
+      "title": "You've already played together",
+      "asTeammates": "{{count}} matches as teammates ({{wins}} wins)",
+      "asOpponents": "{{count}} matches as opponents"
+    }
+  },
+  "groupSession": {
+    "title": "Session log — {{date}}",
+    "statsLine": "{{wins}}W / {{played}} matches today ({{winPercent}})",
+    "empty": "This log contains no accounts."
+  }
+}

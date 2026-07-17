@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Skeleton } from "../components/Skeleton";
 
 import { useAccount, useMmr } from "../hooks/usePlayer";
-import { useMatches } from "../hooks/useMatches";
+import { useMatches, useAllMatchHighlights } from "../hooks/useMatches";
 import MatchRow from "../components/MatchRow";
 import ErrorState from "../components/ErrorState";
 import StaleDataBanner from "../components/StaleDataBanner";
@@ -14,7 +14,7 @@ import { downloadBlob } from "../lib/downloadFile";
 import { computeOverview } from "../lib/stats";
 import { buildPdfReport } from "../lib/pdfReport";
 import i18n from "../i18n";
-import type { MatchEntry } from "../lib/tauriApi";
+import type { MatchEntry, MatchHighlight } from "../lib/tauriApi";
 import { useSavedViewsStore } from "../store/savedViewsStore";
 
 const MATCH_HISTORY_SIZE = 20;
@@ -113,6 +113,19 @@ export default function MatchHistory() {
   const puuid = account.data?.data.puuid;
   const mmr = useMmr({ puuid, region, name, tag });
   const riotId = name && tag ? `${name}-${tag}` : "joueur";
+
+  // TODO Fonctionnalités#4/#33 : badges clutch/multikill par ligne — best-effort, ne couvre
+  // que les matchs déjà ouverts en détail (voir `useAllMatchHighlights`).
+  const allHighlights = useAllMatchHighlights(puuid);
+  const highlightsByMatch = useMemo(() => {
+    const map = new Map<string, MatchHighlight[]>();
+    for (const h of allHighlights.data ?? []) {
+      const list = map.get(h.match_id) ?? [];
+      list.push(h);
+      map.set(h.match_id, list);
+    }
+    return map;
+  }, [allHighlights.data]);
 
   function exportPdf() {
     if (!matches.data || !puuid || !region || !name || !tag) return;
@@ -428,6 +441,7 @@ export default function MatchHistory() {
                   region={region}
                   name={name}
                   tag={tag}
+                  highlights={match.metadata.match_id ? highlightsByMatch.get(match.metadata.match_id) : undefined}
                   onClick={() =>
                     match.metadata.match_id &&
                     navigate(`/joueur/${region}/${name}/${tag}/matchs/${match.metadata.match_id}`)

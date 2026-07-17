@@ -287,6 +287,24 @@ pub struct MatchDetailRoundPlayerStat {
     pub score: Option<i64>,
     pub was_afk: Option<bool>,
     pub economy: Option<MatchDetailRoundEconomy>,
+    /// TODO Fonctionnalités#3/#33 : élimination par élimination (killer/victime/timing) sur
+    /// ce round pour ce joueur — déjà renvoyé par Henrik (`kill_events`, voir api_henrik.json
+    /// `MatchesV2DataRoundPlayerStatsKillEvents`) mais jamais mappé jusqu'ici. Base de
+    /// `highlights.rs` (détection clutch/multikill), aucun appel réseau supplémentaire.
+    #[serde(default)]
+    pub kill_events: Vec<KillEvent>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct KillEvent {
+    pub kill_time_in_round: Option<i64>,
+    pub kill_time_in_match: Option<i64>,
+    pub killer_puuid: Option<String>,
+    pub killer_display_name: Option<String>,
+    pub killer_team: Option<String>,
+    pub victim_puuid: Option<String>,
+    pub victim_display_name: Option<String>,
+    pub victim_team: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

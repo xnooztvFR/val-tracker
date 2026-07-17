@@ -19,7 +19,9 @@
   },
   "followedFriends": {
     "title": "Amis suivis (mode spectateur)",
-    "lastMatch": "Dernière partie {{time}}"
+    "lastMatch": "Dernière partie {{time}}",
+    "personalBestKills": "Record : {{value}} kills",
+    "personalBestTooltip": "Record personnel connu de kills sur une partie, depuis que cet ami est suivi."
   },
   "hoverPreview": {
     "loading": "Chargement…"

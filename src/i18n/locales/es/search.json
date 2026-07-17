@@ -19,7 +19,9 @@
   },
   "followedFriends": {
     "title": "Amigos seguidos (modo espectador)",
-    "lastMatch": "Última partida {{time}}"
+    "lastMatch": "Última partida {{time}}",
+    "personalBestKills": "Récord: {{value}} kills",
+    "personalBestTooltip": "Récord personal de kills en una partida, desde que se sigue a este amigo."
   },
   "hoverPreview": {
     "loading": "Cargando…"

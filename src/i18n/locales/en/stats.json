@@ -158,6 +158,11 @@
       }
     },
     "statsLine": "{{wins}} wins / {{played}} matches together",
+    "trustedTeammate": {
+      "gold": "Gold Trust",
+      "silver": "Silver Trust",
+      "tooltip": "Trusted teammate: volume of matches played together + winrate above a threshold."
+    },
     "recencyFilter": {
       "all": "All time",
       "30d": "Last 30 days",

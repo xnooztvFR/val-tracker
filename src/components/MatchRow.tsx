@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import type { MatchEntry } from "../lib/tauriApi";
+import type { MatchEntry, MatchHighlight } from "../lib/tauriApi";
 import { formatDurationMs, formatKda, formatKdRatio, formatRelativeTime } from "../lib/format";
 import { setMatchDragPayload } from "../lib/matchDrag";
 import AgentIcon from "./AgentIcon";
@@ -16,6 +16,10 @@ interface MatchRowProps {
   region?: string;
   name?: string;
   tag?: string;
+  /** TODO Fonctionnalités#4/#33 : moments forts (clutch/multikill) de ce match précis —
+   * `undefined`/vide tant que le détail du match n'a pas été ouvert au moins une fois (voir
+   * `useAllMatchHighlights`, best-effort comme le reste des stats dérivées du cache). */
+  highlights?: MatchHighlight[];
 }
 
 // Backlog Fonctionnalités#7 : délai avant d'afficher l'aperçu au survol — évite un popover
@@ -24,7 +28,7 @@ const HOVER_PREVIEW_DELAY_MS = 500;
 
 /** Ligne de la timeline d'engagements (Historique) : barre d'accent verticale fine
  * (cyan = victoire, rouge = défaite), fond neutre, colonnes numériques en mono. */
-export default function MatchRow({ match, puuid, onClick, region, name, tag }: MatchRowProps) {
+export default function MatchRow({ match, puuid, onClick, region, name, tag, highlights }: MatchRowProps) {
   const { t } = useTranslation("componentsExtra");
   const player = match.players.find((p) => p.puuid === puuid);
   const team = match.teams.find((t) => t.team_id === player?.team_id);
@@ -97,6 +101,7 @@ export default function MatchRow({ match, puuid, onClick, region, name, tag }: M
       <div className="w-32 shrink-0">
         <p className="truncate text-sm text-hi">{match.metadata.map?.name ?? t("matchRow.unknownMap")}</p>
         <p className="truncate text-[11px] text-lo">{player?.agent?.name ?? t("matchRow.unknownAgent")}</p>
+        {highlights && highlights.length > 0 && <HighlightBadges highlights={highlights} />}
       </div>
 
       <div className="w-24 shrink-0">
@@ -127,6 +132,31 @@ export default function MatchRow({ match, puuid, onClick, region, name, tag }: M
             <RosterPreview match={match} teamId={enemyTeam?.team_id} />
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+/** TODO Fonctionnalités#4/#33 : au plus un badge clutch + un badge multikill par ligne (pas
+ * un par round) — le plus haut de chaque catégorie, pour ne pas encombrer la liste si un
+ * joueur a plusieurs moments forts dans le même match. */
+function HighlightBadges({ highlights }: { highlights: MatchHighlight[] }) {
+  const bestClutch = highlights.find((h) => h.kind === "clutch");
+  const bestMultikill = highlights
+    .filter((h) => h.kind === "multikill")
+    .sort((a, b) => b.label.localeCompare(a.label))[0];
+
+  return (
+    <div className="mt-1 flex gap-1">
+      {bestClutch && (
+        <span className="hud-label border border-accent/50 px-1 py-[1px] text-[9px] text-accent">
+          {bestClutch.label}
+        </span>
+      )}
+      {bestMultikill && (
+        <span className="hud-label border border-hi/40 px-1 py-[1px] text-[9px] text-hi">
+          {bestMultikill.label}
+        </span>
       )}
     </div>
   );

@@ -15,6 +15,7 @@ import HomeStatusBar from "../components/HomeStatusBar";
 import HomeOverviewSection from "../components/HomeOverviewSection";
 import HomeGoalsSection from "../components/HomeGoalsSection";
 import HomeTimelineSection from "../components/HomeTimelineSection";
+import TrackerScoreCard from "../components/TrackerScoreCard";
 import { rankGlowColor } from "../lib/format";
 import { type PeriodRecap } from "../lib/stats";
 import { buildProfileCardData } from "../lib/profileCard";
@@ -23,7 +24,7 @@ import { useHomeOrderStore, resolveHomeOrder } from "../store/homeOrderStore";
 // Backlog Fonctionnalités#10 : blocs réordonnables par glisser-déposer (poignée dédiée,
 // voir DraggableBlock plus bas) — `HomeStatusBar` en est volontairement exclue (contrôles
 // globaux, reste fixe en haut).
-const HOME_SECTION_KEYS = ["goals", "overview", "queue", "recommendations", "timeline"] as const;
+const HOME_SECTION_KEYS = ["goals", "overview", "trackerScore", "queue", "recommendations", "timeline"] as const;
 type HomeSectionKey = (typeof HOME_SECTION_KEYS)[number];
 
 export default function Home() {
@@ -131,6 +132,9 @@ export default function Home() {
           />
         )}
       </div>
+    ),
+    trackerScore: (
+      <TrackerScoreCard puuid={puuid} region={region} name={name} tag={tag} currentTier={current?.currenttier} />
     ),
     queue: <QueueStatusStrip region={region} />,
     recommendations: <RecommendationsPanel puuid={puuid} />,

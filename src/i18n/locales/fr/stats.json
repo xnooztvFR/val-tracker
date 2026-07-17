@@ -158,6 +158,11 @@
       }
     },
     "statsLine": "{{wins}} victoires / {{played}} matchs ensemble",
+    "trustedTeammate": {
+      "gold": "Confiance Or",
+      "silver": "Confiance Argent",
+      "tooltip": "Coéquipier de confiance : volume de matchs joués ensemble + winrate au-dessus d'un seuil."
+    },
     "recencyFilter": {
       "all": "Toutes les périodes",
       "30d": "30 derniers jours",

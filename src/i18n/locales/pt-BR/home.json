@@ -1,6 +1,7 @@
 {
   "today": {
     "title": "Hoje",
+    "shareSessionLink": "Compartilhar caderno de sessão →",
     "emptyTitle": "Ainda nenhuma partida hoje",
     "emptyDetail": "Volte aqui após sua primeira partida do dia para ver seu resumo condensado.",
     "recentTitle": "Partidas de hoje",

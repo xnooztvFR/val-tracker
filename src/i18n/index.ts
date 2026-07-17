@@ -12,6 +12,7 @@ import frEsports from "./locales/fr/esports.json";
 import frSettings from "./locales/fr/settings.json";
 import frOverlay from "./locales/fr/overlay.json";
 import frFormat from "./locales/fr/format.json";
+import frSharedImport from "./locales/fr/sharedImport.json";
 
 import enComponentsCore from "./locales/en/componentsCore.json";
 import enComponentsExtra from "./locales/en/componentsExtra.json";
@@ -24,6 +25,7 @@ import enEsports from "./locales/en/esports.json";
 import enSettings from "./locales/en/settings.json";
 import enOverlay from "./locales/en/overlay.json";
 import enFormat from "./locales/en/format.json";
+import enSharedImport from "./locales/en/sharedImport.json";
 
 import esComponentsCore from "./locales/es/componentsCore.json";
 import esComponentsExtra from "./locales/es/componentsExtra.json";
@@ -36,6 +38,7 @@ import esEsports from "./locales/es/esports.json";
 import esSettings from "./locales/es/settings.json";
 import esOverlay from "./locales/es/overlay.json";
 import esFormat from "./locales/es/format.json";
+import esSharedImport from "./locales/es/sharedImport.json";
 
 import ptBRComponentsCore from "./locales/pt-BR/componentsCore.json";
 import ptBRComponentsExtra from "./locales/pt-BR/componentsExtra.json";
@@ -48,6 +51,7 @@ import ptBREsports from "./locales/pt-BR/esports.json";
 import ptBRSettings from "./locales/pt-BR/settings.json";
 import ptBROverlay from "./locales/pt-BR/overlay.json";
 import ptBRFormat from "./locales/pt-BR/format.json";
+import ptBRSharedImport from "./locales/pt-BR/sharedImport.json";
 
 export const defaultNS = "componentsCore";
 
@@ -67,6 +71,7 @@ export const resources = {
     settings: frSettings,
     overlay: frOverlay,
     format: frFormat,
+    sharedImport: frSharedImport,
   },
   en: {
     componentsCore: enComponentsCore,
@@ -80,6 +85,7 @@ export const resources = {
     settings: enSettings,
     overlay: enOverlay,
     format: enFormat,
+    sharedImport: enSharedImport,
   },
   es: {
     componentsCore: esComponentsCore,
@@ -93,6 +99,7 @@ export const resources = {
     settings: esSettings,
     overlay: esOverlay,
     format: esFormat,
+    sharedImport: esSharedImport,
   },
   "pt-BR": {
     componentsCore: ptBRComponentsCore,
@@ -106,6 +113,7 @@ export const resources = {
     settings: ptBRSettings,
     overlay: ptBROverlay,
     format: ptBRFormat,
+    sharedImport: ptBRSharedImport,
   },
 } as const;
 

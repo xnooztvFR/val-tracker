@@ -147,6 +147,7 @@ mod tests {
                 weapon: None::<MatchDetailEconomyEquipment>,
                 armor: None,
             }),
+            kill_events: vec![],
         }
     }
 

@@ -1,6 +1,7 @@
 {
   "today": {
     "title": "Aujourd'hui",
+    "shareSessionLink": "Partager le carnet de session →",
     "emptyTitle": "Pas encore de partie aujourd'hui",
     "emptyDetail": "Reviens ici après ta première game du jour pour voir ton bilan condensé.",
     "recentTitle": "Games d'aujourd'hui",

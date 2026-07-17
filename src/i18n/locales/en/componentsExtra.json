@@ -206,6 +206,24 @@
     "bestAgent": "Best agent",
     "statsLine": "({{wins}}/{{played}})"
   },
+  "trackerScoreCard": {
+    "title": "Tracker Score",
+    "subtitle": "out of {{total}} points",
+    "notEnoughData": "Not enough cached matches to compute a reliable score — open a few recent matches first.",
+    "matchesConsidered": "Based on {{count}} already-viewed matches",
+    "metric": {
+      "acs": "ACS",
+      "kd": "K/D",
+      "adr": "ADR",
+      "hs_percent": "HS%",
+      "winrate": "Winrate"
+    },
+    "tooltip": "Composite performance rating (tracker.gg-style), compared to rough community benchmarks per rank bracket — a directional indicator, not an exact measurement."
+  },
+  "highlightsPanel": {
+    "title": "Highlights",
+    "roundLabel": "Round {{round}}"
+  },
   "matchNotesPanel": {
     "title": "Notes on this match",
     "placeholder": "Add a timestamped note...",

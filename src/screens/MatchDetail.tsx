@@ -4,7 +4,8 @@ import { SkeletonScreen } from "../components/Skeleton";
 import { Link, useParams } from "react-router-dom";
 
 import { useAccount } from "../hooks/usePlayer";
-import { useMapAverageStats, useMatchDetail } from "../hooks/useMatches";
+import { useMapAverageStats, useMatchDetail, useMatchHighlights } from "../hooks/useMatches";
+import HighlightsPanel from "../components/HighlightsPanel";
 import ErrorState from "../components/ErrorState";
 import InfoTooltip from "../components/InfoTooltip";
 import Panel from "../components/Panel";
@@ -45,6 +46,7 @@ export default function MatchDetail() {
   // doit être appelé inconditionnellement (avant les early return ci-dessous), donc on lit
   // la carte via optional chaining plutôt que d'attendre `data`.
   const mapAverage = useMapAverageStats(puuid, detail.data?.data.metadata.map ?? undefined);
+  const highlights = useMatchHighlights(matchId, puuid);
 
   // Best-effort, ne bloque jamais l'affichage : reconstruit les stats de duo/squad
   // (party_id) à partir du détail de match tout juste chargé, sans appel réseau
@@ -117,6 +119,8 @@ export default function MatchDetail() {
           />
         </Panel>
       )}
+
+      {highlights.data && highlights.data.length > 0 && <HighlightsPanel highlights={highlights.data} />}
 
       {selectedRound !== null && data.rounds[selectedRound] && (
         <RoundDetailPanel

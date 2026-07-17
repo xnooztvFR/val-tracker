@@ -75,3 +75,44 @@ export function useRecommendations(puuid: string | undefined, minMatches = 3) {
     enabled: Boolean(puuid),
   });
 }
+
+/** TODO Fonctionnalités#4/#33 : moments forts (clutch/multikill) d'un match précis, mêmes
+ * données que `useMatchDetail` déjà en cache — aucun fetch réseau supplémentaire. */
+export function useMatchHighlights(matchId: string | undefined, puuid: string | undefined) {
+  return useQuery({
+    queryKey: ["match_highlights", matchId, puuid],
+    queryFn: () => tauriApi.getMatchHighlights(matchId!, puuid!),
+    enabled: Boolean(matchId && puuid),
+  });
+}
+
+/** TODO Fonctionnalités#4/#33 : moments forts agrégés sur tous les matchs déjà en cache pour
+ * ce puuid — alimente les badges dans la liste MatchHistory sans rouvrir chaque match. */
+export function useAllMatchHighlights(puuid: string | undefined) {
+  return useQuery({
+    queryKey: ["all_match_highlights", puuid],
+    queryFn: () => tauriApi.getAllMatchHighlights(puuid!),
+    enabled: Boolean(puuid),
+  });
+}
+
+/** TODO Fonctionnalités#1 : "Tracker Score" composite /1000. Contrairement aux autres stats
+ * dérivées (`useRecommendations`, etc.), backfill automatiquement le cache de détail pour les
+ * 100 derniers matchs compétitifs côté Rust (voir `commands::get_tracker_score`) — le score
+ * doit couvrir tout l'historique récent, pas seulement les matchs déjà ouverts manuellement.
+ * `staleTime` généreux : le backfill réseau est coûteux (jusqu'à ~100 requêtes rate-limitées
+ * sur un profil jamais consulté), pas la peine de le rejouer à chaque focus d'onglet. */
+export function useTrackerScore(
+  puuid: string | undefined,
+  region: string | undefined,
+  name: string | undefined,
+  tag: string | undefined,
+  currentTier: number | null | undefined,
+) {
+  return useQuery({
+    queryKey: ["tracker_score", puuid, region, name, tag, currentTier],
+    queryFn: () => tauriApi.getTrackerScore(puuid!, region!, name!, tag!, currentTier ?? null),
+    enabled: Boolean(puuid && region && name && tag),
+    staleTime: 10 * 60 * 1000,
+  });
+}

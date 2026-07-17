@@ -24,6 +24,16 @@ Index :
 | notes | TEXT | oui |  |  |
 | installed_at | INTEGER | oui |  |  |
 
+## `friend_personal_bests`
+
+| Colonne | Type | NOT NULL | Défaut | PK |
+| --- | --- | --- | --- | --- |
+| puuid | TEXT | oui |  | oui |
+| metric | TEXT | oui |  | oui |
+| value | INTEGER | oui |  |  |
+| match_id | TEXT | oui |  |  |
+| achieved_at | INTEGER | oui |  |  |
+
 ## `match_notes`
 
 | Colonne | Type | NOT NULL | Défaut | PK |

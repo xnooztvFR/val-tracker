@@ -83,8 +83,19 @@ async fn tick(app: &AppHandle) {
         drop(conn);
 
         if is_first_check {
+            // TODO Social/multi-comptes#6/#40 : sème le record perso sur le premier match vu
+            // pour cet ami (sans notifier, même raisonnement que la dédup victoire/défaite
+            // ci-dessus) — sinon le tout premier match suivi déclencherait toujours un "record
+            // battu" par comparaison à une absence de record.
+            seed_personal_bests(&state, &friend.puuid, &latest, &match_id).await;
             continue;
         }
+
+        let friend_stats = latest
+            .players
+            .iter()
+            .find(|p| p.puuid.as_deref() == Some(friend.puuid.as_str()))
+            .and_then(|p| p.stats.as_ref());
 
         let won = latest
             .players
@@ -104,6 +115,82 @@ async fn tick(app: &AppHandle) {
             .builder()
             .title("Un ami suivi vient de jouer")
             .body(format!("{}#{} — {result_label}", friend.name, friend.tag))
+            .show();
+
+        maybe_notify_personal_best(
+            app,
+            &state,
+            &friend.puuid,
+            &friend.name,
+            &friend.tag,
+            friend_stats,
+            &match_id,
+        )
+        .await;
+    }
+}
+
+/// TODO Social/multi-comptes#6/#40 : mémorise le record initial sans notifier — voir le
+/// commentaire d'appel dans `tick`.
+async fn seed_personal_bests(
+    state: &AppState,
+    puuid: &str,
+    latest: &crate::api::henrik::types::MatchEntry,
+    match_id: &str,
+) {
+    let Some(stats) = latest
+        .players
+        .iter()
+        .find(|p| p.puuid.as_deref() == Some(puuid))
+        .and_then(|p| p.stats.as_ref())
+    else {
+        return;
+    };
+    let conn = state.db.lock().await;
+    if let Some(kills) = stats.kills {
+        let _ = crate::db::set_personal_best(&conn, puuid, crate::db::PersonalBestMetric::Kills, kills, match_id);
+    }
+    if let Some(score) = stats.score {
+        let _ = crate::db::set_personal_best(&conn, puuid, crate::db::PersonalBestMetric::Score, score, match_id);
+    }
+}
+
+/// TODO Social/multi-comptes#6/#40 : compare chaque métrique suivie (kills, score) au record
+/// connu — notifie et met à jour le record si dépassé. Best-effort : une métrique absente de
+/// la réponse Henrik (`stats` = `None`) est simplement ignorée, pas une erreur.
+async fn maybe_notify_personal_best(
+    app: &AppHandle,
+    state: &AppState,
+    puuid: &str,
+    name: &str,
+    tag: &str,
+    stats: Option<&crate::api::henrik::types::PlayerStats>,
+    match_id: &str,
+) {
+    let Some(stats) = stats else { return };
+
+    for (metric, value, label) in [
+        (crate::db::PersonalBestMetric::Kills, stats.kills, "kills"),
+        (crate::db::PersonalBestMetric::Score, stats.score, "score"),
+    ] {
+        let Some(value) = value else { continue };
+        let conn = state.db.lock().await;
+        let previous_best = crate::db::get_personal_best(&conn, puuid, metric).unwrap_or(None);
+        let is_new_best = previous_best.map(|best| value > best).unwrap_or(false);
+        if !is_new_best {
+            continue;
+        }
+        if let Err(e) = crate::db::set_personal_best(&conn, puuid, metric, value, match_id) {
+            crate::applog!("[friend_watcher] échec d'écriture du record perso ({puuid}/{label}): {e}");
+            continue;
+        }
+        drop(conn);
+
+        let _ = app
+            .notification()
+            .builder()
+            .title("Record personnel battu !")
+            .body(format!("{name}#{tag} vient de battre son record de {label} ({value}) — félicite-le !"))
             .show();
     }
 }

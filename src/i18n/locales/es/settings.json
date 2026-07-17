@@ -96,10 +96,11 @@
     "layout": {
       "full": "Completo (predeterminado)",
       "mini": "Mini resumen",
+      "grid": "Cuadrícula de equipo",
       "minimal": "Minimalista (solo rango)",
       "coach": "Coach (solo texto)"
     },
-    "layoutHint": "«Completo» (predeterminado) enumera a todos los jugadores detectados, aliados y rivales. «Mini resumen» reduce el overlay a una sola línea de insignias de rango, sin nombre ni recomendación de agente. «Minimalista» solo muestra tu propio rango como texto pequeño, para la mínima intrusión posible en partida.",
+    "layoutHint": "«Completo» (predeterminado) enumera a todos los jugadores detectados, aliados y rivales. «Mini resumen» reduce el overlay a una sola línea de insignias de rango, sin nombre ni recomendación de agente. «Cuadrícula de equipo» alinea aliados y rivales en dos filas de mini insignias de rango, estilo tabla, para comparar ambos equipos de un vistazo antes de la partida. «Minimalista» solo muestra tu propio rango como texto pequeño, para la mínima intrusión posible en partida.",
     "densityLabel": "Densidad de visualización",
     "density": {
       "compact": "Compacta",
