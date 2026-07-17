@@ -25,7 +25,7 @@
 //! reconnexion complète que `on_local_api_failure` (voir le bloc dédié dans `tick`).
 //!
 //! Suite constatée le même jour : ce mécanisme de reconnexion fonctionnait, mais mettait
-//! jusqu'à ~2 minutes à se déclencher (`STUCK_RESET_THRESHOLD` ticks à `IDLE_INTERVAL`,
+//! jusqu'à ~45 secondes à se déclencher (`STUCK_RESET_THRESHOLD` ticks à `IDLE_INTERVAL`,
 //! puisque l'état résolu hors_jeu bascule l'intervalle sur le rythme lent) — trop long pour
 //! rattraper la toute première partie qui suit un lancement d'app si elle est plus courte
 //! que ça. `STARTUP_GRACE_TICKS` force le rythme rapide (`ACTIVE_INTERVAL`) pendant un moment
@@ -45,8 +45,8 @@ use super::lockfile::{self, LockfileInfo};
 use super::{LivePlayer, LiveSnapshot, LiveState};
 use crate::AppState;
 
-const ACTIVE_INTERVAL: Duration = Duration::from_millis(2500);
-const IDLE_INTERVAL: Duration = Duration::from_millis(8000);
+const ACTIVE_INTERVAL: Duration = Duration::from_millis(1000);
+const IDLE_INTERVAL: Duration = Duration::from_millis(3000);
 /// Backlog #78 : au-delà de `DEEP_IDLE_THRESHOLD` ticks consécutifs sans lockfile (Riot
 /// Client fermé), on espace encore plus les vérifications — un simple `read_lockfile()`
 /// idle à 8s en continu pendant des heures hors session n'a pas de raison d'être alors que
@@ -56,13 +56,13 @@ const DEEP_IDLE_THRESHOLD: u32 = 10;
 const MAX_LOCAL_FAILURES: u32 = 3;
 /// Nombre de ticks consécutifs résolus en `hors_jeu` (lockfile joignable, requêtes en
 /// succès) au-delà duquel on force une reconnexion complète — voir la note de module sur le
-/// cas du 2026-07-14. À `IDLE_INTERVAL` (8s/tick), ça représente environ 2 minutes.
+/// cas du 2026-07-14. À `IDLE_INTERVAL` (3s/tick), ça représente environ 45 secondes.
 const STUCK_RESET_THRESHOLD: u32 = 15;
 /// Ticks restants à forcer `ACTIVE_INTERVAL` après toute (re)connexion, même si l'état
 /// résolu est hors_jeu/menu — voir la note de module sur le délai de stabilisation de l'API
-/// locale Riot après un démarrage. ~2 minutes à `ACTIVE_INTERVAL` (2,5s/tick), pour couvrir
+/// locale Riot après un démarrage. ~2 minutes à `ACTIVE_INTERVAL` (1s/tick), pour couvrir
 /// le pire cas observé en pratique.
-const STARTUP_GRACE_TICKS: u32 = 48;
+const STARTUP_GRACE_TICKS: u32 = 120;
 /// Nombre de cycles de reconnexion complète consécutifs (voir `on_local_api_failure`) qui
 /// ont eux-mêmes échoué immédiatement, à partir duquel on commence à espacer les tentatives
 /// suivantes au lieu de retenter en boucle serrée à `ACTIVE_INTERVAL` — cas d'un Riot Client

@@ -11,6 +11,14 @@ l'app. **À mettre à jour manuellement à chaque release** (relecture humaine o
 > dépôt GitHub héberge...). Les tags Git (`v0.3.5` à `v0.3.24`) existent toujours mais leurs
 > notes de release, elles, sont perdues.
 
+## [0.3.37] - 2026-07-17
+
+### Améliorations
+
+- Overlay bien plus réactif à l'entrée en partie : le délai de détection avant l'ouverture
+  automatique de l'overlay en sélection d'agents (pregame) passe d'un pire cas de 8 secondes
+  à 3 secondes après une session hors-jeu/menu.
+
 ## [0.3.36] - 2026-07-17
 
 ### Nouvelles fonctionnalités
