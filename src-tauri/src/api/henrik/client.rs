@@ -15,6 +15,13 @@ use super::HenrikError;
 const BASE_URL: &str = "https://api.henrikdev.xyz";
 const MAX_ATTEMPTS: u32 = 3;
 
+/// TODO.md § Sécurité #15 : plafond défensif sur la taille du corps de réponse — un endpoint
+/// Henrik compromis/malformé (ou un relais proxy détourné, voir `HenrikAuth::Proxy`) ne doit
+/// pas pouvoir faire gonfler la mémoire de l'app avec une réponse énorme. Généreux (les
+/// réponses Henrik réelles, historique de matchs compris, tiennent en quelques centaines de
+/// Ko) pour ne jamais couper une réponse légitime.
+const MAX_RESPONSE_BYTES: usize = 16 * 1024 * 1024;
+
 /// Justificatif utilisé pour un appel à l'API Henrik.
 ///
 /// - `Direct` : une vraie clé Henrik personnelle (saisie par l'utilisateur dans Paramètres)
@@ -161,8 +168,21 @@ impl HenrikClient {
                 });
             }
 
+            if let Some(err) = reject_if_too_large(&response) {
+                self.rate_limiter.record_failure().await;
+                return Err(err);
+            }
+
             self.rate_limiter.record_success().await;
-            return response.text().await.map_err(HenrikError::Network);
+            let bytes = response.bytes().await.map_err(HenrikError::Network)?;
+            if bytes.len() > MAX_RESPONSE_BYTES {
+                return Err(HenrikError::ResponseTooLarge {
+                    actual_bytes: bytes.len(),
+                    max_bytes: MAX_RESPONSE_BYTES,
+                });
+            }
+            return String::from_utf8(bytes.to_vec())
+                .map_err(|e| HenrikError::Api { status: status.as_u16(), message: e.to_string() });
         }
 
         unreachable!("la boucle de retry renvoie toujours avant d'épuiser MAX_ATTEMPTS")
@@ -237,12 +257,20 @@ impl HenrikClient {
                 });
             }
 
+            if let Some(err) = reject_if_too_large(&response) {
+                self.rate_limiter.record_failure().await;
+                return Err(err);
+            }
+
             self.rate_limiter.record_success().await;
-            return response
-                .bytes()
-                .await
-                .map(|b| b.to_vec())
-                .map_err(HenrikError::Network);
+            let bytes = response.bytes().await.map_err(HenrikError::Network)?;
+            if bytes.len() > MAX_RESPONSE_BYTES {
+                return Err(HenrikError::ResponseTooLarge {
+                    actual_bytes: bytes.len(),
+                    max_bytes: MAX_RESPONSE_BYTES,
+                });
+            }
+            return Ok(bytes.to_vec());
         }
 
         unreachable!("la boucle de retry renvoie toujours avant d'épuiser MAX_ATTEMPTS")
@@ -258,6 +286,28 @@ async fn response_error_message(response: reqwest::Response) -> String {
         response.text().await.unwrap_or_default()
     } else {
         "<redacted in release build>".to_string()
+    }
+}
+
+/// Rejet précoce basé sur `Content-Length`, avant même de lire le corps — un serveur/relais
+/// compromis qui annonce honnêtement une taille énorme n'a pas besoin d'être lu pour être
+/// rejeté. Le check post-lecture (`bytes.len() > MAX_RESPONSE_BYTES` dans les appelants)
+/// reste le vrai garde-fou pour un serveur qui mentirait sur ce header ou l'omettrait.
+fn reject_if_too_large(response: &reqwest::Response) -> Option<HenrikError> {
+    let declared = response
+        .headers()
+        .get(reqwest::header::CONTENT_LENGTH)?
+        .to_str()
+        .ok()?
+        .parse::<usize>()
+        .ok()?;
+    if declared > MAX_RESPONSE_BYTES {
+        Some(HenrikError::ResponseTooLarge {
+            actual_bytes: declared,
+            max_bytes: MAX_RESPONSE_BYTES,
+        })
+    } else {
+        None
     }
 }
 

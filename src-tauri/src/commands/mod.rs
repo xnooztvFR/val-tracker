@@ -65,6 +65,14 @@ impl From<HenrikError> for CommandError {
                     message: format!("réponse Henrik inattendue: {e}"),
                 }
             }
+            HenrikError::ResponseTooLarge { actual_bytes, max_bytes } => {
+                crate::applog!(
+                    "[henrik] réponse rejetée: {actual_bytes} octets (max {max_bytes})"
+                );
+                CommandError::Unknown {
+                    message: "réponse Henrik anormalement volumineuse, rejetée".to_string(),
+                }
+            }
         }
     }
 }

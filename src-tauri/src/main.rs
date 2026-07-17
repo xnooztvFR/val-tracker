@@ -20,6 +20,7 @@ mod economy_stats;
 mod map_averages;
 mod queue_stats;
 mod recommendations;
+mod security_config;
 mod settings;
 mod side_stats;
 mod status_watcher;

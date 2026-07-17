@@ -61,6 +61,8 @@ pub enum HenrikError {
     Database(#[from] rusqlite::Error),
     #[error("erreur de désérialisation: {0}")]
     Serde(#[from] serde_json::Error),
+    #[error("réponse Henrik trop volumineuse ({actual_bytes} octets, max {max_bytes})")]
+    ResponseTooLarge { actual_bytes: usize, max_bytes: usize },
 }
 
 impl From<rate_limiter::CircuitOpenError> for HenrikError {
