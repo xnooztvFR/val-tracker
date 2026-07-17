@@ -11,6 +11,16 @@ l'app. **À mettre à jour manuellement à chaque release** (relecture humaine o
 > dépôt GitHub héberge...). Les tags Git (`v0.3.5` à `v0.3.24`) existent toujours mais leurs
 > notes de release, elles, sont perdues.
 
+## [0.3.32] - 2026-07-17
+
+### Sécurité
+
+- Plafond défensif de 16 Mo sur la taille des réponses de l'API Henrik (rejet précoce si le
+  serveur annonce une taille excessive, vérification systématique après lecture) — protège
+  contre une réponse anormalement volumineuse d'un endpoint compromis ou malformé.
+- Nouveau garde-fou automatisé qui empêche toute régression accidentelle désactivant la
+  politique de sécurité du contenu (CSP) de l'application.
+
 ## [0.3.31] - 2026-07-16
 
 ### Nouvelles fonctionnalités
