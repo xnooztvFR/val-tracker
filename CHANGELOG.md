@@ -11,6 +11,24 @@ l'app. **À mettre à jour manuellement à chaque release** (relecture humaine o
 > dépôt GitHub héberge...). Les tags Git (`v0.3.5` à `v0.3.24`) existent toujours mais leurs
 > notes de release, elles, sont perdues.
 
+## [0.3.38] - 2026-07-17
+
+### Nouvelles fonctionnalités
+
+- Tracker Score : note de performance composite sur 1000 points (façon tracker.gg), avec des
+  tiers S/A/B/C/D par métrique (ACS, K/D, ADR, HS%, winrate) comparés à des repères par palier
+  de rang — calculée automatiquement sur les 100 derniers matchs compétitifs, affichée sur
+  l'Accueil.
+- Détection automatique des clutchs (1vX) et multikills (3k/4k/Ace), à partir des `kill_events`
+  déjà renvoyés par l'API Henrik — badges dans l'historique et le détail de match.
+- Nouvel onglet « Partage » : export lecture-seule d'une carte de profil ou d'un carnet de
+  session de groupe dans un fichier autonome, importable par un ami sans clé API, avec
+  détection automatique des matchs joués ensemble.
+- Badge « coéquipier de confiance » (Or/Argent) sur l'écran Duo.
+- Notification quand un ami suivi bat son record personnel de kills ou de score.
+- Nouveau mode d'affichage overlay « Grille d'équipe » pour comparer les deux équipes d'un
+  coup d'œil avant la partie.
+
 ## [0.3.37] - 2026-07-17
 
 ### Améliorations
