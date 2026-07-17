@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { tauriApi, type ChangelogHistoryEntry } from "../../lib/tauriApi";
 import { formatDateTimeShort, resolveChangelogNotes } from "../../lib/format";
+import MarkdownLite from "../../components/MarkdownLite";
 import { SectionTitle } from "./shared";
 
 /** "Nouveautés" consultable — `ChangelogModal.tsx` n'affiche le changelog qu'une fois,
@@ -46,9 +47,9 @@ export default function ChangelogHistorySection() {
                   <span className="text-[11px] text-lo">{formatDateTimeShort(entry.installed_at)}</span>
                 </button>
                 {isOpen && (
-                  <p className="whitespace-pre-line border-t border-line bg-surface px-3 py-2 text-xs text-lo">
-                    {notes || t("changelogHistory.noNotes")}
-                  </p>
+                  <div className="max-h-64 overflow-y-auto border-t border-line bg-surface px-3 py-2 text-xs text-lo">
+                    {notes ? <MarkdownLite text={notes} /> : <p>{t("changelogHistory.noNotes")}</p>}
+                  </div>
                 )}
               </li>
             );

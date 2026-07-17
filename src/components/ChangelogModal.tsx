@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getVersion } from "@tauri-apps/api/app";
 
 import Panel from "./Panel";
+import MarkdownLite from "./MarkdownLite";
 import { resolveChangelogNotes } from "../lib/format";
 
 interface PendingChangelog {
@@ -35,22 +36,33 @@ export default function ChangelogModal() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (!changelog) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setChangelog(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [changelog]);
+
   if (!changelog) return null;
 
   const notes = resolveChangelogNotes(changelog.notes, i18n.language);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6">
-      <Panel className="w-full max-w-md p-5">
+      <Panel className="flex max-h-[85vh] w-full max-w-md flex-col p-5">
         <p className="hud-label text-accent">{t("changelogModal.title")}</p>
         <p className="mt-2 text-base font-semibold text-hi">
           {t("changelogModal.version", { version: changelog.version })}
         </p>
-        {notes ? (
-          <p className="mt-3 whitespace-pre-line text-sm text-lo">{notes}</p>
-        ) : (
-          <p className="mt-3 text-sm text-lo">{t("changelogModal.noNotes")}</p>
-        )}
+        <div className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
+          {notes ? (
+            <MarkdownLite text={notes} className="text-sm text-lo" />
+          ) : (
+            <p className="text-sm text-lo">{t("changelogModal.noNotes")}</p>
+          )}
+        </div>
         <div className="mt-4 flex justify-end">
           <button
             type="button"
