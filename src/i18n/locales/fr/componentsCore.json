@@ -54,7 +54,16 @@
     "close": "Fermer",
     "changePlayer": "Changer de joueur",
     "settings": "Paramètres",
-    "commandPaletteHint": "Ctrl+K pour la palette de commandes"
+    "commandPaletteHint": "Ctrl+K pour la palette de commandes",
+    "navBack": "Écran précédent",
+    "navForward": "Écran suivant",
+    "pinProfile": "Épingler ce profil",
+    "unpinProfile": "Désépingler ce profil",
+    "dropOnVs": "Déposer pour comparer ce joueur"
+  },
+  "floatingTabs": {
+    "unpin": "Désépingler",
+    "empty": "Aucun profil épinglé"
   },
   "apiStatusBadge": {
     "ok": "API OK",

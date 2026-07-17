@@ -14,10 +14,12 @@ import MiniOverlay from "./components/MiniOverlay";
 import UpdateBanner from "./components/UpdateBanner";
 import ChangelogModal from "./components/ChangelogModal";
 import CommandPalette from "./components/CommandPalette";
+import FloatingSessionTabs from "./components/FloatingSessionTabs";
 import Search from "./screens/Search";
 import { useUiStore } from "./store/uiStore";
 import { useSettingsStore } from "./store/settingsStore";
 import { useDynamicAccentStore } from "./store/dynamicAccentStore";
+import { useNavHistoryStore } from "./store/navHistoryStore";
 import { useSelfAccountCycling } from "./hooks/useSelfAccountCycling";
 
 // Écrans chargés à la demande (React.lazy) : seul l'écran de recherche (route "/",
@@ -48,6 +50,8 @@ const Compare = lazy(() => import("./screens/Compare"));
 
 export default function App() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const recordNavHistory = useNavHistoryStore((s) => s.record);
   const compact = useUiStore((s) => s.compact);
   const focus = useUiStore((s) => s.focus);
   const toggleFocus = useUiStore((s) => s.toggleFocus);
@@ -185,6 +189,14 @@ export default function App() {
     };
   }, [navigate]);
 
+  // Backlog Fonctionnalités#2 : alimente navHistoryStore à chaque changement de route pour
+  // les boutons précédent/suivant de TopNav — indépendant de l'historique de recherche
+  // (recentSearchesStore), qui ne trace que les Riot ID consultés, pas la navigation
+  // d'écran (Home ↔ Matchs ↔ Tendances...).
+  useEffect(() => {
+    recordNavHistory(location.pathname + location.search);
+  }, [location.pathname, location.search, recordNavHistory]);
+
   // La fenêtre overlay V2 (créée par overlay::window côté Rust) rend uniquement
   // l'écran Overlay, sans titlebar ni navigation.
   if (getCurrentWindow().label === "overlay") {
@@ -194,6 +206,7 @@ export default function App() {
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      {!compact && !focus && <FloatingSessionTabs />}
       {!focus && <Titlebar />}
       {focus && <FocusModeExitButton onExit={toggleFocus} />}
       {compact ? (

@@ -23,5 +23,11 @@
   },
   "hoverPreview": {
     "loading": "Chargement…"
+  },
+  "resume": {
+    "title": "Reprendre où tu en étais",
+    "continue": "Continuer",
+    "incognito": "Mode incognito",
+    "incognitoHint": "Les recherches faites en mode incognito ne sont pas enregistrées dans l'historique récent."
   }
 }

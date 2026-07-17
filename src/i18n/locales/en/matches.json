@@ -3,6 +3,7 @@
     "title": "History · last {{count}} engagements",
     "exportCsv": "Export CSV",
     "exportJson": "Export JSON",
+    "exportPdf": "Export PDF",
     "empty": {
       "title": "No competitive match found",
       "detail": "This profile has no competitive history in this sample."
@@ -24,6 +25,14 @@
         "detail": "Try widening your filters."
       }
     },
+    "savedViews": {
+      "title": "Saved views:",
+      "save": "Save this view",
+      "namePlaceholder": "View name…",
+      "confirm": "Ok",
+      "remove": "Remove this view"
+    },
+    "dragHint": "Drag a match onto the \"More\" menu to compare, or onto a pinned profile to note a reference.",
     "csv": {
       "header": {
         "date": "date",

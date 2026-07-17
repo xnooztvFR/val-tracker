@@ -3,6 +3,7 @@
     "title": "Historique · {{count}} derniers engagements",
     "exportCsv": "Exporter CSV",
     "exportJson": "Exporter JSON",
+    "exportPdf": "Exporter PDF",
     "empty": {
       "title": "Aucun match compétitif trouvé",
       "detail": "Ce profil n'a pas d'historique compétitif sur cet échantillon."
@@ -24,6 +25,14 @@
         "detail": "Essaie d'élargir tes filtres."
       }
     },
+    "savedViews": {
+      "title": "Vues sauvegardées :",
+      "save": "Enregistrer cette vue",
+      "namePlaceholder": "Nom de la vue…",
+      "confirm": "Ok",
+      "remove": "Supprimer cette vue"
+    },
+    "dragHint": "Glisse un match vers le menu « Plus » pour le comparer, ou vers un profil épinglé pour y noter une référence.",
     "csv": {
       "header": {
         "date": "date",

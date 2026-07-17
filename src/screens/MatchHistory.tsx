@@ -3,16 +3,19 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Skeleton } from "../components/Skeleton";
 
-import { useAccount } from "../hooks/usePlayer";
+import { useAccount, useMmr } from "../hooks/usePlayer";
 import { useMatches } from "../hooks/useMatches";
 import MatchRow from "../components/MatchRow";
 import ErrorState from "../components/ErrorState";
 import StaleDataBanner from "../components/StaleDataBanner";
 import EmptyState from "../components/EmptyState";
-import { formatSessionHeader, groupMatchesIntoSessions } from "../lib/format";
+import { formatSessionHeader, groupMatchesIntoSessions, rankInfo } from "../lib/format";
 import { downloadBlob } from "../lib/downloadFile";
+import { computeOverview } from "../lib/stats";
+import { buildPdfReport } from "../lib/pdfReport";
 import i18n from "../i18n";
 import type { MatchEntry } from "../lib/tauriApi";
+import { useSavedViewsStore } from "../store/savedViewsStore";
 
 const MATCH_HISTORY_SIZE = 20;
 
@@ -108,7 +111,25 @@ export default function MatchHistory() {
   const matches = useMatches({ region, name, tag, size: MATCH_HISTORY_SIZE });
 
   const puuid = account.data?.data.puuid;
+  const mmr = useMmr({ puuid, region, name, tag });
   const riotId = name && tag ? `${name}-${tag}` : "joueur";
+
+  function exportPdf() {
+    if (!matches.data || !puuid || !region || !name || !tag) return;
+    const overview = computeOverview(matches.data.data, puuid);
+    const current = mmr.data?.data.current_data;
+    const info = rankInfo(current?.currenttier);
+    const doc = buildPdfReport({
+      playerLabel: `${name}#${tag}`,
+      region,
+      rankName: current?.currenttierpatched || info.name,
+      rr: current?.ranking_in_tier ?? null,
+      overview,
+      matches: matches.data.data,
+      puuid,
+    });
+    doc.save(`rapport-${riotId}.pdf`);
+  }
 
   const [resultFilter, setResultFilter] = useState<ResultFilter>("all");
   const [agentFilter, setAgentFilter] = useState<string | null>(null);
@@ -116,6 +137,29 @@ export default function MatchHistory() {
   const [modeFilter, setModeFilter] = useState<string | null>(null);
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
+
+  const savedViews = useSavedViewsStore((s) => s.views);
+  const saveView = useSavedViewsStore((s) => s.save);
+  const removeView = useSavedViewsStore((s) => s.remove);
+  const [savingView, setSavingView] = useState(false);
+  const [newViewName, setNewViewName] = useState("");
+
+  function applyView(view: (typeof savedViews)[number]) {
+    setResultFilter(view.resultFilter);
+    setAgentFilter(view.agentFilter);
+    setMapFilter(view.mapFilter);
+    setModeFilter(view.modeFilter);
+    setDateFrom(view.dateFrom);
+    setDateTo(view.dateTo);
+  }
+
+  function confirmSaveView() {
+    const name = newViewName.trim();
+    if (!name) return;
+    saveView({ name, resultFilter, agentFilter, mapFilter, modeFilter, dateFrom, dateTo });
+    setNewViewName("");
+    setSavingView(false);
+  }
 
   const { agents, maps, modes } = useMemo(() => {
     const agentSet = new Map<string, string>();
@@ -169,9 +213,14 @@ export default function MatchHistory() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="hud-label text-sm">
-          {t("history.title", { count: MATCH_HISTORY_SIZE })}
-        </h1>
+        <div>
+          <h1 className="hud-label text-sm">
+            {t("history.title", { count: MATCH_HISTORY_SIZE })}
+          </h1>
+          {matches.data && puuid && matches.data.data.length > 0 && (
+            <p className="mt-0.5 text-[10px] text-lo/60">{t("history.dragHint")}</p>
+          )}
+        </div>
         {matches.data && puuid && matches.data.data.length > 0 && (
           <div className="flex shrink-0 gap-2">
             <button
@@ -188,6 +237,13 @@ export default function MatchHistory() {
             >
               {t("history.exportJson")}
             </button>
+            <button
+              type="button"
+              onClick={exportPdf}
+              className="hud-label border border-line px-2.5 py-1 text-[11px] text-lo transition-colors hover:border-accent hover:text-hi"
+            >
+              {t("history.exportPdf")}
+            </button>
           </div>
         )}
       </div>
@@ -195,6 +251,30 @@ export default function MatchHistory() {
       {matches.isError && <ErrorState error={matches.error} />}
       {matches.data?.stale && <StaleDataBanner cachedAt={matches.data.cached_at} />}
       {matches.isLoading && <Skeleton className="h-32 w-full" />}
+
+      {savedViews.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="hud-label text-[11px] text-lo">{t("history.savedViews.title")}</span>
+          {savedViews.map((view) => (
+            <span
+              key={view.id}
+              className="panel-clip-sm flex items-center gap-1 border border-line py-1 pl-2.5 pr-1 text-[11px] text-lo transition-colors hover:border-accent hover:text-hi"
+            >
+              <button type="button" onClick={() => applyView(view)}>
+                {view.name}
+              </button>
+              <button
+                type="button"
+                onClick={() => removeView(view.id)}
+                aria-label={t("history.savedViews.remove")}
+                className="flex h-4 w-4 items-center justify-center text-lo/60 hover:text-crit"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
 
       {matches.data && puuid && matches.data.data.length > 0 && (
         <div className="flex flex-wrap items-center gap-2">
@@ -279,6 +359,37 @@ export default function MatchHistory() {
               {t("history.filters.reset")}
             </button>
           )}
+          {hasActiveFilters && !savingView && (
+            <button
+              type="button"
+              onClick={() => setSavingView(true)}
+              className="hud-label whitespace-nowrap border border-line px-2.5 py-1 text-[11px] text-lo transition-colors hover:border-accent hover:text-hi"
+            >
+              {t("history.savedViews.save")}
+            </button>
+          )}
+          {savingView && (
+            <span className="flex items-center gap-1.5">
+              <input
+                autoFocus
+                value={newViewName}
+                onChange={(e) => setNewViewName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") confirmSaveView();
+                  if (e.key === "Escape") setSavingView(false);
+                }}
+                placeholder={t("history.savedViews.namePlaceholder")}
+                className="w-36 border border-line bg-transparent px-1.5 py-0.5 text-[11px] text-hi focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={confirmSaveView}
+                className="hud-label px-2 py-1 text-[11px] text-accent hover:text-hi"
+              >
+                {t("history.savedViews.confirm")}
+              </button>
+            </span>
+          )}
         </div>
       )}
 
@@ -314,6 +425,9 @@ export default function MatchHistory() {
                   key={match.metadata.match_id ?? Math.random()}
                   match={match}
                   puuid={puuid}
+                  region={region}
+                  name={name}
+                  tag={tag}
                   onClick={() =>
                     match.metadata.match_id &&
                     navigate(`/joueur/${region}/${name}/${tag}/matchs/${match.metadata.match_id}`)

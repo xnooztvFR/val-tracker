@@ -11,6 +11,30 @@ l'app. **À mettre à jour manuellement à chaque release** (relecture humaine o
 > dépôt GitHub héberge...). Les tags Git (`v0.3.5` à `v0.3.24`) existent toujours mais leurs
 > notes de release, elles, sont perdues.
 
+## [0.3.35] - 2026-07-17
+
+### Nouvelles fonctionnalités
+
+- Onglets flottants de session : épingle jusqu'à 3 profils consultés (icône épingle dans la
+  barre de navigation) pour y revenir en un clic depuis n'importe quel écran.
+- Navigation précédent/suivant façon navigateur (flèches dans la barre de navigation).
+- Récap proactif de fin de session désormais aussi affiché sur l'écran Aujourd'hui, pas
+  seulement Accueil.
+- Vues sauvegardées dans l'historique de matchs : enregistre une combinaison de filtres
+  (résultat, agent, carte, mode, dates) et réapplique-la en un clic.
+- Recherche tolérante aux fautes de frappe (fuzzy) dans la palette de commandes (Ctrl+K).
+- Glisser-déposer un match depuis l'historique vers le menu « Plus » (pré-remplit l'écran
+  Comparer) ou vers un profil épinglé (ajoute une référence dans ses notes).
+- Aperçu au survol prolongé d'une ligne de match (score final + compositions d'équipe),
+  sans quitter la liste.
+- Navigation clavier façon vim (j/k) dans la palette de commandes.
+- Widget « Reprendre où tu en étais » sur l'écran de recherche.
+- Réorganisation par glisser-déposer des blocs de l'écran Accueil.
+- Mode incognito ponctuel : une recherche faite avec ce mode actif ne s'enregistre pas dans
+  l'historique récent.
+- Export PDF multi-page de l'historique de matchs (profil + statistiques + tableau de
+  matchs), pensé pour être partagé avec un coach.
+
 ## [0.3.34] - 2026-07-17
 
 ### Corrections

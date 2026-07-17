@@ -5,6 +5,10 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { useActivePlayerStore } from "../store/activePlayerStore";
 import { useTabOrderStore, resolveTabOrder } from "../store/tabOrderStore";
+import { useNavHistoryStore } from "../store/navHistoryStore";
+import { usePinnedTabsStore } from "../store/pinnedTabsStore";
+import { useCompareDropStore } from "../store/compareDropStore";
+import { readMatchDragPayload } from "../lib/matchDrag";
 import { useAccount, useMmr } from "../hooks/usePlayer";
 import { playerCardIconUrl, rankGlowColor, rankInfo } from "../lib/format";
 import { tauriApi } from "../lib/tauriApi";
@@ -51,6 +55,23 @@ export default function TopNav() {
   const tabOrder = useTabOrderStore((s) => s.order);
   const reorderTabs = useTabOrderStore((s) => s.reorder);
   const [draggedTabKey, setDraggedTabKey] = useState<string | null>(null);
+  const pinnedIsPinned = usePinnedTabsStore((s) => s.isPinned);
+  const togglePinned = usePinnedTabsStore((s) => s.toggle);
+  const isCurrentPinned = player ? pinnedIsPinned(player) : false;
+  const navBack = useNavHistoryStore((s) => s.back);
+  const navForward = useNavHistoryStore((s) => s.forward);
+  const canGoBack = useNavHistoryStore((s) => s.index > 0);
+  const canGoForward = useNavHistoryStore((s) => s.index < s.stack.length - 1);
+
+  function handleNavBack() {
+    const path = navBack();
+    if (path) navigate(path);
+  }
+
+  function handleNavForward() {
+    const path = navForward();
+    if (path) navigate(path);
+  }
 
   function prefetchMatchHistory() {
     if (!player) return;
@@ -84,6 +105,27 @@ export default function TopNav() {
         className="mr-3 flex shrink-0 items-center gap-2 self-center pr-2"
       >
         <img src={logo} alt="" className="h-6 w-6 object-contain" />
+      </button>
+
+      <button
+        type="button"
+        onClick={handleNavBack}
+        disabled={!canGoBack}
+        aria-label={t("topNav.navBack")}
+        title={t("topNav.navBack")}
+        className="flex h-8 w-6 shrink-0 items-center justify-center self-center text-lo transition-colors hover:bg-raised hover:text-hi disabled:pointer-events-none disabled:opacity-30"
+      >
+        <ChevronIcon direction="left" />
+      </button>
+      <button
+        type="button"
+        onClick={handleNavForward}
+        disabled={!canGoForward}
+        aria-label={t("topNav.navForward")}
+        title={t("topNav.navForward")}
+        className="mr-3 flex h-8 w-6 shrink-0 items-center justify-center self-center text-lo transition-colors hover:bg-raised hover:text-hi disabled:pointer-events-none disabled:opacity-30"
+      >
+        <ChevronIcon direction="right" />
       </button>
 
       <span
@@ -159,6 +201,20 @@ export default function TopNav() {
       </button>
 
       {player && (
+        <button
+          type="button"
+          onClick={() => togglePinned(player)}
+          aria-label={t(isCurrentPinned ? "topNav.unpinProfile" : "topNav.pinProfile")}
+          title={t(isCurrentPinned ? "topNav.unpinProfile" : "topNav.pinProfile")}
+          className={`flex h-8 w-8 shrink-0 items-center justify-center self-center transition-colors hover:bg-raised ${
+            isCurrentPinned ? "text-accent" : "text-lo/60 hover:text-lo"
+          }`}
+        >
+          <PinIcon filled={isCurrentPinned} />
+        </button>
+      )}
+
+      {player && (
         <div className="self-center">
           <ProfileChip player={player} account={account.data?.data} mmr={mmr.data?.data} />
         </div>
@@ -173,7 +229,10 @@ export default function TopNav() {
 function MoreMenu() {
   const { t } = useTranslation("componentsCore");
   const [open, setOpen] = useState(false);
+  const [dropHover, setDropHover] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const setCompareDropPending = useCompareDropStore((s) => s.setPending);
   const isActive = GLOBAL_TABS.some((tab) => location.pathname.startsWith(tab.to));
 
   return (
@@ -181,9 +240,27 @@ function MoreMenu() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDropHover(true);
+        }}
+        onDragLeave={() => setDropHover(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDropHover(false);
+          const payload = readMatchDragPayload(e.dataTransfer);
+          if (!payload) return;
+          // Backlog Fonctionnalités#6 : dépose d'un match sur "Plus" (qui héberge l'onglet
+          // VS/Compare, voir GLOBAL_TABS) — pré-remplit le premier emplacement de Compare
+          // avec le profil consulté, via compareDropStore (voir Compare.tsx).
+          setCompareDropPending({ region: payload.region, name: payload.name, tag: payload.tag });
+          setOpen(false);
+          navigate("/vs");
+        }}
+        title={dropHover ? t("topNav.dropOnVs") : undefined}
         className={`flex items-center gap-1.5 border-b-2 px-3 font-display text-[13px] font-semibold uppercase tracking-hud transition-colors ${
           isActive ? "border-accent text-hi" : "border-transparent text-lo hover:text-hi"
-        }`}
+        } ${dropHover ? "border-accent bg-raised text-accent" : ""}`}
       >
         <GridIcon />
         {t("topNav.more")}
@@ -262,6 +339,33 @@ function ProfileChip({
         </p>
       </span>
     </button>
+  );
+}
+
+function PinIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg viewBox="0 0 20 20" fill={filled ? "currentColor" : "none"} className="h-4 w-4">
+      <path
+        d="M10 2.5l1.4 3.9 4.1.5-3.1 2.9.9 4.1-3.3-2.1-3.3 2.1.9-4.1-3.1-2.9 4.1-.5L10 2.5z"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ChevronIcon({ direction }: { direction: "left" | "right" }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" className="h-4 w-4">
+      <path
+        d={direction === "left" ? "M12.5 4.5L6.5 10l6 5.5" : "M7.5 4.5l6 5.5-6 5.5"}
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 

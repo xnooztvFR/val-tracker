@@ -54,7 +54,16 @@
     "close": "Close",
     "changePlayer": "Change player",
     "settings": "Settings",
-    "commandPaletteHint": "Ctrl+K for the command palette"
+    "commandPaletteHint": "Ctrl+K for the command palette",
+    "navBack": "Previous screen",
+    "navForward": "Next screen",
+    "pinProfile": "Pin this profile",
+    "unpinProfile": "Unpin this profile",
+    "dropOnVs": "Drop to compare this player"
+  },
+  "floatingTabs": {
+    "unpin": "Unpin",
+    "empty": "No pinned profile"
   },
   "apiStatusBadge": {
     "ok": "API OK",

@@ -1,16 +1,17 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Skeleton } from "../components/Skeleton";
 
-import { useAccount } from "../hooks/usePlayer";
+import { useAccount, useRankSnapshots } from "../hooks/usePlayer";
 import { useMatches } from "../hooks/useMatches";
 import MatchRow from "../components/MatchRow";
 import StatCard from "../components/StatCard";
 import ErrorState from "../components/ErrorState";
 import EmptyState from "../components/EmptyState";
 import Panel from "../components/Panel";
-import { computeTodayStats } from "../lib/stats";
+import PeriodRecapModal from "../components/PeriodRecapModal";
+import { computeSessionRecap, computeTodayStats, isSessionOver, type PeriodRecap } from "../lib/stats";
 import { formatKdRatio, formatPercent } from "../lib/format";
 
 const SAMPLE_SIZE = 20;
@@ -27,6 +28,29 @@ export default function Today() {
   const account = useAccount(name, tag);
   const puuid = account.data?.data.puuid;
   const matches = useMatches({ region, name, tag, size: SAMPLE_SIZE });
+  const snapshots = useRankSnapshots(puuid);
+  const [sessionRecap, setSessionRecap] = useState<PeriodRecap | null>(null);
+
+  // Backlog Fonctionnalités#3 : résumé proactif de fin de session, aussi sur Today (pas
+  // seulement Home, voir useHomeData::autoSessionRecap) — même clé de déduplication
+  // localStorage `session-recap-shown:${puuid}` que Home.tsx, pour ne l'afficher qu'une
+  // seule fois au total quel que soit l'écran visité en premier après la session. Réutilise
+  // l'échantillon de matchs déjà chargé par `useMatches` ci-dessus, aucun appel réseau
+  // supplémentaire.
+  useEffect(() => {
+    if (!puuid || !matches.data) return;
+    const list = matches.data.data;
+    if (!isSessionOver(list)) return;
+    const lastShownKey = `session-recap-shown:${puuid}`;
+    const latestMatchId = list[0]?.metadata.match_id;
+    if (!latestMatchId) return;
+    if (localStorage.getItem(lastShownKey) === latestMatchId) return;
+
+    const recap = computeSessionRecap(list, snapshots.data ?? [], puuid);
+    if (!recap) return;
+    setSessionRecap(recap);
+    localStorage.setItem(lastShownKey, latestMatchId);
+  }, [puuid, matches.data, snapshots.data]);
 
   const today = useMemo(
     () => (matches.data && puuid ? computeTodayStats(matches.data.data, puuid) : null),
@@ -51,6 +75,10 @@ export default function Today() {
 
   return (
     <div className="space-y-4">
+      {sessionRecap && name && tag && (
+        <PeriodRecapModal recap={sessionRecap} playerLabel={`${name}#${tag}`} onClose={() => setSessionRecap(null)} />
+      )}
+
       <h1 className="hud-label text-sm">{t("today.title")}</h1>
 
       {today && today.matches === 0 && (
@@ -82,6 +110,9 @@ export default function Today() {
                 key={match.metadata.match_id ?? Math.random()}
                 match={match}
                 puuid={puuid}
+                region={region}
+                name={name}
+                tag={tag}
                 onClick={() =>
                   match.metadata.match_id &&
                   navigate(`/joueur/${region}/${name}/${tag}/matchs/${match.metadata.match_id}`)

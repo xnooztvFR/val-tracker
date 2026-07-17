@@ -1134,8 +1134,8 @@ export const tauriApi = {
   verifyUpdateHash: (url: string, expectedSha256: string) =>
     invoke<boolean>("verify_update_hash", { url, expectedSha256 }),
 
-  fetchAccount: (name: string, tag: string, force = false) =>
-    invoke<Fetched<AccountData>>("fetch_account", { name, tag, force }),
+  fetchAccount: (name: string, tag: string, force = false, record = true) =>
+    invoke<Fetched<AccountData>>("fetch_account", { name, tag, force, record }),
   fetchMmr: (puuid: string, region: string, name: string, tag: string, force = false) =>
     invoke<Fetched<MmrData>>("fetch_mmr", { puuid, region, name, tag, force }),
   fetchMatches: (region: string, name: string, tag: string, size: number, force = false) =>

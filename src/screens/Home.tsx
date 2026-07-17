@@ -18,12 +18,22 @@ import HomeTimelineSection from "../components/HomeTimelineSection";
 import { rankGlowColor } from "../lib/format";
 import { type PeriodRecap } from "../lib/stats";
 import { buildProfileCardData } from "../lib/profileCard";
+import { useHomeOrderStore, resolveHomeOrder } from "../store/homeOrderStore";
+
+// Backlog Fonctionnalités#10 : blocs réordonnables par glisser-déposer (poignée dédiée,
+// voir DraggableBlock plus bas) — `HomeStatusBar` en est volontairement exclue (contrôles
+// globaux, reste fixe en haut).
+const HOME_SECTION_KEYS = ["goals", "overview", "queue", "recommendations", "timeline"] as const;
+type HomeSectionKey = (typeof HOME_SECTION_KEYS)[number];
 
 export default function Home() {
   const { t } = useTranslation("home");
   const { region, name, tag } = useParams<{ region: string; name: string; tag: string }>();
   const [showProfileCard, setShowProfileCard] = useState(false);
   const [periodRecap, setPeriodRecap] = useState<PeriodRecap | null>(null);
+  const homeOrder = useHomeOrderStore((s) => s.order);
+  const reorderHome = useHomeOrderStore((s) => s.reorder);
+  const [draggedSectionKey, setDraggedSectionKey] = useState<HomeSectionKey | null>(null);
 
   const {
     sampleSize,
@@ -86,6 +96,58 @@ export default function Home() {
         })
       : null;
 
+  const sections: Record<HomeSectionKey, React.ReactNode> = {
+    goals: puuid ? (
+      <HomeGoalsSection
+        puuid={puuid}
+        region={region}
+        name={name}
+        tag={tag}
+        currentTier={current?.currenttier}
+        currentRr={current?.ranking_in_tier}
+        trackedPlayer={trackedPlayer.data}
+        trackedPlayerLoaded={Boolean(trackedPlayer.data)}
+        matches={matches.data?.data ?? []}
+      />
+    ) : null,
+    overview: (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h1 className="hud-label text-sm">{t("overview.title")}</h1>
+          <SampleSizeSwitch value={sampleSize} onChange={setSampleSize} />
+        </div>
+
+        {matches.isError && <ErrorState error={matches.error} />}
+        {matches.data?.stale && <StaleDataBanner cachedAt={matches.data.cached_at} />}
+        {matches.isLoading && <Skeleton className="h-32 w-full" />}
+
+        {overview && (
+          <HomeOverviewSection
+            overview={overview}
+            region={region}
+            name={name}
+            tag={tag}
+            lastMatch={matches.data?.data[0]}
+          />
+        )}
+      </div>
+    ),
+    queue: <QueueStatusStrip region={region} />,
+    recommendations: <RecommendationsPanel puuid={puuid} />,
+    timeline: (
+      <HomeTimelineSection
+        snapshots={snapshots.data ?? []}
+        serverHistory={mmrHistory.data?.data.history ?? []}
+        puuid={puuid}
+        timelineEvents={accountTimeline.data ?? []}
+      />
+    ),
+  };
+
+  const orderedSectionKeys = (
+    homeOrder.length > 0 ? homeOrder : resolveHomeOrder(HOME_SECTION_KEYS)
+  ).filter((k): k is HomeSectionKey => (HOME_SECTION_KEYS as readonly string[]).includes(k));
+
   return (
     <div className="scanline-once space-y-6">
       {account.data?.stale && <StaleDataBanner cachedAt={account.data.cached_at} />}
@@ -121,49 +183,74 @@ export default function Home() {
         <PeriodRecapModal recap={periodRecap} playerLabel={`${name}#${tag}`} onClose={() => setPeriodRecap(null)} />
       )}
 
-      {puuid && (
-        <HomeGoalsSection
-          puuid={puuid}
-          region={region}
-          name={name}
-          tag={tag}
-          currentTier={current?.currenttier}
-          currentRr={current?.ranking_in_tier}
-          trackedPlayer={trackedPlayer.data}
-          trackedPlayerLoaded={Boolean(trackedPlayer.data)}
-          matches={matches.data?.data ?? []}
-        />
-      )}
-
-      <div className="flex items-center justify-between">
-        <h1 className="hud-label text-sm">{t("overview.title")}</h1>
-        <SampleSizeSwitch value={sampleSize} onChange={setSampleSize} />
-      </div>
-
-      {matches.isError && <ErrorState error={matches.error} />}
-      {matches.data?.stale && <StaleDataBanner cachedAt={matches.data.cached_at} />}
-      {matches.isLoading && <Skeleton className="h-32 w-full" />}
-
-      {overview && (
-        <HomeOverviewSection
-          overview={overview}
-          region={region}
-          name={name}
-          tag={tag}
-          lastMatch={matches.data?.data[0]}
-        />
-      )}
-
-      <QueueStatusStrip region={region} />
-
-      <RecommendationsPanel puuid={puuid} />
-
-      <HomeTimelineSection
-        snapshots={snapshots.data ?? []}
-        serverHistory={mmrHistory.data?.data.history ?? []}
-        puuid={puuid}
-        timelineEvents={accountTimeline.data ?? []}
-      />
+      {orderedSectionKeys.map((key) => {
+        const content = sections[key];
+        if (!content) return null;
+        return (
+          <DraggableBlock
+            key={key}
+            sectionKey={key}
+            draggedKey={draggedSectionKey}
+            onDragStart={setDraggedSectionKey}
+            onDrop={(targetKey) => {
+              if (draggedSectionKey) reorderHome(HOME_SECTION_KEYS, draggedSectionKey, targetKey);
+            }}
+            onDragEnd={() => setDraggedSectionKey(null)}
+          >
+            {content}
+          </DraggableBlock>
+        );
+      })}
     </div>
+  );
+}
+
+/** Backlog Fonctionnalités#10 : wrapper drag & drop d'un bloc Home — poignée dédiée (pas
+ * tout le bloc draggable) pour ne pas gêner les clics sur les boutons à l'intérieur
+ * (ex. HomeGoalsSection), même mécanique HTML5 native que tabOrderStore/TopNav. */
+function DraggableBlock({
+  sectionKey,
+  draggedKey,
+  onDragStart,
+  onDrop,
+  onDragEnd,
+  children,
+}: {
+  sectionKey: HomeSectionKey;
+  draggedKey: HomeSectionKey | null;
+  onDragStart: (key: HomeSectionKey) => void;
+  onDrop: (key: HomeSectionKey) => void;
+  onDragEnd: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={() => onDrop(sectionKey)}
+      className={`group relative ${draggedKey === sectionKey ? "opacity-40" : ""}`}
+    >
+      <div
+        draggable
+        onDragStart={() => onDragStart(sectionKey)}
+        onDragEnd={onDragEnd}
+        className="mb-1 flex h-3 w-8 cursor-grab items-center gap-[3px] opacity-0 transition-opacity group-hover:opacity-40 hover:opacity-80 active:cursor-grabbing"
+      >
+        <GripIcon />
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function GripIcon() {
+  return (
+    <svg viewBox="0 0 20 8" fill="currentColor" className="h-2 w-5 text-lo">
+      <circle cx="2" cy="2" r="1.4" />
+      <circle cx="2" cy="6" r="1.4" />
+      <circle cx="8" cy="2" r="1.4" />
+      <circle cx="8" cy="6" r="1.4" />
+      <circle cx="14" cy="2" r="1.4" />
+      <circle cx="14" cy="6" r="1.4" />
+    </svg>
   );
 }

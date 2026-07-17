@@ -1,12 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 
 import { useRecentSearchesStore } from "../store/recentSearchesStore";
 import { useSettingsStore } from "../store/settingsStore";
+import { useUiStore } from "../store/uiStore";
 import { tauriApi, type TrackedPlayer } from "../lib/tauriApi";
 import { getRegions, rankInfo, splitRiotId } from "../lib/format";
+import { useMmr } from "../hooks/usePlayer";
 import OnboardingWizard from "../components/OnboardingWizard";
 import FollowedFriendsPanel from "../components/FollowedFriendsPanel";
 import logo from "../assets/logo.png";
@@ -17,6 +19,8 @@ export default function Search() {
   const { settings } = useSettingsStore();
   const { players, refresh, toggleFavorite } = useRecentSearchesStore();
   const queryClient = useQueryClient();
+  const incognito = useUiStore((s) => s.incognito);
+  const toggleIncognito = useUiStore((s) => s.toggleIncognito);
 
   const [riotId, setRiotId] = useState("");
   const [region, setRegion] = useState(settings?.default_region ?? "eu");
@@ -93,6 +97,14 @@ export default function Search() {
     await queryClient.invalidateQueries({ queryKey: ["favorite_players"] });
   }
 
+  // Backlog Fonctionnalités#9 : widget "reprendre où j'en étais" — `players` (limité à 5,
+  // trié favoris d'abord côté backend) n'est pas forcément trié par récence pure, donc on
+  // recherche explicitement le plus grand `last_viewed_at` plutôt que de prendre `players[0]`.
+  const lastViewedPlayer = useMemo(
+    () => (players.length > 0 ? players.reduce((a, b) => (b.last_viewed_at > a.last_viewed_at ? b : a)) : null),
+    [players],
+  );
+
   return (
     <div className="mx-auto flex h-full w-full max-w-2xl flex-col items-center justify-center overflow-y-auto px-6 py-10">
       <img src={logo} alt="Valorant Tracker" className="h-14 w-14 object-contain" />
@@ -140,6 +152,24 @@ export default function Search() {
       )}
 
       {formError && <p className="mt-2 text-sm text-crit">{formError}</p>}
+
+      {!showWizard && (
+        <button
+          type="button"
+          onClick={toggleIncognito}
+          title={t("resume.incognitoHint")}
+          className={`mt-3 flex items-center gap-1.5 self-end text-[11px] transition-colors ${
+            incognito ? "text-accent" : "text-lo/60 hover:text-lo"
+          }`}
+        >
+          <span className={`h-1.5 w-1.5 rounded-full ${incognito ? "bg-accent" : "bg-lo/40"}`} />
+          {t("resume.incognito")}
+        </button>
+      )}
+
+      {!showWizard && lastViewedPlayer && (
+        <ResumeWidget player={lastViewedPlayer} onOpen={goToPlayer} />
+      )}
 
       {orderedFavorites.length > 0 && (
         <div className="mt-10 w-full">
@@ -211,6 +241,47 @@ export default function Search() {
 
       <FollowedFriendsPanel onOpenPlayer={goToPlayer} />
     </div>
+  );
+}
+
+/** Backlog Fonctionnalités#9 : widget "reprendre où j'en étais" — met en avant le profil le
+ * plus récemment consulté (`last_viewed_at`) plutôt que de le laisser noyé dans la liste
+ * "Recherches récentes" plus bas. */
+function ResumeWidget({
+  player,
+  onOpen,
+}: {
+  player: TrackedPlayer;
+  onOpen: (p: { region: string; name: string; tag: string }) => void;
+}) {
+  const { t } = useTranslation("search");
+  const mmr = useMmr({ puuid: player.puuid, region: player.region, name: player.name, tag: player.tag });
+  const info = rankInfo(mmr.data?.data.current_data?.currenttier);
+  const rr = mmr.data?.data.current_data?.ranking_in_tier;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(player)}
+      className="panel-clip mt-6 flex w-full items-center gap-3 bg-surface p-3 text-left transition-colors hover:bg-raised"
+    >
+      <img src={info.iconUrl} alt="" className="h-9 w-9 object-contain" />
+      <span className="flex-1">
+        <span className="hud-label block text-[10px] text-lo">{t("resume.title")}</span>
+        <span className="text-sm text-hi">
+          <span className="font-medium">{player.name}</span>
+          <span className="text-lo">#{player.tag}</span>
+        </span>
+        {rr != null && (
+          <span className={`stat-value ml-2 text-xs ${info.colorClass}`}>
+            {info.name} · {rr} RR
+          </span>
+        )}
+      </span>
+      <span className="hud-label shrink-0 border border-line px-2.5 py-1 text-[11px] text-lo">
+        {t("resume.continue")}
+      </span>
+    </button>
   );
 }
 

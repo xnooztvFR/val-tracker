@@ -221,6 +221,8 @@
     "unknownAgent": "Unknown agent",
     "kdLabel": "K/D {{ratio}}",
     "acsLabel": "{{acs}} ACS",
-    "scoreLabel": "Score {{score}}"
+    "scoreLabel": "Score {{score}}",
+    "scoreVs": "{{won}} - {{lost}}",
+    "vs": "VS"
   }
 }

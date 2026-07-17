@@ -5,6 +5,7 @@ import { PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer } fro
 import { useAccount } from "../hooks/usePlayer";
 import { useMatches } from "../hooks/useMatches";
 import { useSelfAccountsStore } from "../store/selfAccountsStore";
+import { useCompareDropStore } from "../store/compareDropStore";
 import { Skeleton } from "../components/Skeleton";
 import Panel from "../components/Panel";
 import ErrorState from "../components/ErrorState";
@@ -51,6 +52,21 @@ export default function Compare() {
   useEffect(() => {
     refreshSelfAccounts();
   }, [refreshSelfAccounts]);
+
+  // Backlog Fonctionnalités#6 : pré-remplit le premier emplacement si on arrive ici via un
+  // glisser-déposer de match depuis l'historique (voir TopNav.tsx::MoreMenu et
+  // compareDropStore) — `consume()` vide le store après lecture pour ne pas ré-appliquer la
+  // valeur sur un remount ultérieur de cet écran.
+  const consumeCompareDrop = useCompareDropStore((s) => s.consume);
+  useEffect(() => {
+    const dropped = consumeCompareDrop();
+    if (!dropped) return;
+    setInputs((prev) => {
+      const next = [...prev];
+      next[0] = { value: `${dropped.name}#${dropped.tag}`, region: dropped.region };
+      return next;
+    });
+  }, [consumeCompareDrop]);
 
   // TODO Social/multi-comptes : court-circuite le formulaire pour pré-remplir directement
   // depuis les comptes "à soi" (is_self) — réutilise l'infrastructure existante de Compare.tsx

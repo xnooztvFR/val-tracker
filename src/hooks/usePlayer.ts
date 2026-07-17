@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { tauriApi } from "../lib/tauriApi";
+import { useUiStore } from "../store/uiStore";
 
 // `staleTime` alignés sur les TTL SQLite côté Rust (`api/henrik/mod.rs::TTL_ACCOUNT`/
 // `TTL_MMR`) : sans ça, React Query considère la donnée périmée dès qu'un composant se
@@ -10,9 +11,14 @@ const ACCOUNT_STALE_TIME_MS = 60 * 60_000; // TTL_ACCOUNT = 1h
 const MMR_STALE_TIME_MS = 10 * 60_000; // TTL_MMR = 10 min
 
 export function useAccount(name: string | undefined, tag: string | undefined) {
+  // Backlog Fonctionnalités#11 : mode incognito ponctuel — n'upsert pas ce profil dans
+  // `tracked_players` côté backend tant que le toggle est actif (voir uiStore.incognito et
+  // Search.tsx). Lu au moment de l'appel réseau, pas dans la queryKey : le contenu renvoyé
+  // par l'API est identique avec ou sans enregistrement, seul l'effet de bord change.
+  const incognito = useUiStore((s) => s.incognito);
   return useQuery({
     queryKey: ["account", name, tag],
-    queryFn: () => tauriApi.fetchAccount(name!, tag!),
+    queryFn: () => tauriApi.fetchAccount(name!, tag!, false, !incognito),
     enabled: Boolean(name && tag),
     staleTime: ACCOUNT_STALE_TIME_MS,
   });

@@ -17,6 +17,12 @@ pub async fn fetch_account(
     name: String,
     tag: String,
     force: bool,
+    // TODO Fonctionnalités#11 : mode incognito ponctuel — `record` par défaut à `true` côté
+    // frontend (voir tauriApi.ts::fetchAccount), passé à `false` seulement quand
+    // `uiStore.incognito` est actif au moment de la recherche. `#[serde(default = "...")]`
+    // pas nécessaire ici : Tauri exige déjà tous les arguments d'une command, la valeur par
+    // défaut vit côté appelant JS, pas dans la signature Rust.
+    record: bool,
 ) -> Result<Fetched<AccountData>, CommandError> {
     let api_key = {
         let conn = state.db.lock().await;
@@ -33,7 +39,7 @@ pub async fn fetch_account(
     )
     .await?;
 
-    {
+    if record {
         let conn = state.db.lock().await;
         let region = match result.data.region.clone() {
             Some(region) => region,

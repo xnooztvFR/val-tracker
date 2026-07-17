@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 import { useRecentSearchesStore } from "../store/recentSearchesStore";
+import { fuzzyMatch } from "../lib/fuzzy";
 
 interface PaletteItem {
   id: string;
@@ -53,23 +54,32 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
     }));
 
     const all = [...staticItems, ...playerItems];
-    const q = query.trim().toLowerCase();
-    if (!q) return all;
-    return all.filter((item) => item.label.toLowerCase().includes(q));
+    // Backlog Fonctionnalités#5 : fuzzy local plutôt qu'un `.includes()` strict — tolère les
+    // fautes de frappe/lettres manquantes sur un Riot ID récent (ex. "shroud" retrouve
+    // "shruod#1234").
+    return fuzzyMatch(query, all, (item) => item.label);
   }, [players, query, navigate, t]);
 
   useEffect(() => {
     setSelected((s) => Math.min(s, Math.max(items.length - 1, 0)));
   }, [items.length]);
 
+  // Backlog Fonctionnalités#8 : navigation clavier type vim (j/k) en plus des flèches — en
+  // clair (sans Ctrl), seulement quand la frappe n'arrive pas depuis le champ de recherche
+  // (sinon taper "jkl" dans une requête déclencherait la navigation au lieu de filtrer) ;
+  // Ctrl+j/Ctrl+k marchent toujours, y compris pendant la frappe, pour un accès direct.
   function handleKeyDown(e: React.KeyboardEvent) {
+    const fromInput = (e.target as HTMLElement).tagName === "INPUT";
+    const vimDown = e.key === "j" && (e.ctrlKey || !fromInput);
+    const vimUp = e.key === "k" && (e.ctrlKey || !fromInput);
+
     if (e.key === "Escape") {
       e.preventDefault();
       onClose();
-    } else if (e.key === "ArrowDown") {
+    } else if (e.key === "ArrowDown" || vimDown) {
       e.preventDefault();
       setSelected((s) => Math.min(s + 1, items.length - 1));
-    } else if (e.key === "ArrowUp") {
+    } else if (e.key === "ArrowUp" || vimUp) {
       e.preventDefault();
       setSelected((s) => Math.max(s - 1, 0));
     } else if (e.key === "Enter") {

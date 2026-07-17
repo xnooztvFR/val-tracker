@@ -23,5 +23,11 @@
   },
   "hoverPreview": {
     "loading": "Loading…"
+  },
+  "resume": {
+    "title": "Resume where you left off",
+    "continue": "Continue",
+    "incognito": "Incognito mode",
+    "incognitoHint": "Searches made in incognito mode aren't saved to your recent history."
   }
 }
