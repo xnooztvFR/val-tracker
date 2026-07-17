@@ -10,6 +10,7 @@ import { playerCardIconUrl, rankGlowColor, rankInfo } from "../lib/format";
 import { tauriApi } from "../lib/tauriApi";
 import DetectionStatusBadge from "./DetectionStatusBadge";
 import ApiStatusBadge from "./ApiStatusBadge";
+import DataFreshnessDot from "./DataFreshnessDot";
 import AccountSwitcher from "./AccountSwitcher";
 import logo from "../assets/logo.png";
 
@@ -126,6 +127,7 @@ export default function TopNav() {
 
       <div className="flex-1" />
 
+      <DataFreshnessDot />
       <ApiStatusBadge />
       <DetectionStatusBadge />
 

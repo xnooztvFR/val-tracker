@@ -3,7 +3,9 @@
     "title": "Settings",
     "general": "General",
     "game": "In-game",
-    "alerts": "Alerts & privacy",
+    "alerts": "Alerts",
+    "privacy": "Privacy",
+    "shortcuts": "Keyboard shortcuts",
     "updates": "Updates",
     "data": "Data & diagnostics",
     "about": "About"
@@ -38,14 +40,35 @@
       "red": "Red (default)",
       "cyan": "Cyan",
       "violet": "Violet",
-      "amber": "Amber"
+      "amber": "Amber",
+      "auto": "Auto (most played agent)",
+      "contrast": "High contrast"
+    },
+    "contrastDisclaimer": "Blue/orange palette chosen from known colorblindness references (protanopia/deuteranopia) — based on the standards, not validated with real colorblind users.",
+    "fontLabel": "Accent font",
+    "fontHint": "Font used for HUD titles and labels throughout the app.",
+    "font": {
+      "display": "Chakra Petch (default)",
+      "mono": "JetBrains Mono"
     },
     "densityLabel": "Display density",
     "densityHint": "Slightly reduces spacing and text size throughout the app (not just the in-game overlay) — useful on a smaller window.",
     "density": {
       "comfortable": "Comfortable (default)",
       "compact": "Compact"
-    }
+    },
+    "iconStyleLabel": "Icon style",
+    "iconStyleHint": "\"Official\" (default) uses Riot's icons; \"Vector\" switches to an abstract in-house style (initials + role color) with no external CDN dependency.",
+    "iconStyle": {
+      "official": "Official (default)",
+      "vector": "Vector (in-house)"
+    },
+    "presentationModeLabel": "Presentation / stream mode",
+    "presentationModeHint": "Larger font and slower animations, for public screen sharing.",
+    "wallpaperLabel": "Dynamic rank-colored background",
+    "wallpaperHint": "Subtle gradient behind the profile screen, tinted with the current rank's color — purely cosmetic.",
+    "cursorLabel": "Simplified aim cursor",
+    "cursorHint": "Replaces the system cursor with a discreet crosshair throughout the app and in the in-game overlay."
   },
   "language": {
     "title": "Language",
@@ -72,9 +95,10 @@
     "layoutLabel": "Layout",
     "layout": {
       "full": "Full (default)",
-      "mini": "Mini summary"
+      "mini": "Mini summary",
+      "minimal": "Minimal (rank only)"
     },
-    "layoutHint": "\"Full\" (default) lists every detected player, allies and opponents. \"Mini summary\" shrinks the overlay to a single row of rank badges, no name or agent recommendation — for minimal screen clutter in-game.",
+    "layoutHint": "\"Full\" (default) lists every detected player, allies and opponents. \"Mini summary\" shrinks the overlay to a single row of rank badges, no name or agent recommendation. \"Minimal\" only shows your own rank as small text, for the smallest possible screen clutter in-game.",
     "densityLabel": "Display density",
     "density": {
       "compact": "Compact",
@@ -133,7 +157,10 @@
     "inactivityLabel": "Remind me if I haven't checked my stats in a while",
     "inactivityAfter": "After",
     "inactivityUnit": "days without checking a \"self\" account",
-    "inactivityHint": "Gentle reminder, never more than once a day — requires at least one account marked \"self\" (see TopNav → account switcher)."
+    "inactivityHint": "Gentle reminder, never more than once a day — requires at least one account marked \"self\" (see TopNav → account switcher).",
+    "hudSoundsTitle": "HUD sounds",
+    "hudSoundsLabel": "Enable HUD alert sounds",
+    "hudSoundsHint": "Controls the volume of the existing sound (opponent rank gap alert in the overlay) — disable it or turn it down if you prefer a fully silent fallback."
   },
   "updates": {
     "title": "Updates",

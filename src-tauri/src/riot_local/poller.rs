@@ -670,6 +670,13 @@ async fn read_settings(app: &AppHandle) -> crate::settings::AppSettings {
         shortcut_overlay_toggle: crate::settings::DEFAULT_SHORTCUT_OVERLAY_TOGGLE.to_string(),
         shortcut_main_window_toggle: crate::settings::DEFAULT_SHORTCUT_MAIN_WINDOW_TOGGLE
             .to_string(),
+        ui_font: "display".to_string(),
+        presentation_mode_enabled: false,
+        wallpaper_enabled: false,
+        hud_sounds_enabled: true,
+        hud_sounds_volume: 15,
+        cursor_enabled: false,
+        icon_style: "official".to_string(),
     })
 }
 

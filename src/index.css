@@ -102,12 +102,58 @@
     --accent-dim-rgb: 140 114 34;
   }
 
+  /* TODO Design#2 : variante contraste élevé bleu/orange — choisie selon les référentiels
+     connus de daltonisme (protanopie/deutéranopie confondent surtout rouge/vert ; bleu et
+     orange restent distinguables pour les deux). Basée sur les normes, PAS validée par un
+     retour utilisateur daltonien réel — voir accentHint dans les traductions. `--crit-rgb`
+     est aussi remplacé (pas seulement l'accent) car c'est la paire accent/crit qui porte le
+     sens positif/négatif dans l'app (promotion/dérank, victoire/défaite). */
+  :root[data-accent="contrast"] {
+    --accent-rgb: 66 133 244;
+    --accent-dim-rgb: 37 84 168;
+    --crit-rgb: 230 126 34;
+    --crit-dim-rgb: 170 88 17;
+  }
+
   /* Backlog #66 : densité globale — les classes Tailwind par défaut (spacing, text-*) sont
      en `rem`, donc réduire `font-size` sur `<html>` rétrécit proportionnellement tout le
      reste de l'app sans devoir retoucher chaque composant. Volontairement modeste (~87.5%)
      pour rester lisible ; posé/retiré par App.tsx selon `settings.ui_density`. */
   :root[data-density="compact"] {
     font-size: 87.5%;
+  }
+
+  /* TODO Design#2 : mode présentation/stream — police agrandie pour un partage d'écran
+     public, appliqué indépendamment de `data-density` (voir App.tsx, `presentation_mode_enabled`
+     bascule aussi `data-motion="slow"` ci-dessous). */
+  :root[data-density="presentation"] {
+    font-size: 115%;
+  }
+
+  /* TODO Design#2 : ralentit les animations HUD existantes (scanline, transition de route,
+     skeleton, pulse de rang) plutôt que d'introduire un système de durée paramétrable — les
+     valeurs concrètes des `@keyframes` de `index.css` sont juste doublées. */
+  :root[data-motion="slow"] .scanline-once::after {
+    animation-duration: 1800ms;
+  }
+  :root[data-motion="slow"] .route-enter {
+    animation-duration: 440ms;
+  }
+  :root[data-motion="slow"] .skeleton::after {
+    animation-duration: 3.2s;
+  }
+  :root[data-motion="slow"] .rank-pulse-up,
+  :root[data-motion="slow"] .rank-pulse-down {
+    animation-duration: 1800ms;
+  }
+
+  /* TODO Design#2 : curseur viseur simplifié appliqué globalement (réutilise le crosshair
+     déjà défini pour `.target-lock:hover`, backlog #65) — opt-in via `cursor_enabled`. */
+  :root[data-cursor="crosshair"] {
+    cursor:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='6' fill='none' stroke='%23E8ECEF' stroke-width='1' opacity='0.75'/%3E%3Cpath d='M10 1v4M10 15v4M1 10h4M15 10h4' stroke='%23E8ECEF' stroke-width='1' opacity='0.75'/%3E%3C/svg%3E")
+        10 10,
+      auto;
   }
 
   html,
@@ -120,6 +166,13 @@
     font-family: var(--font-sans);
     background-color: var(--color-base);
     color: var(--color-hi);
+  }
+
+  /* TODO Design#2 : police d'accent commutable — `--font-display` (HUD labels, titres) passe
+     de Chakra Petch (défaut) à JetBrains Mono, déjà self-hosté pour les valeurs chiffrées
+     (voir en tête de fichier), pas de dépendance de police supplémentaire à ajouter. */
+  :root[data-font="mono"] {
+    --font-display: "JetBrains Mono", Consolas, monospace;
   }
 
   /* Focus clavier visible partout — l'app est en dark quasi-noir. */

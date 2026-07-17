@@ -11,7 +11,8 @@ import Panel from "../components/Panel";
 import EmptyState from "../components/EmptyState";
 import SampleSizeSwitch, { type SampleSize } from "../components/SampleSizeSwitch";
 import type { MatchEntry } from "../lib/tauriApi";
-import { agentIconUrl, formatKdRatio, formatPercent } from "../lib/format";
+import { formatKdRatio, formatPercent } from "../lib/format";
+import AgentIcon from "../components/AgentIcon";
 import { AGENT_ROLE_ORDER, agentRole, agentRoleLabel, type AgentRole } from "../lib/agentRoles";
 import i18n from "../i18n";
 
@@ -199,14 +200,7 @@ export default function Agents() {
                 <tr key={row.id} className="text-hi/90 transition-colors hover:bg-raised/50">
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2.5">
-                      <img
-                        src={agentIconUrl(row.id)}
-                        alt=""
-                        className="h-8 w-8 border border-line object-cover"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
-                        }}
-                      />
+                      <AgentIcon agentId={row.id} agentName={row.name} className="h-8 w-8 border border-line object-cover" />
                       <span className="font-medium">{row.name}</span>
                     </div>
                   </td>

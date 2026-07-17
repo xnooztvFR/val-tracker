@@ -62,6 +62,12 @@
     "circuitOpen": "API en pause",
     "network": "Hors ligne"
   },
+  "dataFreshnessDot": {
+    "none": "Aucune donnée récupérée pour l'instant",
+    "fresh": "Données à jour",
+    "aging": "Données récupérées il y a quelques minutes",
+    "stale": "Données récupérées il y a plus de 10 minutes"
+  },
   "detectionStatusBadge": {
     "disabled": "Détection désactivée",
     "active": "Détection active",

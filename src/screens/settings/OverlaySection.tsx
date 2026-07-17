@@ -5,7 +5,7 @@ import { tauriApi, type MonitorInfo } from "../../lib/tauriApi";
 import { INPUT_CLASS, SectionTitle } from "./shared";
 
 const OVERLAY_DENSITY_IDS = ["compact", "detailed"] as const;
-const OVERLAY_LAYOUT_IDS = ["full", "mini"] as const;
+const OVERLAY_LAYOUT_IDS = ["full", "mini", "minimal"] as const;
 
 interface OverlaySectionProps {
   disabled: boolean;

@@ -10,6 +10,7 @@ import InfoTooltip from "../components/InfoTooltip";
 import Panel from "../components/Panel";
 import StaleDataBanner from "../components/StaleDataBanner";
 import MatchNotesPanel from "../components/MatchNotesPanel";
+import WeaponGlyph from "../components/WeaponGlyph";
 import { formatDurationMs, formatKda, formatKdRatio } from "../lib/format";
 import { tauriApi } from "../lib/tauriApi";
 import type { MapAverageStat, MatchDetailPlayer, MatchDetailRound } from "../lib/tauriApi";
@@ -435,7 +436,12 @@ function RoundDetailPanel({
               <td className="px-2 py-1.5">{p.player_display_name ?? "—"}</td>
               <td className="stat-value px-2 py-1.5">{p.kills ?? 0}</td>
               <td className="stat-value px-2 py-1.5">{p.damage ?? 0}</td>
-              <td className="px-2 py-1.5 text-lo">{p.economy?.weapon?.name ?? "—"}</td>
+              <td className="px-2 py-1.5 text-lo">
+                <span className="flex items-center gap-1.5">
+                  <WeaponGlyph weaponName={p.economy?.weapon?.name} className="h-2.5 w-5 shrink-0 text-lo" />
+                  {p.economy?.weapon?.name ?? "—"}
+                </span>
+              </td>
               <td className="stat-value px-2 py-1.5">{p.economy?.loadout_value ?? "—"}</td>
             </tr>
           ))}

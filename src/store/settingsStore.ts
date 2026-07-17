@@ -37,6 +37,13 @@ interface SettingsState {
   clearNotesPin: () => Promise<void>;
   setShortcutOverlayToggle: (shortcut: string) => Promise<void>;
   setShortcutMainWindowToggle: (shortcut: string) => Promise<void>;
+  setUiFont: (font: string) => Promise<void>;
+  setPresentationModeEnabled: (enabled: boolean) => Promise<void>;
+  setWallpaperEnabled: (enabled: boolean) => Promise<void>;
+  setHudSoundsEnabled: (enabled: boolean) => Promise<void>;
+  setHudSoundsVolume: (volume: number) => Promise<void>;
+  setCursorEnabled: (enabled: boolean) => Promise<void>;
+  setIconStyle: (style: string) => Promise<void>;
 }
 
 export const useSettingsStore = create<SettingsState>((set, get) => ({
@@ -146,6 +153,41 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   setShortcutMainWindowToggle: async (shortcut: string) => {
     await tauriApi.saveShortcutMainWindowToggle(shortcut);
+    await get().refresh();
+  },
+
+  setUiFont: async (font: string) => {
+    await tauriApi.saveUiFont(font);
+    await get().refresh();
+  },
+
+  setPresentationModeEnabled: async (enabled: boolean) => {
+    await tauriApi.savePresentationModeEnabled(enabled);
+    await get().refresh();
+  },
+
+  setWallpaperEnabled: async (enabled: boolean) => {
+    await tauriApi.saveWallpaperEnabled(enabled);
+    await get().refresh();
+  },
+
+  setHudSoundsEnabled: async (enabled: boolean) => {
+    await tauriApi.saveHudSoundsEnabled(enabled);
+    await get().refresh();
+  },
+
+  setHudSoundsVolume: async (volume: number) => {
+    await tauriApi.saveHudSoundsVolume(volume);
+    await get().refresh();
+  },
+
+  setCursorEnabled: async (enabled: boolean) => {
+    await tauriApi.saveCursorEnabled(enabled);
+    await get().refresh();
+  },
+
+  setIconStyle: async (style: string) => {
+    await tauriApi.saveIconStyle(style);
     await get().refresh();
   },
 

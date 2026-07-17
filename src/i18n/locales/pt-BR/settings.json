@@ -3,7 +3,9 @@
     "title": "Configurações",
     "general": "Geral",
     "game": "Em partida",
-    "alerts": "Alertas e privacidade",
+    "alerts": "Alertas",
+    "privacy": "Privacidade",
+    "shortcuts": "Atalhos de teclado",
     "updates": "Atualizações",
     "data": "Dados e diagnóstico",
     "about": "Sobre"
@@ -38,14 +40,35 @@
       "red": "Vermelho (padrão)",
       "cyan": "Ciano",
       "violet": "Violeta",
-      "amber": "Âmbar"
+      "amber": "Âmbar",
+      "auto": "Automático (agente mais jogado)",
+      "contrast": "Alto contraste"
+    },
+    "contrastDisclaimer": "Paleta azul/laranja escolhida com base em referências conhecidas de daltonismo (protanopia/deuteranopia) — baseada nas normas, não validada com usuários daltônicos reais.",
+    "fontLabel": "Fonte de destaque",
+    "fontHint": "Fonte usada nos títulos e rótulos HUD em todo o app.",
+    "font": {
+      "display": "Chakra Petch (padrão)",
+      "mono": "JetBrains Mono"
     },
     "densityLabel": "Densidade de exibição",
     "densityHint": "Reduz um pouco os espaçamentos e o tamanho do texto em todo o app (não só o overlay em partida) — útil em uma janela menor.",
     "density": {
       "comfortable": "Confortável (padrão)",
       "compact": "Compacta"
-    }
+    },
+    "iconStyleLabel": "Estilo de ícones",
+    "iconStyleHint": "\"Oficial\" (padrão) usa os ícones da Riot; \"Vetorial\" muda para um estilo próprio abstrato (iniciais + cor da função) sem depender de um CDN externo.",
+    "iconStyle": {
+      "official": "Oficial (padrão)",
+      "vector": "Vetorial (próprio)"
+    },
+    "presentationModeLabel": "Modo apresentação / stream",
+    "presentationModeHint": "Fonte maior e animações mais lentas, para compartilhamento de tela em público.",
+    "wallpaperLabel": "Fundo dinâmico conforme o rank",
+    "wallpaperHint": "Gradiente discreto atrás da tela de perfil, tingido com a cor do rank atual — puramente cosmético.",
+    "cursorLabel": "Cursor de mira simplificado",
+    "cursorHint": "Substitui o cursor do sistema por uma mira discreta em todo o app e no overlay em partida."
   },
   "language": {
     "title": "Idioma",
@@ -72,9 +95,10 @@
     "layoutLabel": "Layout",
     "layout": {
       "full": "Completo (padrão)",
-      "mini": "Mini resumo"
+      "mini": "Mini resumo",
+      "minimal": "Minimalista (só o rank)"
     },
-    "layoutHint": "\"Completo\" (padrão) lista todos os jogadores detectados, aliados e adversários. \"Mini resumo\" reduz o overlay a uma única linha de emblemas de rank, sem nome ou recomendação de agente — para uma intrusão mínima em partida.",
+    "layoutHint": "\"Completo\" (padrão) lista todos os jogadores detectados, aliados e adversários. \"Mini resumo\" reduz o overlay a uma única linha de emblemas de rank, sem nome ou recomendação de agente. \"Minimalista\" mostra apenas o seu próprio rank em texto pequeno, para a menor intrusão possível em partida.",
     "densityLabel": "Densidade de exibição",
     "density": {
       "compact": "Compacta",
@@ -133,7 +157,10 @@
     "inactivityLabel": "Lembrar-me se eu não consultar minhas estatísticas por um tempo",
     "inactivityAfter": "Após",
     "inactivityUnit": "dias sem consultar uma conta \"minha\"",
-    "inactivityHint": "Lembrete suave, nunca mais de uma vez por dia — requer pelo menos uma conta marcada como \"minha\" (veja TopNav → seletor de contas)."
+    "inactivityHint": "Lembrete suave, nunca mais de uma vez por dia — requer pelo menos uma conta marcada como \"minha\" (veja TopNav → seletor de contas).",
+    "hudSoundsTitle": "Micro-sons do HUD",
+    "hudSoundsLabel": "Ativar os sons de alerta",
+    "hudSoundsHint": "Controla o volume do som existente (alerta de diferença de rank do adversário no overlay) — desative-o ou diminua-o se preferir um repli totalmente silencioso."
   },
   "updates": {
     "title": "Atualizações",

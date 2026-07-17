@@ -3,7 +3,9 @@
     "title": "Ajustes",
     "general": "General",
     "game": "En partida",
-    "alerts": "Alertas y privacidad",
+    "alerts": "Alertas",
+    "privacy": "Privacidad",
+    "shortcuts": "Atajos de teclado",
     "updates": "Actualizaciones",
     "data": "Datos y diagnóstico",
     "about": "Acerca de"
@@ -38,14 +40,35 @@
       "red": "Rojo (predeterminado)",
       "cyan": "Cian",
       "violet": "Violeta",
-      "amber": "Ámbar"
+      "amber": "Ámbar",
+      "auto": "Auto (agente más jugado)",
+      "contrast": "Alto contraste"
+    },
+    "contrastDisclaimer": "Paleta azul/naranja elegida según los referentes conocidos de daltonismo (protanopia/deuteranopia) — basada en las normas, no validada con usuarios daltónicos reales.",
+    "fontLabel": "Fuente de acento",
+    "fontHint": "Fuente usada para los títulos y etiquetas HUD en toda la app.",
+    "font": {
+      "display": "Chakra Petch (predeterminada)",
+      "mono": "JetBrains Mono"
     },
     "densityLabel": "Densidad de visualización",
     "densityHint": "Reduce ligeramente los espacios y el tamaño del texto en toda la app (no solo el overlay en partida) — útil en una ventana más pequeña.",
     "density": {
       "comfortable": "Cómoda (predeterminada)",
       "compact": "Compacta"
-    }
+    },
+    "iconStyleLabel": "Estilo de iconos",
+    "iconStyleHint": "«Oficial» (predeterminado) usa los iconos de Riot; «Vectorial» cambia a un estilo propio abstracto (iniciales + color de rol) sin depender de un CDN externo.",
+    "iconStyle": {
+      "official": "Oficial (predeterminado)",
+      "vector": "Vectorial (propio)"
+    },
+    "presentationModeLabel": "Modo presentación / stream",
+    "presentationModeHint": "Fuente más grande y animaciones más lentas, para compartir pantalla en público.",
+    "wallpaperLabel": "Fondo dinámico según el rango",
+    "wallpaperHint": "Degradado discreto detrás de la pantalla de perfil, teñido con el color del rango actual — puramente cosmético.",
+    "cursorLabel": "Cursor de mira simplificado",
+    "cursorHint": "Reemplaza el cursor del sistema por una mira discreta en toda la app y en el overlay en partida."
   },
   "language": {
     "title": "Idioma",
@@ -72,9 +95,10 @@
     "layoutLabel": "Diseño",
     "layout": {
       "full": "Completo (predeterminado)",
-      "mini": "Mini resumen"
+      "mini": "Mini resumen",
+      "minimal": "Minimalista (solo rango)"
     },
-    "layoutHint": "«Completo» (predeterminado) enumera a todos los jugadores detectados, aliados y rivales. «Mini resumen» reduce el overlay a una sola línea de insignias de rango, sin nombre ni recomendación de agente — para una intrusión mínima en partida.",
+    "layoutHint": "«Completo» (predeterminado) enumera a todos los jugadores detectados, aliados y rivales. «Mini resumen» reduce el overlay a una sola línea de insignias de rango, sin nombre ni recomendación de agente. «Minimalista» solo muestra tu propio rango como texto pequeño, para la mínima intrusión posible en partida.",
     "densityLabel": "Densidad de visualización",
     "density": {
       "compact": "Compacta",
@@ -133,7 +157,10 @@
     "inactivityLabel": "Recordarme si no he consultado mis estadísticas en un tiempo",
     "inactivityAfter": "Tras",
     "inactivityUnit": "días sin consultar una cuenta «propia»",
-    "inactivityHint": "Recordatorio suave, nunca más de una vez al día — requiere al menos una cuenta marcada como «propia» (ver TopNav → selector de cuentas)."
+    "inactivityHint": "Recordatorio suave, nunca más de una vez al día — requiere al menos una cuenta marcada como «propia» (ver TopNav → selector de cuentas).",
+    "hudSoundsTitle": "Micro-sonidos HUD",
+    "hudSoundsLabel": "Activar los sonidos de alerta",
+    "hudSoundsHint": "Controla el volumen del sonido existente (alerta de diferencia de rango rival en el overlay) — desactívalo o bájalo si prefieres un repliegue totalmente silencioso."
   },
   "updates": {
     "title": "Actualizaciones",

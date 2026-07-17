@@ -9,7 +9,8 @@ import LanguageSection from "./settings/LanguageSection";
 import AutostartSection from "./settings/AutostartSection";
 import OnboardingReplaySection from "./settings/OnboardingReplaySection";
 import OverlaySection from "./settings/OverlaySection";
-import DiscordSection from "./settings/DiscordSection";
+import DiscordRpcSection from "./settings/DiscordRpcSection";
+import DiscordWebhookAlertSection from "./settings/DiscordWebhookAlertSection";
 import CrosshairSection from "./settings/CrosshairSection";
 import ShortcutsSection from "./settings/ShortcutsSection";
 import NotificationsSection from "./settings/NotificationsSection";
@@ -22,12 +23,33 @@ import DiagnosticsSection from "./settings/DiagnosticsSection";
 import AboutSection from "./settings/AboutSection";
 import ChangelogHistorySection from "./settings/ChangelogHistorySection";
 
-// Regroupement en 6 catégories (au lieu de 13) : chaque page peut empiler plusieurs
-// sections thématiquement proches (séparées par SectionDivider) plutôt qu'une entrée de
-// nav par réglage isolé.
-type Category = "general" | "game" | "alerts" | "updates" | "data" | "about";
+// Regroupement en 8 catégories thématiques nettes (chacune peut empiler plusieurs sections
+// proches séparées par SectionDivider) — "Confidentialité" et "Raccourcis clavier" sont
+// sortis de "Alertes" et "En jeu" respectivement car ni l'un ni l'autre n'y étaient
+// vraiment à leur place (le PIN des notes n'est pas une alerte ; les raccourcis clavier
+// couvrent aussi la fenêtre principale/la palette de commande, pas que le jeu). Le webhook
+// Discord (alerte de changement de rank) est lui aussi sorti de la section Discord (qui ne
+// garde que la Rich Presence, un réglage "En jeu") pour rejoindre les autres notifications.
+type Category =
+  | "general"
+  | "game"
+  | "alerts"
+  | "privacy"
+  | "shortcuts"
+  | "updates"
+  | "data"
+  | "about";
 
-const CATEGORY_IDS: Category[] = ["general", "game", "alerts", "updates", "data", "about"];
+const CATEGORY_IDS: Category[] = [
+  "general",
+  "game",
+  "alerts",
+  "privacy",
+  "shortcuts",
+  "updates",
+  "data",
+  "about",
+];
 
 function isCategory(value: string | null): value is Category {
   return CATEGORY_IDS.includes(value as Category);
@@ -52,6 +74,13 @@ export default function Settings() {
     setUiAccent,
     setUiLanguage,
     setUiDensity,
+    setUiFont,
+    setPresentationModeEnabled,
+    setWallpaperEnabled,
+    setCursorEnabled,
+    setIconStyle,
+    setHudSoundsEnabled,
+    setHudSoundsVolume,
     setOverlayDensity,
     setOverlayLayout,
     setOverlayMonitor,
@@ -114,9 +143,19 @@ export default function Settings() {
               theme={settings?.ui_theme ?? "dark"}
               accent={settings?.ui_accent ?? "red"}
               density={settings?.ui_density ?? "comfortable"}
+              font={settings?.ui_font ?? "display"}
+              presentationModeEnabled={settings?.presentation_mode_enabled ?? false}
+              wallpaperEnabled={settings?.wallpaper_enabled ?? false}
+              cursorEnabled={settings?.cursor_enabled ?? false}
+              iconStyle={settings?.icon_style ?? "official"}
               onChangeTheme={setUiTheme}
               onChangeAccent={setUiAccent}
               onChangeDensity={setUiDensity}
+              onChangeFont={setUiFont}
+              onChangePresentationMode={setPresentationModeEnabled}
+              onChangeWallpaper={setWallpaperEnabled}
+              onChangeCursor={setCursorEnabled}
+              onChangeIconStyle={setIconStyle}
             />
             <SectionDivider />
             <LanguageSection
@@ -146,25 +185,14 @@ export default function Settings() {
               onChangeMonitor={setOverlayMonitor}
             />
             <SectionDivider />
-            <DiscordSection
+            <DiscordRpcSection
               enabled={settings?.discord_rpc_enabled ?? false}
               clientId={settings?.discord_rpc_client_id ?? ""}
               onChangeEnabled={setDiscordRpcEnabled}
               onSaveClientId={setDiscordRpcClientId}
-              webhookEnabled={settings?.discord_webhook_enabled ?? false}
-              webhookUrl={settings?.discord_webhook_url ?? ""}
-              onChangeWebhookEnabled={setDiscordWebhookEnabled}
-              onSaveWebhookUrl={setDiscordWebhookUrl}
             />
             <SectionDivider />
             <CrosshairSection />
-            <SectionDivider />
-            <ShortcutsSection
-              shortcutOverlayToggle={settings?.shortcut_overlay_toggle ?? "ctrl+shift+v"}
-              shortcutMainWindowToggle={settings?.shortcut_main_window_toggle ?? "ctrl+shift+h"}
-              onChangeShortcutOverlayToggle={setShortcutOverlayToggle}
-              onChangeShortcutMainWindowToggle={setShortcutMainWindowToggle}
-            />
           </div>
         )}
         {category === "alerts" && (
@@ -186,15 +214,35 @@ export default function Settings() {
               inactivityReminderDays={settings?.inactivity_reminder_days ?? 3}
               onChangeInactivityReminderEnabled={setInactivityReminderEnabled}
               onChangeInactivityReminderDays={setInactivityReminderDays}
+              hudSoundsEnabled={settings?.hud_sounds_enabled ?? true}
+              hudSoundsVolume={settings?.hud_sounds_volume ?? 15}
+              onChangeHudSoundsEnabled={setHudSoundsEnabled}
+              onChangeHudSoundsVolume={setHudSoundsVolume}
             />
             <SectionDivider />
-            <PrivacySection
-              enabled={settings?.notes_pin_enabled ?? false}
-              dpapiUnreadable={settings?.notes_pin_dpapi_unreadable ?? false}
-              onSavePin={setNotesPin}
-              onClearPin={clearNotesPin}
+            <DiscordWebhookAlertSection
+              webhookEnabled={settings?.discord_webhook_enabled ?? false}
+              webhookUrl={settings?.discord_webhook_url ?? ""}
+              onChangeWebhookEnabled={setDiscordWebhookEnabled}
+              onSaveWebhookUrl={setDiscordWebhookUrl}
             />
           </div>
+        )}
+        {category === "privacy" && (
+          <PrivacySection
+            enabled={settings?.notes_pin_enabled ?? false}
+            dpapiUnreadable={settings?.notes_pin_dpapi_unreadable ?? false}
+            onSavePin={setNotesPin}
+            onClearPin={clearNotesPin}
+          />
+        )}
+        {category === "shortcuts" && (
+          <ShortcutsSection
+            shortcutOverlayToggle={settings?.shortcut_overlay_toggle ?? "ctrl+shift+v"}
+            shortcutMainWindowToggle={settings?.shortcut_main_window_toggle ?? "ctrl+shift+h"}
+            onChangeShortcutOverlayToggle={setShortcutOverlayToggle}
+            onChangeShortcutMainWindowToggle={setShortcutMainWindowToggle}
+          />
         )}
         {category === "updates" && (
           <UpdatesSection

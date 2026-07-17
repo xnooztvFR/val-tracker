@@ -19,6 +19,10 @@ interface NotificationsSectionProps {
   inactivityReminderDays: number;
   onChangeInactivityReminderEnabled: (enabled: boolean) => Promise<void>;
   onChangeInactivityReminderDays: (days: number) => Promise<void>;
+  hudSoundsEnabled: boolean;
+  hudSoundsVolume: number;
+  onChangeHudSoundsEnabled: (enabled: boolean) => Promise<void>;
+  onChangeHudSoundsVolume: (volume: number) => Promise<void>;
 }
 
 export default function NotificationsSection({
@@ -38,6 +42,10 @@ export default function NotificationsSection({
   inactivityReminderDays,
   onChangeInactivityReminderEnabled,
   onChangeInactivityReminderDays,
+  hudSoundsEnabled,
+  hudSoundsVolume,
+  onChangeHudSoundsEnabled,
+  onChangeHudSoundsVolume,
 }: NotificationsSectionProps) {
   const { t } = useTranslation("settings");
   return (
@@ -148,6 +156,33 @@ export default function NotificationsSection({
           <span className="text-sm text-lo">{t("notifications.inactivityUnit")}</span>
         </div>
         <p className="text-xs text-lo">{t("notifications.inactivityHint")}</p>
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="hud-label">{t("notifications.hudSoundsTitle")}</h2>
+        <label className="flex items-center gap-2.5 text-sm text-hi">
+          <input
+            type="checkbox"
+            checked={hudSoundsEnabled}
+            onChange={(e) => onChangeHudSoundsEnabled(e.target.checked)}
+            className="h-4 w-4 border-line bg-surface accent-accent"
+          />
+          {t("notifications.hudSoundsLabel")}
+        </label>
+        <div className="flex items-center gap-2">
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={5}
+            value={hudSoundsVolume}
+            onChange={(e) => onChangeHudSoundsVolume(Number(e.target.value))}
+            disabled={!hudSoundsEnabled}
+            className="w-40 accent-accent disabled:opacity-50"
+          />
+          <span className="tnum text-sm text-lo">{hudSoundsVolume}%</span>
+        </div>
+        <p className="text-xs text-lo">{t("notifications.hudSoundsHint")}</p>
       </section>
     </div>
   );

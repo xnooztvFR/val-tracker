@@ -7,6 +7,7 @@ import { useCountdown } from "./useCountdown";
 import { SAMPLE_SIZES, type SampleSize } from "../components/SampleSizeSwitch";
 import { tauriApi } from "../lib/tauriApi";
 import { computeOverview, computePeriodRecap, computeSessionRecap, isSessionOver, type PeriodRecap } from "../lib/stats";
+import { useDynamicAccentStore } from "../store/dynamicAccentStore";
 
 const MMR_TTL_SECONDS = 600;
 // Backlog : auto-actualisation périodique — rafraîchit toutes les données (MMR, matchs,
@@ -45,6 +46,14 @@ export function useHomeData(region: string | undefined, name: string | undefined
     () => (matches.data && puuid ? computeOverview(matches.data.data, puuid) : null),
     [matches.data, puuid],
   );
+
+  // TODO Design#2 : accent "auto" — republie l'agent le plus joué à chaque changement
+  // (nouveau profil consulté, échantillon de matchs rafraîchi) ; App.tsx lit ce store
+  // seulement si `ui_accent === "auto"`, donc aucun coût pour les autres utilisateurs.
+  const setAccentFromTopAgent = useDynamicAccentStore((s) => s.setFromTopAgent);
+  useEffect(() => {
+    setAccentFromTopAgent(overview?.topAgent?.name ?? null);
+  }, [overview?.topAgent?.name, setAccentFromTopAgent]);
 
   // Backlog #36 : pulse sur le badge de rang si le dernier snapshot enregistré diffère du
   // précédent ET vient d'être écrit il y a moins de 2 min (cette session) — pas d'animation

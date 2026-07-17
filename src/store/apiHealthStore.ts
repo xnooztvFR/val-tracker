@@ -7,6 +7,10 @@ export type ApiHealthStatus = "ok" | "rate_limited" | "circuit_open" | "network"
 interface ApiHealthState {
   status: ApiHealthStatus;
   detail: string | null;
+  /** TODO Design#2 : horodatage (ms) du dernier succès React Query — alimente l'indicateur
+   * de fraîcheur permanent du TopNav (DataFreshnessDot.tsx), distinct du badge d'erreur
+   * ApiStatusBadge qui ne s'affiche que quand `status !== "ok"`. */
+  lastSuccessAt: number | null;
   reportError: (error: unknown) => void;
   reportSuccess: () => void;
 }
@@ -18,6 +22,7 @@ interface ApiHealthState {
 export const useApiHealthStore = create<ApiHealthState>((set) => ({
   status: "ok",
   detail: null,
+  lastSuccessAt: null,
 
   reportError: (error: unknown) => {
     if (!isCommandError(error)) return;
@@ -43,5 +48,5 @@ export const useApiHealthStore = create<ApiHealthState>((set) => ({
     }
   },
 
-  reportSuccess: () => set({ status: "ok", detail: null }),
+  reportSuccess: () => set({ status: "ok", detail: null, lastSuccessAt: Date.now() }),
 }));

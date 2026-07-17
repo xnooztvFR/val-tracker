@@ -1,7 +1,8 @@
 import { useTranslation } from "react-i18next";
 
 import type { MatchEntry } from "../lib/tauriApi";
-import { agentIconUrl, formatDurationMs, formatKda, formatKdRatio, formatRelativeTime } from "../lib/format";
+import { formatDurationMs, formatKda, formatKdRatio, formatRelativeTime } from "../lib/format";
+import AgentIcon from "./AgentIcon";
 
 interface MatchRowProps {
   match: MatchEntry;
@@ -48,13 +49,10 @@ export default function MatchRow({ match, puuid, onClick }: MatchRowProps) {
       </div>
 
       {player?.agent?.id ? (
-        <img
-          src={agentIconUrl(player.agent.id)}
-          alt={player.agent.name ?? ""}
+        <AgentIcon
+          agentId={player.agent.id}
+          agentName={player.agent.name}
           className="h-9 w-9 shrink-0 border border-line object-cover"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
-          }}
         />
       ) : (
         <div className="h-9 w-9 shrink-0 border border-line bg-base" />

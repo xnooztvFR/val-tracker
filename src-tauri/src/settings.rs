@@ -97,6 +97,35 @@ const KEY_SHORTCUT_MAIN_WINDOW_TOGGLE: &str = "shortcut_main_window_toggle";
 pub const DEFAULT_SHORTCUT_OVERLAY_TOGGLE: &str = "ctrl+shift+v";
 pub const DEFAULT_SHORTCUT_MAIN_WINDOW_TOGGLE: &str = "ctrl+shift+h";
 
+/// TODO Design#2 : police utilisée pour `--font-display` (HUD labels, titres) — `"display"`
+/// (défaut, Chakra Petch) ou `"mono"` (JetBrains Mono, déjà self-hosted pour les valeurs
+/// chiffrées — voir index.css — réutilisé ici plutôt que d'ajouter une dépendance de police
+/// supplémentaire).
+const KEY_UI_FONT: &str = "ui_font";
+/// TODO Design#2 : mode présentation/stream — police agrandie + animations ralenties,
+/// désactivé par défaut.
+const KEY_PRESENTATION_MODE_ENABLED: &str = "presentation_mode_enabled";
+/// TODO Design#2 : fond dynamique dérivé de la couleur du rang actuel — cosmétique, opt-in
+/// (désactivé par défaut), voir `rankGlowColor` côté frontend.
+const KEY_WALLPAPER_ENABLED: &str = "wallpaper_enabled";
+/// TODO Design#2 : micro-sons HUD (alertes existantes : écart de rang, streaks, changement
+/// de rang) — active par défaut pour préserver le comportement historique du bip d'écart de
+/// rang, mais désormais réglable en volume.
+const KEY_HUD_SOUNDS_ENABLED: &str = "hud_sounds_enabled";
+const KEY_HUD_SOUNDS_VOLUME: &str = "hud_sounds_volume";
+/// TODO Design#2 : curseur viseur simplifié appliqué globalement (fenêtre principale +
+/// overlay), au lieu du seul hover `.target-lock` existant (backlog #65) — désactivé par
+/// défaut (préférence stylistique, pas universellement voulue).
+const KEY_CURSOR_ENABLED: &str = "cursor_enabled";
+/// TODO Design#2 : `"official"` (défaut, CDN media.valorant-api.com) | `"vector"` (icônes
+/// maison abstraites — voir `AgentGlyph.tsx`/`WeaponGlyph.tsx`, pas des reproductions exactes
+/// des assets Riot, juste un style géométrique évitant toute dépendance réseau externe).
+const KEY_ICON_STYLE: &str = "icon_style";
+
+const DEFAULT_UI_FONT: &str = "display";
+const DEFAULT_HUD_SOUNDS_VOLUME: i64 = 15;
+const DEFAULT_ICON_STYLE: &str = "official";
+
 const DEFAULT_UI_THEME: &str = "dark";
 const DEFAULT_UI_ACCENT: &str = "red";
 const DEFAULT_UI_LANGUAGE: &str = "fr";
@@ -170,7 +199,10 @@ pub struct AppSettings {
     /// Backlog #33 : `"dark"` (défaut, identité HUD d'origine) ou `"light"`.
     pub ui_theme: String,
     /// Backlog #38 : `"red"` (défaut, identité HUD d'origine) | `"cyan"` | `"violet"` |
-    /// `"amber"` — voir les variables CSS `--color-accent*` dans `index.css`.
+    /// `"amber"` | `"auto"` (TODO Design#2 : dérivé du rôle de l'agent le plus joué, calculé
+    /// côté frontend — voir `dynamicAccentStore.ts`) | `"contrast"` (TODO Design#2 : variante
+    /// bleu/orange basée sur les normes protanopie/deutéranopie, pas testée avec de vrais
+    /// utilisateurs daltoniens) — voir les variables CSS `--color-accent*` dans `index.css`.
     pub ui_accent: String,
     /// Système multilangue : `"fr"` (défaut) | `"en"`. Le frontend (react-i18next) applique
     /// cette valeur au démarrage puis à chaque changement via Paramètres.
@@ -231,6 +263,22 @@ pub struct AppSettings {
     /// accelerator `tauri-plugin-global-shortcut` (ex. `"ctrl+shift+v"`).
     pub shortcut_overlay_toggle: String,
     pub shortcut_main_window_toggle: String,
+    /// TODO Design#2 : `"display"` (défaut, Chakra Petch) | `"mono"` (JetBrains Mono).
+    pub ui_font: String,
+    /// TODO Design#2 : mode présentation/stream (police agrandie, animations ralenties).
+    pub presentation_mode_enabled: bool,
+    /// TODO Design#2 : fond dynamique dérivé de la couleur du rang actuel, désactivé par
+    /// défaut.
+    pub wallpaper_enabled: bool,
+    /// TODO Design#2 : micro-sons HUD (alertes existantes) — activé par défaut, réglable en
+    /// volume via `hud_sounds_volume` (0-100).
+    pub hud_sounds_enabled: bool,
+    pub hud_sounds_volume: i64,
+    /// TODO Design#2 : curseur viseur simplifié appliqué globalement, désactivé par défaut.
+    pub cursor_enabled: bool,
+    /// TODO Design#2 : `"official"` (défaut) | `"vector"` (icônes maison, voir
+    /// `AgentGlyph.tsx`/`WeaponGlyph.tsx`).
+    pub icon_style: String,
 }
 
 impl fmt::Debug for AppSettings {
@@ -284,6 +332,13 @@ impl fmt::Debug for AppSettings {
             .field("notes_pin_dpapi_unreadable", &self.notes_pin_dpapi_unreadable)
             .field("shortcut_overlay_toggle", &self.shortcut_overlay_toggle)
             .field("shortcut_main_window_toggle", &self.shortcut_main_window_toggle)
+            .field("ui_font", &self.ui_font)
+            .field("presentation_mode_enabled", &self.presentation_mode_enabled)
+            .field("wallpaper_enabled", &self.wallpaper_enabled)
+            .field("hud_sounds_enabled", &self.hud_sounds_enabled)
+            .field("hud_sounds_volume", &self.hud_sounds_volume)
+            .field("cursor_enabled", &self.cursor_enabled)
+            .field("icon_style", &self.icon_style)
             .finish()
     }
 }
@@ -455,6 +510,23 @@ pub fn load_settings(conn: &Connection) -> rusqlite::Result<AppSettings> {
     let shortcut_main_window_toggle = get_raw(conn, KEY_SHORTCUT_MAIN_WINDOW_TOGGLE)?
         .filter(|v| !v.is_empty())
         .unwrap_or_else(|| DEFAULT_SHORTCUT_MAIN_WINDOW_TOGGLE.to_string());
+    let ui_font = get_raw(conn, KEY_UI_FONT)?.unwrap_or_else(|| DEFAULT_UI_FONT.to_string());
+    let presentation_mode_enabled = get_raw(conn, KEY_PRESENTATION_MODE_ENABLED)?
+        .map(|v| v == "true")
+        .unwrap_or(false);
+    let wallpaper_enabled = get_raw(conn, KEY_WALLPAPER_ENABLED)?
+        .map(|v| v == "true")
+        .unwrap_or(false);
+    let hud_sounds_enabled = get_raw(conn, KEY_HUD_SOUNDS_ENABLED)?
+        .map(|v| v == "true")
+        .unwrap_or(true);
+    let hud_sounds_volume = get_raw(conn, KEY_HUD_SOUNDS_VOLUME)?
+        .and_then(|v| v.parse::<i64>().ok())
+        .unwrap_or(DEFAULT_HUD_SOUNDS_VOLUME);
+    let cursor_enabled = get_raw(conn, KEY_CURSOR_ENABLED)?
+        .map(|v| v == "true")
+        .unwrap_or(false);
+    let icon_style = get_raw(conn, KEY_ICON_STYLE)?.unwrap_or_else(|| DEFAULT_ICON_STYLE.to_string());
 
     Ok(AppSettings {
         henrik_api_key_set,
@@ -490,6 +562,13 @@ pub fn load_settings(conn: &Connection) -> rusqlite::Result<AppSettings> {
         notes_pin_dpapi_unreadable,
         shortcut_overlay_toggle,
         shortcut_main_window_toggle,
+        ui_font,
+        presentation_mode_enabled,
+        wallpaper_enabled,
+        hud_sounds_enabled,
+        hud_sounds_volume,
+        cursor_enabled,
+        icon_style,
     })
 }
 
@@ -645,9 +724,48 @@ pub fn set_overlay_density(conn: &Connection, density: &str) -> rusqlite::Result
     set_raw(conn, KEY_OVERLAY_DENSITY, density)
 }
 
-/// Backlog #75 : `"full"` | `"mini"`.
+/// Backlog #75 : `"full"` | `"mini"` | `"minimal"` (TODO Design#2 : juste le rank du joueur
+/// local en petit texte, sans roster).
 pub fn set_overlay_layout(conn: &Connection, layout: &str) -> rusqlite::Result<()> {
     set_raw(conn, KEY_OVERLAY_LAYOUT, layout)
+}
+
+/// TODO Design#2 : `"display"` (défaut) | `"mono"`.
+pub fn set_ui_font(conn: &Connection, font: &str) -> rusqlite::Result<()> {
+    set_raw(conn, KEY_UI_FONT, font)
+}
+
+pub fn set_presentation_mode_enabled(conn: &Connection, enabled: bool) -> rusqlite::Result<()> {
+    set_raw(
+        conn,
+        KEY_PRESENTATION_MODE_ENABLED,
+        if enabled { "true" } else { "false" },
+    )
+}
+
+pub fn set_wallpaper_enabled(conn: &Connection, enabled: bool) -> rusqlite::Result<()> {
+    set_raw(conn, KEY_WALLPAPER_ENABLED, if enabled { "true" } else { "false" })
+}
+
+pub fn set_hud_sounds_enabled(conn: &Connection, enabled: bool) -> rusqlite::Result<()> {
+    set_raw(
+        conn,
+        KEY_HUD_SOUNDS_ENABLED,
+        if enabled { "true" } else { "false" },
+    )
+}
+
+pub fn set_hud_sounds_volume(conn: &Connection, volume: i64) -> rusqlite::Result<()> {
+    set_raw(conn, KEY_HUD_SOUNDS_VOLUME, &volume.clamp(0, 100).to_string())
+}
+
+pub fn set_cursor_enabled(conn: &Connection, enabled: bool) -> rusqlite::Result<()> {
+    set_raw(conn, KEY_CURSOR_ENABLED, if enabled { "true" } else { "false" })
+}
+
+/// TODO Design#2 : `"official"` (défaut) | `"vector"`.
+pub fn set_icon_style(conn: &Connection, style: &str) -> rusqlite::Result<()> {
+    set_raw(conn, KEY_ICON_STYLE, style)
 }
 
 /// Backlog #24 : toggle + seuil de l'alerte "N défaites d'affilée".

@@ -17,6 +17,7 @@ import CommandPalette from "./components/CommandPalette";
 import Search from "./screens/Search";
 import { useUiStore } from "./store/uiStore";
 import { useSettingsStore } from "./store/settingsStore";
+import { useDynamicAccentStore } from "./store/dynamicAccentStore";
 import { useSelfAccountCycling } from "./hooks/useSelfAccountCycling";
 
 // Écrans chargés à la demande (React.lazy) : seul l'écran de recherche (route "/",
@@ -53,8 +54,12 @@ export default function App() {
   const refreshSettings = useSettingsStore((s) => s.refresh);
   const uiTheme = useSettingsStore((s) => s.settings?.ui_theme);
   const uiAccent = useSettingsStore((s) => s.settings?.ui_accent);
+  const dynamicAccent = useDynamicAccentStore((s) => s.accent);
   const uiLanguage = useSettingsStore((s) => s.settings?.ui_language);
   const uiDensity = useSettingsStore((s) => s.settings?.ui_density);
+  const uiFont = useSettingsStore((s) => s.settings?.ui_font);
+  const presentationModeEnabled = useSettingsStore((s) => s.settings?.presentation_mode_enabled);
+  const cursorEnabled = useSettingsStore((s) => s.settings?.cursor_enabled);
   const [paletteOpen, setPaletteOpen] = useState(false);
 
   useEffect(() => {
@@ -95,12 +100,17 @@ export default function App() {
     } else {
       root.removeAttribute("data-theme");
     }
-    if (uiAccent && uiAccent !== "red") {
-      root.setAttribute("data-accent", uiAccent);
+    // TODO Design#2 : "auto" n'est pas une valeur CSS valide de `[data-accent]` — résolue ici
+    // vers la teinte dérivée de l'agent le plus joué (dynamicAccentStore, alimenté par
+    // useHomeData.ts), avec repli sur le rouge par défaut tant qu'aucun profil n'a encore été
+    // visité cette session.
+    const effectiveAccent = uiAccent === "auto" ? dynamicAccent ?? "red" : uiAccent;
+    if (effectiveAccent && effectiveAccent !== "red") {
+      root.setAttribute("data-accent", effectiveAccent);
     } else {
       root.removeAttribute("data-accent");
     }
-  }, [uiTheme, uiAccent]);
+  }, [uiTheme, uiAccent, dynamicAccent]);
 
   // Backlog #66 : densité globale — `[data-density="compact"]` réduit `font-size` sur
   // `<html>` (voir index.css), ce qui rétrécit proportionnellement tout le reste de l'app
@@ -109,12 +119,43 @@ export default function App() {
   // thème/accent ci-dessus), donc cet effet doit rester avant l'early-return overlay.
   useEffect(() => {
     const root = document.documentElement;
-    if (uiDensity === "compact") {
+    // TODO Design#2 : le mode présentation (police agrandie) prime sur `ui_density` — les
+    // deux visent l'opposé (compact vs agrandi), une combinaison des deux n'aurait pas de
+    // sens visuel cohérent.
+    if (presentationModeEnabled) {
+      root.setAttribute("data-density", "presentation");
+    } else if (uiDensity === "compact") {
       root.setAttribute("data-density", "compact");
     } else {
       root.removeAttribute("data-density");
     }
-  }, [uiDensity]);
+    if (presentationModeEnabled) {
+      root.setAttribute("data-motion", "slow");
+    } else {
+      root.removeAttribute("data-motion");
+    }
+  }, [uiDensity, presentationModeEnabled]);
+
+  // TODO Design#2 : police d'accent commutable (Chakra Petch / JetBrains Mono) et curseur
+  // viseur simplifié global — même schéma `data-*` que thème/accent/densité ci-dessus, un
+  // effet par fenêtre Tauri (chacune a son propre document).
+  useEffect(() => {
+    const root = document.documentElement;
+    if (uiFont === "mono") {
+      root.setAttribute("data-font", "mono");
+    } else {
+      root.removeAttribute("data-font");
+    }
+  }, [uiFont]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (cursorEnabled) {
+      root.setAttribute("data-cursor", "crosshair");
+    } else {
+      root.removeAttribute("data-cursor");
+    }
+  }, [cursorEnabled]);
 
   // Système multilangue : reflète la préférence enregistrée (défaut "fr") sur l'instance
   // i18next partagée par toutes les fenêtres Tauri (dont l'overlay V2, qui a son propre

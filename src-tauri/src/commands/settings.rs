@@ -199,13 +199,17 @@ pub async fn save_ui_theme(state: State<'_, AppState>, theme: String) -> Result<
     Ok(())
 }
 
-/// Backlog #38 : `"red"` | `"cyan"` | `"violet"` | `"amber"`.
+/// Backlog #38 : `"red"` | `"cyan"` | `"violet"` | `"amber"` | `"auto"` | `"contrast"`.
 #[tauri::command]
 pub async fn save_ui_accent(
     state: State<'_, AppState>,
     accent: String,
 ) -> Result<(), CommandError> {
-    ensure_one_of(&accent, &["red", "cyan", "violet", "amber"], "accent")?;
+    ensure_one_of(
+        &accent,
+        &["red", "cyan", "violet", "amber", "auto", "contrast"],
+        "accent",
+    )?;
     let conn = state.db.lock().await;
     crate::settings::set_ui_accent(&conn, &accent)?;
     Ok(())
@@ -247,15 +251,91 @@ pub async fn save_overlay_density(
     Ok(())
 }
 
-/// Backlog #75 : `"full"` | `"mini"`.
+/// Backlog #75 : `"full"` | `"mini"` | `"minimal"`.
 #[tauri::command]
 pub async fn save_overlay_layout(
     state: State<'_, AppState>,
     layout: String,
 ) -> Result<(), CommandError> {
-    ensure_one_of(&layout, &["full", "mini"], "layout")?;
+    ensure_one_of(&layout, &["full", "mini", "minimal"], "layout")?;
     let conn = state.db.lock().await;
     crate::settings::set_overlay_layout(&conn, &layout)?;
+    Ok(())
+}
+
+/// TODO Design#2 : `"display"` | `"mono"`.
+#[tauri::command]
+pub async fn save_ui_font(state: State<'_, AppState>, font: String) -> Result<(), CommandError> {
+    ensure_one_of(&font, &["display", "mono"], "font")?;
+    let conn = state.db.lock().await;
+    crate::settings::set_ui_font(&conn, &font)?;
+    Ok(())
+}
+
+/// TODO Design#2 : mode présentation/stream (police agrandie, animations ralenties).
+#[tauri::command]
+pub async fn save_presentation_mode_enabled(
+    state: State<'_, AppState>,
+    enabled: bool,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::set_presentation_mode_enabled(&conn, enabled)?;
+    Ok(())
+}
+
+/// TODO Design#2 : fond dynamique dérivé de la couleur du rang actuel.
+#[tauri::command]
+pub async fn save_wallpaper_enabled(
+    state: State<'_, AppState>,
+    enabled: bool,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::set_wallpaper_enabled(&conn, enabled)?;
+    Ok(())
+}
+
+/// TODO Design#2 : toggle + volume (0-100) des micro-sons HUD.
+#[tauri::command]
+pub async fn save_hud_sounds_enabled(
+    state: State<'_, AppState>,
+    enabled: bool,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::set_hud_sounds_enabled(&conn, enabled)?;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn save_hud_sounds_volume(
+    state: State<'_, AppState>,
+    volume: i64,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::set_hud_sounds_volume(&conn, volume)?;
+    Ok(())
+}
+
+/// TODO Design#2 : curseur viseur simplifié appliqué globalement (fenêtre principale +
+/// overlay).
+#[tauri::command]
+pub async fn save_cursor_enabled(
+    state: State<'_, AppState>,
+    enabled: bool,
+) -> Result<(), CommandError> {
+    let conn = state.db.lock().await;
+    crate::settings::set_cursor_enabled(&conn, enabled)?;
+    Ok(())
+}
+
+/// TODO Design#2 : `"official"` | `"vector"`.
+#[tauri::command]
+pub async fn save_icon_style(
+    state: State<'_, AppState>,
+    style: String,
+) -> Result<(), CommandError> {
+    ensure_one_of(&style, &["official", "vector"], "style")?;
+    let conn = state.db.lock().await;
+    crate::settings::set_icon_style(&conn, &style)?;
     Ok(())
 }
 

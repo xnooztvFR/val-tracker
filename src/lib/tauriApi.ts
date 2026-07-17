@@ -846,6 +846,19 @@ export interface AppSettings {
   /** Raccourcis globaux reconfigurables (backlog sécurité) — format accelerator
    * `tauri-plugin-global-shortcut` (ex. `"ctrl+shift+v"`). */
   shortcut_overlay_toggle: string;
+  /** TODO Design#2 : `"display"` (défaut, Chakra Petch) | `"mono"` (JetBrains Mono). */
+  ui_font: string;
+  /** TODO Design#2 : mode présentation/stream (police agrandie, animations ralenties). */
+  presentation_mode_enabled: boolean;
+  /** TODO Design#2 : fond dynamique dérivé de la couleur du rang actuel. */
+  wallpaper_enabled: boolean;
+  /** TODO Design#2 : micro-sons HUD (alertes existantes), volume 0-100. */
+  hud_sounds_enabled: boolean;
+  hud_sounds_volume: number;
+  /** TODO Design#2 : curseur viseur simplifié appliqué globalement. */
+  cursor_enabled: boolean;
+  /** TODO Design#2 : `"official"` (défaut) | `"vector"` (icônes maison). */
+  icon_style: string;
   shortcut_main_window_toggle: string;
 }
 
@@ -1073,6 +1086,18 @@ export const tauriApi = {
     invoke<void>("save_overlay_density", { density }),
   saveOverlayLayout: (layout: string) =>
     invoke<void>("save_overlay_layout", { layout }),
+  saveUiFont: (font: string) => invoke<void>("save_ui_font", { font }),
+  savePresentationModeEnabled: (enabled: boolean) =>
+    invoke<void>("save_presentation_mode_enabled", { enabled }),
+  saveWallpaperEnabled: (enabled: boolean) =>
+    invoke<void>("save_wallpaper_enabled", { enabled }),
+  saveHudSoundsEnabled: (enabled: boolean) =>
+    invoke<void>("save_hud_sounds_enabled", { enabled }),
+  saveHudSoundsVolume: (volume: number) =>
+    invoke<void>("save_hud_sounds_volume", { volume }),
+  saveCursorEnabled: (enabled: boolean) =>
+    invoke<void>("save_cursor_enabled", { enabled }),
+  saveIconStyle: (style: string) => invoke<void>("save_icon_style", { style }),
   saveLossStreakAlertEnabled: (enabled: boolean) =>
     invoke<void>("save_loss_streak_alert_enabled", { enabled }),
   saveRankChangeAlertEnabled: (enabled: boolean) =>

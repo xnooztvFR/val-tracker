@@ -217,17 +217,22 @@ export default function Overlay() {
       alertFiredRef.current = false;
     }
   }, [isActiveGame]);
+  // TODO Design#2 : micro-sons HUD — toggle maître + volume (0-100, bas par défaut),
+  // s'applique au seul son existant (l'alerte d'écart de rang ci-dessus) plutôt que
+  // d'inventer de nouveaux sons non demandés.
+  const hudSoundsEnabled = settings?.hud_sounds_enabled ?? true;
+  const hudSoundsVolume = settings?.hud_sounds_volume ?? 15;
   useEffect(() => {
-    if (!rankGapAlertEnabled || alertFiredRef.current || selfTier == null) return;
+    if (!rankGapAlertEnabled || !hudSoundsEnabled || alertFiredRef.current || selfTier == null) return;
     const hasBigGap = enemies.some(({ query }) => {
       const tier = query?.data?.data?.current_data?.currenttier;
       return tier != null && tier - selfTier >= rankGapAlertThreshold;
     });
     if (hasBigGap) {
       alertFiredRef.current = true;
-      playRankGapAlert();
+      playRankGapAlert(hudSoundsVolume);
     }
-  }, [rankGapAlertEnabled, rankGapAlertThreshold, selfTier, enemies]);
+  }, [rankGapAlertEnabled, rankGapAlertThreshold, selfTier, enemies, hudSoundsEnabled, hudSoundsVolume]);
 
   const stateLabel =
     snapshot?.state === "pregame"
@@ -248,7 +253,13 @@ export default function Overlay() {
           interactive ? "cursor-move [box-shadow:inset_0_0_0_1px_rgb(var(--accent-rgb))]" : ""
         }`}
       >
-        {layout === "mini" ? (
+        {layout === "minimal" ? (
+          <MinimalSummary
+            active={snapshot?.state === "in_game" || snapshot?.state === "pregame"}
+            selfTier={selfTier}
+            interactive={interactive}
+          />
+        ) : layout === "mini" ? (
           <MiniSummary
             active={snapshot?.state === "in_game" || snapshot?.state === "pregame"}
             allies={allies}
@@ -380,6 +391,31 @@ function MiniSummary({
   );
 }
 
+/** TODO Design#2 : skin overlay le plus épuré possible — uniquement le rang du joueur local
+ * en petit texte (pas d'icône, pas de roster allié/adverse), pour ceux qui trouvent même le
+ * layout "mini" (backlog #75, icônes de toute l'équipe) trop chargé. */
+function MinimalSummary({
+  active,
+  selfTier,
+  interactive,
+}: {
+  active: boolean;
+  selfTier: number | null | undefined;
+  interactive: boolean;
+}) {
+  const { t } = useTranslation("overlay");
+  const info = rankInfo(selfTier);
+  return (
+    <div data-tauri-drag-region={interactive || undefined} className="flex items-center gap-2 px-2.5 py-1.5">
+      <span className={`h-1.5 w-1.5 shrink-0 ${active ? "bg-accent" : "bg-lo/50"}`} />
+      <span className={`hud-label truncate text-[10px] ${info.colorClass}`}>
+        {selfTier != null ? info.name : t("waitingHint")}
+      </span>
+      {interactive && <span className="hud-label shrink-0 text-[9px] text-hi/80">Ctrl+Shift+V</span>}
+    </div>
+  );
+}
+
 function MiniRankIcon({ query }: { query: UseQueryResult<Fetched<MmrData>> | undefined }) {
   const data = query?.data?.data;
   const info = rankInfo(data?.current_data?.currenttier);
@@ -389,10 +425,14 @@ function MiniRankIcon({ query }: { query: UseQueryResult<Fetched<MmrData>> | und
 /** Deux bips discrets synthétisés via Web Audio (pas de fichier son à embarquer/whitelister
  * dans la CSP) — signal d'écart de rang adverse important, best-effort : une erreur (API
  * indisponible, contexte audio bloqué) ne doit jamais faire planter l'overlay. */
-function playRankGapAlert() {
+/** TODO Design#2 : `volumePercent` (0-100, réglage "micro-sons HUD" de Paramètres) module le
+ * pic de gain — 0.12 était le pic fixe d'origine à volume "par défaut" (~15%), la formule
+ * reste discrète même au volume max (100%) plutôt que de devenir un son fort/agressif. */
+function playRankGapAlert(volumePercent: number) {
   try {
     const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Ctx) return;
+    const peakGain = 0.02 + (volumePercent / 100) * 0.3;
     const ctx = new Ctx();
     const beepAt = (start: number) => {
       const now = ctx.currentTime + start;
@@ -401,7 +441,7 @@ function playRankGapAlert() {
       osc.type = "sine";
       osc.frequency.setValueAtTime(880, now);
       gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(peakGain, now + 0.02);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
       osc.connect(gain).connect(ctx.destination);
       osc.start(now);

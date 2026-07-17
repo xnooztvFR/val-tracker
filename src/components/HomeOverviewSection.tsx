@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 
 import Panel from "./Panel";
 import StatCard from "./StatCard";
-import { agentPortraitUrl, formatKdRatio, formatPercent, mapSplashUrl } from "../lib/format";
+import { formatKdRatio, formatPercent, mapSplashUrl } from "../lib/format";
+import AgentIcon from "./AgentIcon";
 import type { MatchEntry } from "../lib/tauriApi";
 import type { Overview } from "../lib/stats";
 
@@ -67,13 +68,11 @@ export default function HomeOverviewSection({ overview, region, name, tag, lastM
           <p className="hud-label mb-3">{t("overview.topAgent.title")}</p>
           {overview.topAgent ? (
             <div className="flex items-center gap-4">
-              <img
-                src={agentPortraitUrl(overview.topAgent.id)}
-                alt={overview.topAgent.name}
+              <AgentIcon
+                agentId={overview.topAgent.id}
+                agentName={overview.topAgent.name}
+                variant="portrait"
                 className="h-16 w-16 border border-line object-cover object-top"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.visibility = "hidden";
-                }}
               />
               <div>
                 <p className="font-display font-semibold text-hi">{overview.topAgent.name}</p>
